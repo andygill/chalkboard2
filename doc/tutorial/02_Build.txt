@@ -1,0 +1,43 @@
+
+### Building Standalone Binary that uses ChalkBoard
+
+To build your first ChalkBoard example, type in (or cut and paste) this example
+into a file Example.hs
+
+    -- Example.hs
+    import Graphics.ChalkBoard
+
+    main = ....
+
+This gives the first flavor of ChalkBoard. We
+
+ * initialize a ChalkBoard viewer, giving us a ChalkBoard handle inside a scope.
+ * ...
+ * [For the advanced users] the code passed as a continuation to `startChalkBoard`
+is not run inside the main thread (which is reserved for OpenGL), but is run
+in another thread.
+
+Compiling this file with GHC gives a binary that uses ChalkBoard. We use the notation `$`
+to signify a command to be typed in.
+
+    $ ghc --make Example.hs
+
+This binary can be executed.
+
+    $ ./Example.hs
+
+This brings up the ChalkBoard viewer on the screen, with the default size of 400x400,
+and a rather boring red background.
+
+    IMAGE of red ChalkBoard
+
+
+This completes the first example. In our next example, we introduce some basic shapes.
+
+#### ChalkBoard and GHCi
+
+For technical reasons, OpenGL (which ChalkBoard uses) and GHCi do not interact well. To mitigate this,
+we have provided the ChalkBoard server, which accepts commands from the GHCi
+command line. We discuss using this a special ChalkBoard Server section. All
+the commands that we present in this and the following sections can equally
+be used in stand alone or server modes; the only difference is in initialization.
