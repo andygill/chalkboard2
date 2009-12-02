@@ -1,0 +1,417 @@
+\subsection{Graphics.ChalkBoard.Types}     
+
+         
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{\bf {\bf Contents}}\\ % (8)
+
+ 
+\begin{itemize}
+\setlength{\itemsep}{0in}
+
+\item Basic types
+\item Overlaying
+\item Scaling
+\item Linear Interpolation
+\item Averaging
+\item Constants
+\item Colors
+\end{itemize}
+\\ % (72)
+
+
+\end{tabular}
+
+
+ 
+
+\subsubsection{Description}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}This module contains the types used by chalkboard, except Board itself.\end{minipage}
+
+ 
+
+\subsubsection{Synopsis}
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{type UI = R}\\ % (11)
+
+
+{type R = Float}\\ % (14)
+
+
+{type Point = (R, R)}\\ % (19)
+
+
+{type Radian = Float}\\ % (19)
+
+
+{class  Over c  where}\\ % (20)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{over :: c -{\tt >} c -{\tt >} c}\\ % (31)
+
+
+\end{tabular}
+\\ % (31)
+
+
+{stack :: Over c ={\tt >} [c] -{\tt >} c}\\ % (39)
+
+
+{class  Scale c  where}\\ % (21)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{scale :: R -{\tt >} c -{\tt >} c}\\ % (32)
+
+
+\end{tabular}
+\\ % (32)
+
+
+{class  Lerp a  where}\\ % (20)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{lerp :: UI -{\tt >} a -{\tt >} a -{\tt >} a}\\ % (43)
+
+
+\end{tabular}
+\\ % (43)
+
+
+{class  Average a  where}\\ % (23)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{average :: [a] -{\tt >} a}\\ % (25)
+
+
+\end{tabular}
+\\ % (25)
+
+
+{nearZero :: R}\\ % (13)
+
+
+{type Gray = UI}\\ % (14)
+
+
+{data  RGB  = RGB !UI !UI !UI}\\ % (28)
+
+
+{data  RGBA  = RGBA !UI !UI !UI !UI}\\ % (34)
+
+
+\end{tabular}
+
+
+ 
+
+ 
+
+\subsubsection{Basic types}
+
+ 
+
+{type {\bf UI} = R}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Unit Interval: value between 0 and 1, inclusive.\end{minipage}
+
+ 
+
+{type {\bf R} = Float}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}A real number.\end{minipage}
+
+ 
+
+{type {\bf Point} = (R, R)}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}A point in R2.\end{minipage}
+
+ 
+
+{type {\bf Radian} = Float}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Angle units\end{minipage}
+
+ 
+
+\subsubsection{Overlaying}
+
+ 
+
+{class  {\bf Over} c  where}
+
+ 
+\begin{tabular}{p{0.95\linewidth}} For placing a value literally {\em over} another value. The 2nd value {\em might} shine through. The operation {\em must} be associative.\\ % (119)
+
+
+{\bf Methods}\\ % (7)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{{\bf over} :: c -{\tt >} c -{\tt >} c}\\ % (31)
+
+
+\end{tabular}
+\\ % (31)
+
+
+{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Over Bool}\\ % (9)
+
+{Over RGBA}\\ % (9)
+
+{Over RGB}\\ % (8)
+
+{Over Gray}\\ % (9)
+
+{Over (Maybe a)}\\ % (14)
+
+{Over a ={\tt >} Over (Board a)}\\ % (30)
+
+
+\end{tabular}
+\\ % (30)
+
+
+\end{tabular}
+
+
+ 
+
+{{\bf stack} :: Over c ={\tt >} [c] -{\tt >} c}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}{\tt stack} stacks a list of things over each other,  where earlier elements are {\tt over} later elements. Requires non empty lists, which can be satisfied by using an explicitly
+ transparent {\tt Board} as one of the elements.\end{minipage}
+
+ 
+
+\subsubsection{Scaling}
+
+ 
+
+{class  {\bf Scale} c  where}
+
+ 
+\begin{tabular}{p{0.95\linewidth}} {\tt Scale} something by a value. scaling value can be bigger than 1.\\ % (63)
+
+
+{\bf Methods}\\ % (7)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{{\bf scale} :: R -{\tt >} c -{\tt >} c}\\ % (32)
+
+
+\end{tabular}
+\\ % (32)
+
+
+{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Scale RGB}\\ % (9)
+
+{Scale R}\\ % (7)
+
+{Scale (Board a)}\\ % (15)
+
+{(Scale a, Scale b) ={\tt >} Scale ((,) a b)}\\ % (43)
+
+
+\end{tabular}
+\\ % (43)
+
+
+\end{tabular}
+
+
+ 
+
+\subsubsection{Linear Interpolation}
+
+ 
+
+{class  {\bf Lerp} a  where}
+
+ 
+\begin{tabular}{p{0.95\linewidth}} Linear interpolation between two values.\\ % (40)
+
+
+{\bf Methods}\\ % (7)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{{\bf lerp} :: UI -{\tt >} a -{\tt >} a -{\tt >} a}\\ % (43)
+
+
+\end{tabular}
+\\ % (43)
+
+
+{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Lerp RGB}\\ % (8)
+
+{Lerp R}\\ % (6)
+
+{Lerp a ={\tt >} Lerp (Maybe a)}\\ % (30)
+
+{(Lerp a, Lerp b) ={\tt >} Lerp ((,) a b)}\\ % (40)
+
+
+\end{tabular}
+\\ % (40)
+
+
+\end{tabular}
+
+
+ 
+
+\subsubsection{Averaging}
+
+ 
+
+{class  {\bf Average} a  where}
+
+ 
+\begin{tabular}{p{0.95\linewidth}} {\tt Average} a set of values. weighting can be achived using multiple entries.\\ % (73)
+
+
+{\bf Methods}\\ % (7)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{{\bf average} :: [a] -{\tt >} a}\\ % (25)
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}average is not defined for empty list\end{minipage}\\ % (37)
+
+
+\end{tabular}
+\\ % (37)
+
+
+{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Average RGB}\\ % (11)
+
+{Average R}\\ % (9)
+
+{(Average a, Average b) ={\tt >} Average ((,) a b)}\\ % (49)
+
+
+\end{tabular}
+\\ % (49)
+
+
+\end{tabular}
+
+
+ 
+
+\subsubsection{Constants}
+
+ 
+
+{{\bf nearZero} :: R}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Close to zero; needed for {\tt Over (Alpha c)} instance.\end{minipage}
+
+ 
+
+\subsubsection{Colors}
+
+ 
+
+{type {\bf Gray} = UI}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}{\tt Gray} is just a value between 0 and 1, inclusive. Be careful to consider if this is pre or post gamma.
+\end{minipage}
+
+ 
+
+{data  {\bf RGB}  }
+
+ 
+\begin{tabular}{p{0.95\linewidth}} {\tt RGB} is our color, with values between 0 and 1, inclusive.\\ % (57)
+
+{\bf Constructors}\\ % (12)
+
+ 
+\begin{tabular}{p{0.95\linewidth}} {\bf RGB} !UI !UI !UI \\ % (15)
+
+
+\end{tabular}
+\\ % (15)
+
+{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Show RGB}\\ % (8)
+
+{Binary RGB}\\ % (10)
+
+{Average RGB}\\ % (11)
+
+{Lerp RGB}\\ % (8)
+
+{Scale RGB}\\ % (9)
+
+{Over RGB}\\ % (8)
+
+{Obs RGB}\\ % (7)
+
+
+\end{tabular}
+\\ % (7)
+
+
+\end{tabular}
+
+
+ 
+
+{data  {\bf RGBA}  }
+
+ 
+\begin{tabular}{p{0.95\linewidth}} {\tt RGBA} is our color, with values between 0 and 1, inclusive. These values are *not* prenormalized
+\\ % (96)
+
+{\bf Constructors}\\ % (12)
+
+ 
+\begin{tabular}{p{0.95\linewidth}} {\bf RGBA} !UI !UI !UI !UI \\ % (20)
+
+
+\end{tabular}
+\\ % (20)
+
+{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Show RGBA}\\ % (9)
+
+{Binary RGBA}\\ % (11)
+
+{Over RGBA}\\ % (9)
+
+{Obs RGBA}\\ % (8)
+
+
+\end{tabular}
+\\ % (8)
+
+
+\end{tabular}
+
+
+ 
+
+ 
+

@@ -1,0 +1,156 @@
+\subsection{Graphics.ChalkBoard.Utils}     
+
+         
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{\bf {\bf Contents}}\\ % (8)
+
+ 
+\begin{itemize}
+\setlength{\itemsep}{0in}
+
+\item Point Utilties.
+\item Utilties for {\tt R}.
+\end{itemize}
+\\ % (30)
+
+
+\end{tabular}
+
+
+ 
+
+\subsubsection{Description}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}This module has some basic, externally visable, definitions.\end{minipage}
+
+ 
+
+\subsubsection{Synopsis}
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{insideRegion :: (Point, Point) -{\tt >} Point -{\tt >} Bool}\\ % (59)
+
+
+{insideCircle :: Point -{\tt >} R -{\tt >} Point -{\tt >} Bool}\\ % (61)
+
+
+{distance :: Point -{\tt >} Point -{\tt >} R}\\ % (43)
+
+
+{intervalOnLine :: (Point, Point) -{\tt >} Point -{\tt >} R}\\ % (58)
+
+
+{circleOfDots :: Int -{\tt >} [Point]}\\ % (36)
+
+
+{insidePoly :: [Point] -{\tt >} Point -{\tt >} Bool}\\ % (50)
+
+
+{innerSteps :: Int -{\tt >} [R]}\\ % (30)
+
+
+{outerSteps :: Int -{\tt >} [R]}\\ % (30)
+
+
+{fracPart :: R -{\tt >} R}\\ % (24)
+
+
+{fromPolar :: (R, Radian) -{\tt >} Point}\\ % (39)
+
+
+{toPolar :: Point -{\tt >} (R, Radian)}\\ % (37)
+
+
+{angleOfLine :: (Point, Point) -{\tt >} Radian}\\ % (45)
+
+
+\end{tabular}
+
+
+ 
+
+ 
+
+\subsubsection{Point Utilties.}
+
+ 
+
+{{\bf insideRegion} :: (Point, Point) -{\tt >} Point -{\tt >} Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}is a {\tt Point} inside a region?\end{minipage}
+
+ 
+
+{{\bf insideCircle} :: Point -{\tt >} R -{\tt >} Point -{\tt >} Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}is a {\tt Point} inside a circle, where the first two arguments are the center of the circle, and the radius.
+\end{minipage}
+
+ 
+
+{{\bf distance} :: Point -{\tt >} Point -{\tt >} R}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}What is the {\tt distance} between two points in R2? This is optimised for the normal form {\tt distance p1 p2 {\tt <}= v}, which avoids using {\tt sqrt}.\end{minipage}
+
+ 
+
+{{\bf intervalOnLine} :: (Point, Point) -{\tt >} Point -{\tt >} R}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}{\tt intervalOnLine} find the place on a line (between 0 and 1) that is closest to the given point.\end{minipage}
+
+ 
+
+{{\bf circleOfDots} :: Int -{\tt >} [Point]}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}circleOfDots generates a set of points between (-1..1,-1..1), inside a circle.\end{minipage}
+
+ 
+
+{{\bf insidePoly} :: [Point] -{\tt >} Point -{\tt >} Bool}
+
+ 
+
+\subsubsection{Utilties for {\tt R}.}
+
+ 
+
+{{\bf innerSteps} :: Int -{\tt >} [R]}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}innerSteps takes n even steps from 0 .. 1, by not actually touching 0 or 1. The first and last step are 1/2 the size of the others, so that repeated innerSteps
+ can be tiled neatly.
+\end{minipage}
+
+ 
+
+{{\bf outerSteps} :: Int -{\tt >} [R]}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}outerSteps takes n even steps from 0 .. 1, starting with 0, and ending with 1,  returning n+1 elements.
+\end{minipage}
+
+ 
+
+{{\bf fracPart} :: R -{\tt >} R}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Extract the fractional part of an {\tt R}.\end{minipage}
+
+ 
+
+{{\bf fromPolar} :: (R, Radian) -{\tt >} Point}
+
+ 
+
+{{\bf toPolar} :: Point -{\tt >} (R, Radian)}
+
+ 
+
+{{\bf angleOfLine} :: (Point, Point) -{\tt >} Radian}
+
+ 
+
+ 
+

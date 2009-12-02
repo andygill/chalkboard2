@@ -1,0 +1,240 @@
+\subsection{Graphics.ChalkBoard.O}     
+
+  
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{\bf {\bf Contents}}\\ % (8)
+
+ 
+\begin{itemize}
+\setlength{\itemsep}{0in}
+
+\item The Observable datatype
+\item The Observable language
+\end{itemize}
+\\ % (46)
+
+
+\end{tabular}
+
+
+ 
+
+ 
+
+\subsubsection{Synopsis}
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{data  O o}\\ % (9)
+
+
+{class  Obs a  where}\\ % (19)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{o :: a -{\tt >} O a}\\ % (19)
+
+
+\end{tabular}
+\\ % (19)
+
+
+{unO ::  O o -{\tt >} o}\\ % (22)
+
+
+{true :: O Bool}\\ % (14)
+
+
+{false :: O Bool}\\ % (15)
+
+
+{choose ::  O o -{\tt >} O o -{\tt >} O Bool -{\tt >} O o}\\ % (56)
+
+
+{alpha :: O RGB -{\tt >} O RGBA}\\ % (30)
+
+
+{withAlpha :: UI -{\tt >} O RGB -{\tt >} O RGBA}\\ % (46)
+
+
+{unAlpha :: O RGBA -{\tt >} O RGB}\\ % (32)
+
+
+{transparent :: O RGB -{\tt >} O RGBA}\\ % (36)
+
+
+{red :: O RGB}\\ % (12)
+
+
+{green :: O RGB}\\ % (14)
+
+
+{blue :: O RGB}\\ % (13)
+
+
+{white :: O RGB}\\ % (14)
+
+
+{black :: O RGB}\\ % (14)
+
+
+{cyan :: O RGB}\\ % (13)
+
+
+{purple :: O RGB}\\ % (15)
+
+
+{yellow :: O RGB}\\ % (15)
+
+
+\end{tabular}
+
+
+ 
+
+ 
+
+\subsubsection{The Observable datatype}
+
+ 
+
+{data  {\bf O} o }
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Show o ={\tt >} Show (O o)}\\ % (26)
+
+
+\end{tabular}
+\\ % (26)
+
+
+\end{tabular}
+
+
+ 
+
+{class  {\bf Obs} a  where}
+
+ 
+\begin{tabular}{p{0.95\linewidth}}
+{\bf Methods}\\ % (7)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{{\bf o} :: a -{\tt >} O a}\\ % (19)
+
+
+\end{tabular}
+\\ % (19)
+
+
+{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Obs Bool}\\ % (8)
+
+{Obs RGBA}\\ % (8)
+
+{Obs RGB}\\ % (7)
+
+
+\end{tabular}
+\\ % (7)
+
+
+\end{tabular}
+
+
+ 
+
+{{\bf unO} ::  O o -{\tt >} o}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}project into an unobservable version of O.\end{minipage}
+
+ 
+
+\subsubsection{The Observable language}
+
+ 
+
+{{\bf true} :: O Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Observable {\tt True}.\end{minipage}
+
+ 
+
+{{\bf false} :: O Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Observable {\tt False}.\end{minipage}
+
+ 
+
+{{\bf choose} ::  O o -{\tt >} O o -{\tt >} O Bool -{\tt >} O o}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}choose between two Observable alternatives, based on a Observable {\tt Bool}\end{minipage}
+
+ 
+
+{{\bf alpha} :: O RGB -{\tt >} O RGBA}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Observable function to add an alpha channel.\end{minipage}
+
+ 
+
+{{\bf withAlpha} :: UI -{\tt >} O RGB -{\tt >} O RGBA}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Observable function to add a preset alpha channel.\end{minipage}
+
+ 
+
+{{\bf unAlpha} :: O RGBA -{\tt >} O RGB}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Observable function to remove the alpha channel.\end{minipage}
+
+ 
+
+{{\bf transparent} :: O RGB -{\tt >} O RGBA}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Observable function to add a transparent alpha channel.\end{minipage}
+
+ 
+
+{{\bf red} :: O RGB}
+
+ 
+
+{{\bf green} :: O RGB}
+
+ 
+
+{{\bf blue} :: O RGB}
+
+ 
+
+{{\bf white} :: O RGB}
+
+ 
+
+{{\bf black} :: O RGB}
+
+ 
+
+{{\bf cyan} :: O RGB}
+
+ 
+
+{{\bf purple} :: O RGB}
+
+ 
+
+{{\bf yellow} :: O RGB}
+
+ 
+
+ 
+

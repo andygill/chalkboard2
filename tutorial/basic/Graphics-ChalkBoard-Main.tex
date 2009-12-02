@@ -1,0 +1,103 @@
+\subsection{Graphics.ChalkBoard.Main}     
+
+  
+
+ 
+
+ 
+
+\subsubsection{Synopsis}
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{data  ChalkBoard }\\ % (17)
+
+
+{drawChalkBoard :: ChalkBoard -{\tt >} Board RGB -{\tt >} IO ()}\\ % (62)
+
+
+{writeChalkBoard :: ChalkBoard -{\tt >} FilePath -{\tt >} IO ()}\\ % (62)
+
+
+{updateChalkBoard :: ChalkBoard -{\tt >} (Board RGB -{\tt >} Board RGB) -{\tt >} IO ()}\\ % (85)
+
+
+{drawRawChalkBoard :: ChalkBoard -{\tt >} [Inst BufferId] -{\tt >} IO ()}\\ % (71)
+
+
+{exitChalkBoard :: ChalkBoard -{\tt >} IO ()}\\ % (43)
+
+
+{startChalkBoard :: [Options] -{\tt >} (ChalkBoard -{\tt >} IO ()) -{\tt >} IO ()}\\ % (80)
+
+
+{openChalkBoard :: [Options] -{\tt >} IO ChalkBoard}\\ % (50)
+
+
+{chalkBoardServer :: IO ()}\\ % (25)
+
+
+\end{tabular}
+
+
+ 
+
+\subsubsection{Documentation}
+
+ 
+
+{data  {\bf ChalkBoard}  }
+
+ 
+
+{{\bf drawChalkBoard} :: ChalkBoard -{\tt >} Board RGB -{\tt >} IO ()}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Draw a board onto the ChalkBoard.\end{minipage}
+
+ 
+
+{{\bf writeChalkBoard} :: ChalkBoard -{\tt >} FilePath -{\tt >} IO ()}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Write the contents of a ChalkBoard into a File.\end{minipage}
+
+ 
+
+{{\bf updateChalkBoard} :: ChalkBoard -{\tt >} (Board RGB -{\tt >} Board RGB) -{\tt >} IO ()}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}modify the current ChalkBoard.\end{minipage}
+
+ 
+
+{{\bf drawRawChalkBoard} :: ChalkBoard -{\tt >} [Inst BufferId] -{\tt >} IO ()}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Debugging hook for writing raw CBIR code.\end{minipage}
+
+ 
+
+{{\bf exitChalkBoard} :: ChalkBoard -{\tt >} IO ()}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}quit ChalkBoard.\end{minipage}
+
+ 
+
+{{\bf startChalkBoard} :: [Options] -{\tt >} (ChalkBoard -{\tt >} IO ()) -{\tt >} IO ()}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Start, in this process, a ChalkBoard window, and run some commands on it.\end{minipage}
+
+ 
+
+{{\bf openChalkBoard} :: [Options] -{\tt >} IO ChalkBoard}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Open, remotely, a ChalkBoard windown, and return a handle to it. Needs CHALKBOARD\_SERVER set to the location of the ChalkBoard server.\end{minipage}
+
+ 
+
+{{\bf chalkBoardServer} :: IO ()}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}create an instance of the ChalkBoard. Only used by the server binary.\end{minipage}
+
+ 
+
+ 
+

@@ -1,0 +1,185 @@
+\subsection{Graphics.ChalkBoard.Board}     
+
+  
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{\bf {\bf Contents}}\\ % (8)
+
+ 
+\begin{itemize}
+\setlength{\itemsep}{0in}
+
+\item The {\tt Board} 
+\item Ways of manipulating {\tt Board}.
+\item Ways of creating a new {\tt Board}.
+\end{itemize}
+\\ % (66)
+
+
+\end{tabular}
+
+
+ 
+
+ 
+
+\subsubsection{Synopsis}
+
+ 
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{data  Board a}\\ % (13)
+
+
+{({\tt <}\${\tt >}) ::  (O a -{\tt >} O b) -{\tt >} Board a -{\tt >} Board b}\\ % (75)
+
+
+{move ::  (R, R) -{\tt >} Board a -{\tt >} Board a}\\ % (49)
+
+
+{rotate ::  Radian -{\tt >} Board a -{\tt >} Board a}\\ % (51)
+
+
+{scaleXY ::  (R, R) -{\tt >} Board a -{\tt >} Board a}\\ % (52)
+
+
+{boardOf ::  O a -{\tt >} Board a}\\ % (32)
+
+
+{circle :: Board Bool}\\ % (20)
+
+
+{box :: (Point, Point) -{\tt >} Board Bool}\\ % (41)
+
+
+{square :: Board Bool}\\ % (20)
+
+
+{triangle :: Point -{\tt >} Point -{\tt >} Point -{\tt >} Board Bool}\\ % (67)
+
+
+{polygon :: [Point] -{\tt >} Board Bool}\\ % (38)
+
+
+{readBoard :: String -{\tt >} IO (Int, Int, Board RGBA)}\\ % (54)
+
+
+{readNormalizedBoard :: String -{\tt >} IO (Int, Int, Board RGBA)}\\ % (64)
+
+
+\end{tabular}
+
+
+ 
+
+ 
+
+\subsubsection{The {\tt Board} }
+
+ 
+
+{data  {\bf Board} a }
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{\bf  Instances}\\ % (10)
+
+ 
+\begin{tabular}{p{0.95\linewidth}}{Show (Board a)}\\ % (14)
+
+{Scale (Board a)}\\ % (15)
+
+{Over a ={\tt >} Over (Board a)}\\ % (30)
+
+
+\end{tabular}
+\\ % (30)
+
+
+\end{tabular}
+
+
+ 
+
+\subsubsection{Ways of manipulating {\tt Board}.}
+
+ 
+
+{{\bf ({\tt <}\${\tt >})} ::  (O a -{\tt >} O b) -{\tt >} Board a -{\tt >} Board b}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}{\tt fmap} like operator over a {\tt Board}.\end{minipage}
+
+ 
+
+{{\bf move} ::  (R, R) -{\tt >} Board a -{\tt >} Board a}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}{\tt move} moves the contents of {\tt Board}\end{minipage}
+
+ 
+
+{{\bf rotate} ::  Radian -{\tt >} Board a -{\tt >} Board a}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}{\tt rotate} rotates a {\tt Board} clockwise by a radian argument.\end{minipage}
+
+ 
+
+{{\bf scaleXY} ::  (R, R) -{\tt >} Board a -{\tt >} Board a}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}{\tt scaleXY} scales the contents of {\tt Board} the X and Y dimension.  See also {\tt scale}.\end{minipage}
+
+ 
+
+\subsubsection{Ways of creating a new {\tt Board}.}
+
+ 
+
+{{\bf boardOf} ::  O a -{\tt >} Board a}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}pure like operator for {\tt Board}.	\end{minipage}
+
+ 
+
+{{\bf circle} :: Board Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Generate a unit circle (radius .5) centered on origin\end{minipage}
+
+ 
+
+{{\bf box} :: (Point, Point) -{\tt >} Board Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}{\tt box} generate a box between two corner points)\end{minipage}
+
+ 
+
+{{\bf square} :: Board Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Generate a unit square (1 by 1 square) centered on origin\end{minipage}
+
+ 
+
+{{\bf triangle} :: Point -{\tt >} Point -{\tt >} Point -{\tt >} Board Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Generate an arbitary triangle from 3 points.\end{minipage}
+
+ 
+
+{{\bf polygon} :: [Point] -{\tt >} Board Bool}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}Generate a (convex) polygon from a list of points. There must be at least 3 points, and the points must form a convex polygon.
+\end{minipage}
+
+ 
+
+{{\bf readBoard} :: String -{\tt >} IO (Int, Int, Board RGBA)}
+
+\hspace{0.05\textwidth}\begin{minipage}{0.9\textwidth}read a file containing a common image format (jpg, gif, etc.), and create a 'Board RGBA', and the X and Y size of the image.\end{minipage}
+
+ 
+
+{{\bf readNormalizedBoard} :: String -{\tt >} IO (Int, Int, Board RGBA)}
+
+ 
+
+ 
+

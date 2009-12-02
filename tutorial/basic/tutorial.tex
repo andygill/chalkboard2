@@ -1,0 +1,596 @@
+\documentclass{article}
+
+\usepackage{boxedminipage} % for my commments
+\usepackage{fancyvrb}
+\usepackage{hyperref}
+\usepackage[pdftex]{graphicx}
+\usepackage[all]{xy}
+%\usepackage{wrapfig}
+\usepackage{color} 
+%\usepackage{float}
+\usepackage[rflt]{floatflt} 
+
+\setlength\parindent{0in}
+\setlength{\parskip}{0.5\baselineskip}
+  
+\newcommand{\cbserver}{\texttt{chalkboard-server-1.9.0.15}}
+% use the pretty version for the final version.
+\newcommand{\floatimg}[3]{%
+\begin{floatingfigure}[r]{0.35\textwidth} 
+\includegraphics[width=0.35\textwidth]{#1}
+\caption{#2}\label{#3}
+\end{floatingfigure}} 
+
+% use this safe img iff the image does not appear
+\newcommand{\img}[3]{%
+%\begin{figure}[!ht] 
+\includegraphics[width=0.35\textwidth]{#1}
+%\caption{#2}\label{#3}
+%\end{figure}
+} 
+
+
+
+\DefineVerbatimEnvironment{DSL}{Verbatim}{frame=single,fontsize=\small}
+\DefineVerbatimEnvironment{SemiDSL}{Verbatim}{frame=single,fontsize=\small,commandchars=\+\{\}}
+
+\title{ChalkBoard Tutorial}
+
+\author{Kevin Matlage and Andy Gill\\
+\\
+Information Technology and Telecommunication Center\\
+Department of Electrical Engineering and Computer Science\\
+The University of Kansas\\
+2335 Irving Hill Road\\
+Lawrence, KS 66045\\
+        \texttt{\{kmatlage,andygill\}@ittc.ku.edu}\\
+\\
+ChalkBoard Version 1.9.0.15
+}
+
+\date{Released December 1st, 2009}
+
+\begin{document}
+
+\maketitle
+
+This is a tutorial on how to use ChalkBoard, a domain specific
+language for describing and creating images being developed at the
+University of Kansas. The aim of this tutorial is to familiarize the
+user with some of the basic syntax and structure
+possibilities that can be used within ChalkBoard.
+
+This is an early version of ChalkBoard. Everything might change! The
+primary concepts (functor based transformations of images, OpenGL acceleration) 
+will remain, but we are still trying to balance and tune our observable sub-language.
+Applicative functors are also sure to follow, and much more experimentation is needed.
+
+Please let us know if there is anything we can add, and/or give feedback.
+Thank you for looking at ChalkBoard.
+\vskip 0.1in
+
+Kevin Matlage, Andy Gill\\
+Dec 2009
+
+\newpage
+\tableofcontents
+
+\newpage
+\listoffigures
+
+\newpage
+\section{Installing ChalkBoard}
+
+Installing ChalkBoard is easy, using the \verb|cabal install| command.
+\begin{verbatim}
+    $ cabal install ChalkBoard
+\end{verbatim}
+ChalkBoard depends on a number of Haskell packages, all available on 
+\href{http://hackage.haskell.org/}{Hackage}. \verb|cabal install ChalkBoard| should take care of this. 
+
+
+\subsection{Possible Issues}
+
+We have tested ChalkBoard on Linux and OSX. Your milage may vary on Windows. Please tell us how you get on.
+
+\subsubsection{Mac OSX}
+
+One that might cause an issue is the DevIL library,
+\verb|Codec-Image-DevIL|. We found the underlying C library, as
+loaded via the \verb|port| OSX package manager, was unable to load
+.gif files properly. This may have been fixed.
+
+\newpage
+\section{Building A Standalone ChalkBoard Binary}
+
+To build your first ChalkBoard example, type in (or cut and paste) this example
+into a file \verb|Example.hs|
+
+\begin{DSL}[label={Example.hs}]
+import Graphics.ChalkBoard
+
+main = startChalkBoard [] $ \ cb -> do
+            -- ChalkBoard commands go here
+            drawChalkBoard cb (boardOf blue)
+\end{DSL}
+
+\floatimg{ex1.png}{Blue ChalkBoard}{fig:triv}%
+Compiling this file with GHC gives a binary that uses ChalkBoard. We use the notation \verb|$|
+to signify a command to be typed in.
+
+\begin{minipage}{0.60\linewidth}
+\begin{verbatim}
+    $ ghc --make Example.hs
+\end{verbatim}
+This binary can be executed.
+\begin{verbatim}
+    $ ./Example
+\end{verbatim}
+\end{minipage}
+
+This brings up the ChalkBoard viewer on the screen, with the default size of 400x400,
+and a rather bland blue background, as shown in figure~\ref{fig:triv}.
+
+This example gives the first flavor of ChalkBoard. We
+
+\vspace{0.2in}
+\begin{minipage}{1\linewidth}
+\begin{itemize}
+\item initialize a ChalkBoard viewer, giving us a ChalkBoard handle inside a scope,
+\item then issue a sequence of ChalkBoard commands, in this case a single 
+\verb|drawChalkBoard|, using the \verb|cb| handle.
+\end{itemize}
+\end{minipage}
+\vspace{0.2in}
+
+This completes the trivial example. In our next example, we introduce some basic shapes.
+
+\subsection{ChalkBoard and GHCi}
+
+For technical reasons, OpenGL (which ChalkBoard uses) and GHCi do not interact well. To mitigate this,
+we have provided the ChalkBoard server, which accepts commands from the GHCi
+command line. We discuss using this a special \hyperref[sec:server]{ChalkBoard Server section}. All
+the commands that we present in this and the following sections can equally
+be used in stand alone or server modes; the only difference is in initialization.
+
+\newpage
+\section{ChalkBoard Examples}
+
+To begin, consider this example. 
+This example may also be found in the cabal distribution,
+in \verb|tutorial/basic/Main.hs|.
+\begin{DSL}[label={Main.hs}]
+module Main where
+
+import Graphics.ChalkBoard
+
+main = startChalkBoard [] cbMain
+
+cbMain cb = do
+        let example1 = boardOf blue
+        drawChalkBoard cb example1
+\end{DSL}
+
+First,
+notice that the only module you need to import to use ChalkBoard is
+the Graphics.ChalkBoard module. This module gives you all of the
+functions you need to use ChalkBoard.
+
+
+The function to begin running ChalkBoard is \texttt{startChalkBoard}. This function takes two parameters. The first is a list of options, and the second is another driver function that takes a ChalkBoard handle. For now, we leave the list of options empty and pass our driver function \texttt{cbMain} for the second parameter, defining our main as:
+\begin{DSL}
+main = startChalkBoard [] cbMain
+\end{DSL}
+
+
+Now, for this tutorial, \texttt{cbMain} has been defined a little bit unusually. For clarity, a lot of examples have been defined, where each example represents a Board of RGB, or \texttt{Board RGB} type. At the bottom of \texttt{cbMain} is the line of code that actually draws one of those boards. This line is:
+\begin{DSL}
+drawChalkBoard chalkboard example1
+\end{DSL}
+
+
+This \texttt{drawChalkBoard} function takes in two parameters. The
+first one is the ChalkBoard handle \texttt{cb}, which is the only
+argument passed to \texttt{cbMain}. The second parameter is a board of
+type \texttt{Board RGB}. In order to display any of the examples in
+this tutorial, simply change which example board is being passed to
+\texttt{drawChalkBoard}.
+
+
+The rest of this section will walk through the different examples,
+explaining how each of these different boards is created. This is
+mainly done to show the syntax and structure that can be used while
+defining images in ChalkBoard. For a little more insight on how to
+start creating more complicated boards, see some of the other
+ChalkBoard tutorials and tests.
+
+\newpage
+\subsection{Example 1 -- Blue ChalkBoard}
+
+\floatimg{ex1.png}{Blue ChalkBoard}{fig:ex1}%
+In example 1, we simply draw a board filled entirely with the
+color blue. In ChalkBoard, the \texttt{boardOf} function is kind of
+similar to \texttt{pure} in that it takes a color and creates an
+entire board of that color. Many common colors, like blue, are already
+defined in ChalkBoard and can be used by name. Others can easily be
+created by the user, but this will be described a little bit later.
+
+\vspace{1in}
+\begin{DSL}
+example1 = boardOf blue
+\end{DSL}
+
+
+\newpage
+\subsection{Example 2 - Red Square}
+
+\floatimg{ex2.png}{Red Square}{fig:ex2}%
+In the second example, we start to introduce some of the basic
+functions of ChalkBoard. Starting on the right, \texttt{square} is a
+predefined region, or board of booleans. It's type, as you may expect,
+is \texttt{Board Bool}. The \texttt{choose} function is one of the
+most important functions in ChalkBoard. It takes two colors and a
+region (\texttt{Board Bool}) and maps the first color to the parts of
+the region that are true and the second color to the parts of the
+region that are false. In this instance, the color red is applied to
+the true parts of the board (the square) and green
+is applied to the false parts of the board (outside the
+square). Finally, the board is scaled by 0.5 in much the way that you
+would expect, reducing the sides of the square by a factor of 2 while
+still keeping it centered.
+
+
+This final scaling step is taken here because \texttt{square} and the
+default backing board in ChalkBoard are both unit squares. While we can
+consider all the area outside of the inner square to be green, only a
+certain portion of this infinite board can be displayed. Because the
+default backing board in ChalkBoard is a unit square centered at the
+origin, the same as the region generated by \texttt{square}, we
+wouldn't be able to see any of this green portion without first
+scaling the image or changing the size of the default backing board.
+
+\vspace{0.1in}
+
+\begin{DSL}
+example2 = scale 0.5 $ choose red green <$> square
+\end{DSL}
+
+
+
+\newpage
+\subsection{Example 3 - Overlaying}
+
+\floatimg{ex3.png}{Overlaying}{fig:ex3}%
+Example 3 is much the same as example 2, but with a few notable
+exceptions. The first is the addition of a new function,
+\texttt{over}. What this function does is simply overlay two boards of
+the same type. While this function works over boards of any type, it
+is used here over boards of bool. This way, when the choose function
+is applied, the region which is used is the resulting \texttt{Board Bool}
+that comes from combining the circle region with the scaled
+square region. This brings me to the second change worth noting,
+that the \texttt{scale} function is now also being
+used over the \texttt{square} region. This shows how \texttt{scale} can be
+applied not just to the final image, but also to boards of different
+types during many parts of the image specification process. In this
+particular instance, it keeps the square from encompassing the circle,
+allowing the resulting region to be a much more interesting shape.
+
+\vspace{0.1in}
+
+\begin{DSL}
+example3 = scale 0.5 $ choose red blue <$> circle
+                                           `over`
+                                           (scale 0.9 square)
+\end{DSL}
+
+
+
+\newpage
+\subsection{Example 4 - Alpha Triangle}
+
+\floatimg{ex4.png}{Alpha Triangle}{fig:ex4}%
+Example 4 is another one that introduces a lot of new functions available to
+the user. The most basic of these functions is \texttt{triangle}, which creates
+a region (\texttt{Board Bool}) similar to \texttt{square}. The main difference with
+\texttt{triangle} is that it allows the user to specify the 3 points of the triangular
+region that is created. While all squares can be achieved by moving, rotating, and scaling
+another square, this is not true of triangles, and thus the vertices must be specified.
+Note that, while the default backing board in ChalkBoard is still a unit board, the points
+specified aren't touching the edges because the triangle is later scaled by 0.5.
+
+The next set of new functions all have to do with adding an alpha channel to our image.
+The \texttt{withAlpha} function adds this alpha channel to a normal RGB color with the
+specified value. In this example, an alpha of 0.2 is added to the RGB color \texttt{blue},
+resulting in an RGBA value equivalent to (0 0 1 0.2). The \texttt{transparent} function
+is very similar, but adds a set alpha value of 0 to the color, making it entirely
+transparent. Because it is entirely transparent, it doesn't really matter what initial
+color is given, but in this case, the resulting RGBA value would be (1 1 1 0). Lastly,
+the \texttt{unAlpha} function is used to take the \texttt{Board RGBA} that comes after
+the \texttt{<\$>} operator, and turn it into a \texttt{Board RGB} by removing the alpha
+channel. The image itself will not be changed by this operation. It will look exactly as
+it did when it had an alpha channel, but with the blending of colors already done so that
+it can be stored as RGB.
+
+\vspace{0.1in}
+
+\begin{DSL}
+example4 = unAlpha <$> scale 0.5 ( choose (withAlpha 0.2 blue) 
+                                          (transparent white) 
+                                          <$> triangle (-0.5,-0.5)
+                                                       (0.5,-0.5)
+                                                       (0,0.5) )
+\end{DSL}
+
+
+
+
+
+
+
+\newpage
+\subsection{Example 5 - Alpha Blending}
+
+\floatimg{ex5.png}{Alpha Blending}{fig:ex5}%
+In our fifth example, we show a little bit more how boards can start to be built up. The
+\texttt{Board RGBA} boards that are built up in the where clause are combined using the
+\texttt{over} operator. Because the \texttt{cir} board has a partially transparent circle
+on it, this will be visible over the polygon on the \texttt{poly} board. Again, \texttt{scale}
+is used on \texttt{cir} before it is combined so that the circle will not completely cover
+the polygon, allowing for a slightly more interesting combination.
+
+There are also a couple new functions used in this example that should be pointed out. The
+first of these is \texttt{polygon}, which takes in a list of points to use in creating an
+arbitrary polygon. This allows for general shapes to be created much more quickly and easily.
+It should be noted, however, that like OpenGL, the specified polygon must be convex in order
+to be guaranteed to display correctly. Concave polygons can be created using combinations of
+convex polygons. The other new function is \texttt{alpha}, which is used to turn an RGB color
+into an RGBA color with an alpha value of one. This would be the exact same as using the
+\texttt{withAlpha} function with an argument of 1, and in this instance will create an opaque
+red with RGBA value (1 0 0 1).
+
+\vspace{0.1in}
+
+\begin{DSL}
+example5 = unAlpha <$> ((scale 0.7 cir) `over` poly)
+               where
+                   cir = choose (withAlpha 0.5 blue)
+                                (transparent white) 
+                                <$> circle
+                   poly = choose (alpha red)
+                                 (transparent white)
+                                 <$> polygon [(0,-0.5), (-0.4,-0.3),
+                                              (0,0.5), (0.4,-0.3)]
+\end{DSL}
+
+
+
+\newpage
+\subsection{Using Existing Images}
+
+The examples from this point forward will all be using an image that is read in from a file.
+The ChalkBoard command to create a board with an image from a file on it is \texttt{readBoard}.
+This is an IO function, however, and so therefore must be used outside of the let clauses that
+we have been using so far to specify individual boards. At the moment, this image is always read
+in as an \texttt{Board RGBA} strictly following the data in the file. In order to get the image
+board to be visible on the backing board, however, there is some scaling and moving that needs to
+be done. This is shown in the following segment of code, which can be used to read in an image
+board from the file lambda.png and fit it to the default backing board. After this segment of code
+is executed, \texttt{img} can be used as a \texttt{Board RGBA} in creating other boards.
+
+\begin{DSL}
+(w,h,imgBrd) <- readBoard ("lambda.png")
+let wh = fromIntegral $ max w h
+    sc = 1 / wh
+    wd = fromIntegral w / wh
+    hd = fromIntegral h / wh
+    img = move (-0.5 * hd,-0.5 * wd)  (scale sc imgBrd)
+\end{DSL}
+
+While this method allows for the most freedom, giving the user back the actual image board and the
+w and h dimensions of this board, it is not always the easiest to work with. In order to get back
+a board that has already been fit to the backing board, simply use the \texttt{readNormalizedBoard}
+function instead. This function does the exact operations listed above and returns the original w, h
+and \texttt{img} so that the board you get back is already fit to the ChalkBoard backing board. From
+there the image board can be additionally modified by the user, but starts in a much more usable state.
+An example of reading an image in with this method is:
+
+\begin{DSL}
+(w2,h2,img2) <- readNormalizedBoard ("lambda.png")
+\end{DSL}
+
+\newpage
+\subsection{Example 6 - Displaying Existing Images}
+
+\floatimg{ex6.png}{Existing Image}{fig:ex6}%
+Example 6 doesn't really contain any new information. It simply shows how one would go about using the image
+board that was read in from a file. Because the image is read into a \texttt{Board RGBA}, it just needs
+to have the alpha channel removed in order to be displayed.
+
+\vspace{1.5in}
+
+\begin{DSL}
+example6 = unAlpha <$> img2
+\end{DSL}
+
+
+
+\newpage
+\subsection{Example 7 - Image Overlaying}
+
+
+\floatimg{ex7.png}{Image Overlaying}{fig:ex7}%
+
+Example 7 is another fairly simple extension. It shows how one can overlay the image board above another
+\texttt{Board RGBA} as long as the image board contains transparency. Naturally, building up other RGBA
+boards and placing them over the image board would then draw on top of the image instead.
+
+There is one other interesting change in this example, however, which is the ability to work with
+user-defined colors instead of just the built in colors. Creating a new color is simple, one just uses
+the \texttt{RGB} function with arguments of the red, green, and blue values for the new color.
+In this way, colors can be created in much the same way as in other graphics applications. One difference,
+however, is that in ChalkBoard everything must be observable in order to be compiled down into the
+ChalkBoard Intermediate Representation for OpenGL translation. Because of this, the \texttt{o} function
+must be used to lift the new color into this observable world, in much the same way that
+\texttt{return} works for monads.
+
+\vspace{0.1in}
+
+\begin{DSL} 
+example7 = unAlpha <$> img2 `over` (boardOf (alpha (o (RGB 0.5 1 0.8))))
+\end{DSL}
+
+
+
+\newpage
+\subsection{Example 8 - Transformations}
+
+\floatimg{ex8.png}{Transformations}{fig:ex8}%
+
+
+In example 8, the other transformation functions are introduced. These functions are \texttt{move} and
+\texttt{rotate}. Note that these functions, like \texttt{scale}, also work on any type of board. The
+arguments to \texttt{rotate} are the number of radians that you wish to rotate the board clockwise,
+and then the board itself. The \texttt{move} function takes an ordered pair for its first argument, which
+corresponds to the amount the board should be moved in the x and y directions, respectively. This movement
+is in relation to the ChalkBoard backing board and can therefore easily move things off the screen, if desired.
+
+In this particular instance, the image is scaled and then rotated before being placed over the pure board
+of red. The combined board is then moved to the right and down. Because the boards are thought to be infinite
+though and the entire background is red, more red just comes in from the top left and this move actually ends
+up having the same effect as it would have had if it was done prior to the boards being overlaid (in that
+only the image itself appears to move).
+
+\vspace{0.1in}
+
+\begin{DSL}
+example8 = unAlpha <$> move (0.25, -0.25) ( (rotate 1 (scale 0.7 img2))
+                                            `over`
+                                            (boardOf (alpha red)) )
+\end{DSL}
+
+
+
+\newpage
+\subsection{Examples 9 and 10}
+
+Examples 9 and 10 will not be discussed in depth in this tutorial. These examples don't present any new
+functionality, but rather show some basic extensions to what has already been given. They are included
+in order to hint at some of the simplest possibilities of using ChalkBoard to functionally create images
+and animations.
+
+In order to display either of these examples, simply switch the last two lines in the tutorial's Main.hs file,
+commenting out the simple \texttt{drawChalkBoard} function and uncommenting the version of
+\texttt{drawChalkBoard} that uses list comprehensions. Then just compile and run the program like you usually
+would, with either example9 or example10 being called from this line. Note that while most of this tutorial
+has used 1 \texttt{drawChalkBoard} call, you can actually use as many as you want, as demonstrated by these
+last couple of examples.
+
+Keep in mind that all of these examples are extremely simple. Even these last two still only use 1 line of code
+to create the board and 1 variable to change some of the features over the list comprehension. Once you start
+to build up examples that are a little bit more sophisticated, ChalkBoard clearly becomes capable of doing a lot more
+than has been demonstrated here. In order to see a couple examples that are at least a little bit more complicated, try
+checking out some of the test programs provided with ChalkBoard.
+
+
+
+
+
+\newpage
+\section{ChalkBoard \texttt{cabal} package}\label{sec:cabal}
+
+ChalkBoard is packaged with cabal, and is shipped with a number of
+tests which are disabled by default (if you want to just {\bf use\/} the
+library, then you do not need to build these tests, obviously).
+The ChalkBoard server is always built.
+
+There are a number of extra binaries provided inside the cabal distribution,
+most of them disabled by default.
+This page lists the various options for the cabal package,
+as well as listing the tests available.
+
+\subsection{Examples}
+
+There are two examples provided, \verb|example| and \verb|simple|.
+\begin{verbatim}
+    $ cabal configure -fexample
+\end{verbatim}
+\verb|example|, in \verb|examples/example|, gives a trivial example 
+of spinning boxes.
+\begin{verbatim}
+    $ cabal configure -fsimple
+\end{verbatim}
+
+\verb|simple|, in \verb|examples/simple|, gives a small number of tests,
+and was use as material for this tutorial.
+
+\subsection{Tests}
+
+There are two test suits, one for the front end, and one for the backend.
+\begin{verbatim}
+    $ cabal configure -ftest1 -fcbbe1
+\end{verbatim}
+\verb|test1|, in \verb|tests/test1|, is our primary testing system. 
+Typing 
+\begin{verbatim}
+    $ make test
+\end{verbatim}
+inside \verb|tests/test1| does a basic sanity check for ChalkBoard.
+\verb|cbbe1| should only be used if you are developing ChalkBoard.
+
+\subsection{Benchmark}
+
+ChalkBoard ships with \verb|chalkmark|, a basic timing test. At some point
+in the future it will output a number, the chalkmark. It lives in 
+\verb|tests/chalkmark|.
+
+\newpage
+\section{ChalkBoard Server}\label{sec:server}
+
+The server, called \cbserver, is found in the \verb|server| directory.
+The binary name is version specific, and can not be mixed and matched
+with other ChalkBoard releases. Typically, its usage is transparent.
+
+To revisit our original example, we can use the server (rather than a standalone
+binary) use  
+
+\begin{DSL}[label={ServerExample.hs}]
+import Graphics.ChalkBoard
+
+main = do cb <- openChalkBoard []
+          -- ChalkBoard commands go here
+          drawChalkBoard cb (boardOf blue)
+\end{DSL}
+
+\texttt{openChalkBoard} takes the same options as \texttt{createChalkBoard},
+but instead of opening up a OpenGL window (using GLUT), it spawns
+a child that has responsibility to open the window, and instead simply
+returns the ChalkBoard handle. \texttt{openChalkBoard}  can be used 
+from inside GHCi or GHC, and accepts exactly the same ChalkBoard language.
+
+The only disadvantage is speed, because every ChalkBoard command needs
+to be serialized into bits, and piped to the server.
+
+When using the server, is completely reasonable to have multiple instances
+of the server interacting with a single ChalkBoard client program.
+
+\newpage
+\section{ChalkBoard API}
+
+This is the API, as transliterated from haddock.
+You only need to {\tt import Graphics.ChalkBoard},  which imports
+the following modules.
+
+Note: This API might change at any time. ChalkBoard is experimental.
+
+\input{Graphics-ChalkBoard-Board.tex}
+\input{Graphics-ChalkBoard-O.tex}
+\input{Graphics-ChalkBoard-Shapes.tex}
+\input{Graphics-ChalkBoard-Types.tex}
+\input{Graphics-ChalkBoard-Main.tex}
+\input{Graphics-ChalkBoard-Utils.tex}
+\input{Graphics-ChalkBoard-Options.tex}
+
+
+\end{document}
+
