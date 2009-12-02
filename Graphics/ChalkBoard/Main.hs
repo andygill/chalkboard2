@@ -184,7 +184,6 @@ chalkBoardServer = do
 			putMVar v2 (decode packet :: [Inst BufferId])
 			loop
 		loop
-	appendFile ("xx.txt") (show (decode options :: [Options]))
 	startRendering viewBoard v0 v2 (decode options :: [Options])
 	return ()	
 

@@ -433,7 +433,6 @@ displayBoard = do
 drawInsts :: [Inst BufferId] -> CBM ()
 drawInsts [] = return ()
 drawInsts (i:is) = do 
-    liftIO $ appendFile ("xx.txt") (show ("drawInst",i))
     case i of
             (Allocate b size depth (BackgroundArr arr)) -> allocateArrBuffer b size depth arr
             (Allocate b size depth bgColor) -> allocateBuffer b size depth bgColor
