@@ -1,6 +1,0 @@
-This is a tutorial on how to use ChalkBoard, an image creation and processing functional language developed at
-the University of Kansas.
-
-Please let us know if there is anything we can add, and/or give feedback.
-
-Kevin Matlage, Andy Gill
