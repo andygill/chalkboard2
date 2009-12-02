@@ -12,6 +12,11 @@ test::
 	diff -x .svn master testout 
 # Testing Server
 	env CHALKBOARD_SERVER=$(CHALKBOARD_SERVER) ../../dist/build/chalkboard-tests-test1/chalkboard-tests-test1 server
+	sleep 3
 	mkdir -p serverout
 	mv *png serverout
 
+
+
+clean::
+	rm *.png
