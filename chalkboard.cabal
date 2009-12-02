@@ -22,6 +22,9 @@ Cabal-Version:       >= 1.6
 Extra-Source-Files:
         tutorial/basic/tutorial.pdf
         tutorial/basic/Main.hs
+	tests/test1/images/cb-text.gif
+	tests/test1/images/cb-text.jpg
+	tests/test1/images/cb-text.png
 
 Flag all
   Description: Enable full development tree, including all tests and examples

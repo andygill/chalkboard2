@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -ddump-simpl-stats #-}
 module Main where
 	
 import Graphics.ChalkBoard as CB hiding (Board)
@@ -28,7 +29,7 @@ example10 rX = rotate rX $ scale (0.5 + 0.5 * log (1 + (rX / 1)))
        where c = o $ RGB (x/count) (y/count) ((rX / 3) - fromIntegral (floor (rX / 3)))
 	     r' = r * 50 + y
 	
-    count = 40 -- + (fromIntegral(round (rX * 2) :: Int))
+    count = 20 -- + (fromIntegral(round (rX * 2) :: Int))
 --	20 -- 10 -- 1-- 20
 
 
