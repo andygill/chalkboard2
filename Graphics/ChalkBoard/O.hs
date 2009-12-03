@@ -2,6 +2,7 @@
 module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	  O	-- abstract
 	, Obs(..)
+	, OFunctor(..)
         , unO
 	  -- * The Observable language
 	, true, false
@@ -36,6 +37,11 @@ import Graphics.ChalkBoard.Expr as Expr
 class Obs a where
 	-- construct an Observable
   	o :: a -> O a
+
+infixl 4 <$>
+
+class OFunctor f where
+	(<$>) :: (O a -> O b) -> f a -> f b
 
 ------------------------------------------------------------------------------------------------
 -- Projection

@@ -13,7 +13,7 @@ import Graphics.ChalkBoard.O as O
 import Graphics.ChalkBoard.O.Internals as OI
 import Graphics.ChalkBoard.Core as C
 import Graphics.ChalkBoard.Board as B
-import Graphics.ChalkBoard.Board.Internals as BI
+import Graphics.ChalkBoard.Internals as BI
 import Graphics.ChalkBoard.CBIR as CBIR
 import Data.Unique
 import Data.Reify.Graph
@@ -147,22 +147,6 @@ compileBoardRGBA bc (Over fn above below) = do
 		     after 
 		   )
 		 ]
-compileBoardRGBA bc (Image arr) = do
-	let ((0,0,0), (maxy,maxx,3)) = IS.bounds arr
-	let moves = [Scale (fromIntegral (maxx+1),fromIntegral (maxy+1))] ++ bcTrans bc
-	newBoard <- newNumber
-	return $ [ Nested ("Image create " ++ show (maxx,maxy)) 
-		   [ Allocate 
-			newBoard 	   -- tag for this ChalkBoardBufferObject
-        		(maxx+1,maxy+1)		   -- we know size
-        		RGBADepth           -- depth of buffer
-			(BackgroundArr arr)
-		   , SplatPolygon newBoard (bcDest bc) 
-		    		[ PointMap (x,y) (mapPoint moves (x,y))
-		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
-		    		]
-	  	   ]
-	         ]
 compileBoardRGBA bc (PrimConst o) = 
 	case (evalE $ runO0 o) of
 	   Just (E (O_RGBA (RGBA r g b 1))) -> do
@@ -213,6 +197,13 @@ compileBoardRGBA bc (Fmap f other) = do
 					++ show other
 	   FUN_TY (EXPR_TY RGBA_Ty) (EXPR_TY RGBA_Ty) -> error $ "fmap (... :: RGBA -> RGBA) brd, unsupported fmap argument"
 	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Board RGBA is not supported"
+compileBoardRGBA bc (BufferInBoard def (Buffer (x0,y0) (x1,y1) buff)) = do
+	-- assume def is transparent!
+	-- assume the size of the buffer is okay. How do we do this?
+	code <- compileInsideBufferRGBA bc buff
+	return   [ Nested "buffer inside board" 
+		 	$ code
+		 ]
 compileBoardRGBA _ brd = error $ show ("RGBA",brd)
 
 
@@ -277,6 +268,26 @@ compileBoardRGB bc (Fmap f other) = do
 	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Board RGB is not supported"
 compileBoardRGB _ brd = error $ show ("RGB",brd)
 
+
+compileInsideBufferRGBA :: BoardContext
+		 -> InsideBuffer a
+		 -> IO [CBIR.Inst Int]	
+compileInsideBufferRGBA bc (Image arr) = do
+	let ((0,0,0), (maxy,maxx,3)) = IS.bounds arr
+	let moves = [Scale (fromIntegral (maxx+1),fromIntegral (maxy+1))] ++ bcTrans bc
+	newBoard <- newNumber
+	return $ [ Nested ("Image create " ++ show (maxx,maxy)) 
+		   [ Allocate 
+			newBoard 	   -- tag for this ChalkBoardBufferObject
+        		(maxx+1,maxy+1)		   -- we know size
+        		RGBADepth           -- depth of buffer
+			(BackgroundArr arr)
+		   , SplatPolygon newBoard (bcDest bc) 
+		    		[ PointMap (x,y) (mapPoint moves (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+	  	   ]
+	         ]
 
 -- Do you have overlapping shapes? Default to True, to be safe if do not know.
 	

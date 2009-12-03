@@ -2,6 +2,8 @@
 
 module Graphics.ChalkBoard.Internals
 	( Board(..)
+	, Buffer(..)
+	, InsideBuffer(..)
 	, Trans(..)
 	) where
 		
@@ -9,9 +11,15 @@ import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.O
 import Graphics.ChalkBoard.IStorable as IS
 
---data Buffer a where
---	Buffer		:: (Int,Int) -> Board a	-> Buffer a
+data Buffer a = Buffer (Int,Int) (Int,Int) (InsideBuffer a)
 
+data InsideBuffer a where
+	BoardInBuffer	:: Board a -> InsideBuffer a
+	FmapBuffer	:: forall b . (O b -> O a) -> InsideBuffer b -> InsideBuffer a
+		-- we represent image as mutable arrays simply because
+		-- we need a quick way to get to a pointer to the array
+		-- They are really actually constant.
+	Image		:: IStorableArray (Int,Int,Int) -> InsideBuffer RGBA
 
 data Board a where
 	PrimFun 	:: 		((R,R) -> O a)	-> Board a-- TODO: RM!
@@ -24,9 +32,8 @@ data Board a where
 --	Circle		:: 						Board Bool
 	-- only used in code generator, when types do not matter.
 	Over  		:: 	(a -> a -> a) -> Board a -> Board a -> 	Board a
-		-- we represent image as mutable arrays simply because
-		-- we need a quick way to get to a pointer to the array
-	Image		:: IStorableArray (Int,Int,Int) -> Board RGBA
+	BufferInBoard	:: O a -> Buffer a -> Board a
+--	Image		:: IStorableArray (Int,Int,Int) -> Board RGBA
 
 instance Show (Board a) where
 	show (PrimFun {}) = "PrimFun"
@@ -35,8 +42,15 @@ instance Show (Board a) where
 	show (Polygon {})   = "Polygon"
 --	show (Circle {})    = "Circle"
 	show (Fmap _ brd)   = "Fmap (..) (" ++ show brd ++ ")"
-	show (Image arr)    = "Image (..)"
 	show (Over _ brd1 brd2)   = "Over (..) (" ++ show brd1 ++ " " ++ show brd2 ++ ")"
+
+instance Show (Buffer a) where
+	show (Buffer x y a) = "Buffer " ++ show (x,y) ++ " " ++ show a
+
+instance Show (InsideBuffer a) where
+	show (BoardInBuffer b)  = "Buffer (" ++ show b ++ ")"
+	show (FmapBuffer _ brd) = "FmapBuffer (..) (" ++ show brd ++ ")"
+	show (Image arr)        = "Image (..)"
 	
 data Trans = Move (R,R)
 	   | Scale (R,R)

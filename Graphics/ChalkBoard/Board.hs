@@ -20,9 +20,9 @@ module Graphics.ChalkBoard.Board
 	) where
 
 
-import Graphics.ChalkBoard.Board.Internals
+import Graphics.ChalkBoard.Internals
 import Graphics.ChalkBoard.Types
-import Graphics.ChalkBoard.O
+import Graphics.ChalkBoard.O as O
 import Graphics.ChalkBoard.O.Internals
 import Graphics.ChalkBoard.Core
 import Graphics.ChalkBoard.Utils
@@ -37,22 +37,10 @@ import Codec.Image.DevIL
 
 
 import Prelude hiding (lookup)
-
-
-{-
-instance ObsApp Board where
---	pure a = PrimConst (pure a)
-	(<*>) (PrimConst a) brd = Fmap (a <*>) brd
---	(<*>) (Fmap f brd1) brd2 = Fzip (\ a b -> f a <*> b) brd1 brd2 
-	(<*>) a b = error $ "Strange use of <*>"
--}
-
-infixl 4 <$>
-
 -- | 'fmap' like operator over a 'Board'.
-(<$>) :: (O a -> O b) -> Board a -> Board b
-(<$>) f brd = Fmap f brd -- PrimConst (lamO $ f) <*> brd
 
+instance OFunctor Board where
+  (<$>) f brd = Fmap f brd -- PrimConst (lamO $ f) <*> brd
 
 -- | 'pure' like operator for 'Board'.	
 boardOf :: O a -> Board a
@@ -144,7 +132,7 @@ readBoard filename = do
   arr <- readImage filename 
   iStore <- iStorableArray arr 
   let ((0,0,0), (h,w,3)) = U.bounds arr
-  return $ (h+1,w+1,Image iStore)
+  return $ (h+1,w+1,BufferInBoard (O.transparent O.white) (Buffer (0,0) (h,w) $ Image iStore))
   
 readNormalizedBoard :: String -> IO(Int,Int,Board RGBA)
 readNormalizedBoard filename = do
