@@ -15,7 +15,7 @@ test::
 	sleep 3
 	mkdir -p serverout
 	mv *png serverout
-
+	diff -x .svn master serverout
 
 
 clean::
