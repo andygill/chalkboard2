@@ -4,15 +4,19 @@ module Graphics.ChalkBoard.IStorable
 	, iStorableArray
 	, (!)
 	, bounds
+	, rangeSize
 	, withIStorableArray
 	, touchIStorableArray
+	, newIStorableArray
 	) where
 	
 	
 import qualified Data.Array.MArray as M	-- bogus warning, see OPTIONS
 import qualified Data.Array.Unboxed as U
 import Data.Array.Unboxed (Ix, UArray)
+import qualified Data.Ix as Ix
 import qualified Data.Array.Storable as S
+import Data.Array.Storable ( withStorableArray, StorableArray, unsafeFreeze, newArray_ )
 import Foreign.Ptr
 import Data.Word
 import Data.Binary
@@ -40,8 +44,26 @@ iStorableArray arr = do
 bounds :: (Ix i) => (IStorableArray i) -> (i,i)
 bounds (IStorableArray sa ua) = U.bounds ua
 
+-- | Number of bytes in the array
+rangeSize :: (Ix i) =>  (IStorableArray i) -> Int
+rangeSize (IStorableArray sa ua) = Ix.rangeSize (U.bounds ua)
+
+-- | There is a rule that you can only read from this pointer, *never* write.
 withIStorableArray :: IStorableArray i -> (Ptr Word8 -> IO a) -> IO a
 withIStorableArray (IStorableArray sa _) k = S.withStorableArray sa k
 
 touchIStorableArray :: IStorableArray i -> IO ()
 touchIStorableArray (IStorableArray sa _) = S.touchStorableArray sa
+
+newIStorableArray :: (Ix i) => (i,i) -> (Ptr Word8 -> IO ()) -> IO (IStorableArray i)
+newIStorableArray arrBounds fn = do
+	arr <- newArray_ arrBounds
+            
+            -- *Only* inside this callback can you safely write to this array.
+	withStorableArray arr fn 
+
+	iArr <- unsafeFreeze arr
+
+	return $ IStorableArray arr iArr
+	
+
