@@ -19,7 +19,7 @@ data InsideBuffer a where
 		-- we represent image as mutable arrays simply because
 		-- we need a quick way to get to a pointer to the array
 		-- They are really actually constant.
-	Image		:: IStorableArray (Int,Int,Int) -> InsideBuffer RGBA
+	Image		:: IStorableArray (Int,Int,Int) -> InsideBuffer a	-- RGB or RGBA
 
 data Board a where
 	PrimFun 	:: 		((R,R) -> O a)	-> Board a-- TODO: RM!

@@ -19,6 +19,7 @@ import Control.Concurrent
 import Graphics.ChalkBoard.Core
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.Board
+import Graphics.ChalkBoard.Buffer
 import Graphics.ChalkBoard.CBIR
 import Graphics.ChalkBoard.CBIR.Compiler
 import Graphics.ChalkBoard.OpenGL.CBBE
@@ -37,6 +38,7 @@ import qualified Data.ByteString.Lazy as B
 	
 data ChalkBoardCommand
 	= DrawChalkBoard (Board RGB)
+	| DrawChalkBuffer (Buffer RGB)
 	| UpdateChalkBoard (Board RGB -> Board RGB)
 	| WriteChalkBoard FilePath
 	| ExitChalkBoard
@@ -49,10 +51,16 @@ data ChalkBoard = ChalkBoard (MVar ChalkBoardCommand) (MVar ())
 drawChalkBoard :: ChalkBoard -> Board RGB -> IO ()
 drawChalkBoard (ChalkBoard var _) brd = putMVar var (DrawChalkBoard brd)
 
+-- | Draw a chalkbuffer onto the ChalkBoard.
+-- Internally, this is stored in the buffer size,
+-- regardless of the size of the viewers screen.
+-- updateChalkBoard does not work after drawChalkBoard.
+drawChalkBuffer :: ChalkBoard -> Buffer RGB -> IO ()
+drawChalkBuffer (ChalkBoard var _) buff = putMVar var (DrawChalkBuffer buff)
+
 -- | Write the contents of a ChalkBoard into a File.
 writeChalkBoard :: ChalkBoard -> FilePath -> IO ()
 writeChalkBoard (ChalkBoard var _) nm = putMVar var (WriteChalkBoard nm)
-
 
 -- | modify the current ChalkBoard.
 updateChalkBoard :: ChalkBoard -> (Board RGB -> Board RGB) -> IO ()
@@ -144,6 +152,11 @@ compiler options v1 v2 = do
 --		putStrLn $ showCBIRs cmds
 		putMVar v2 cmds
 		loop (n+1) brd
+	  DrawChalkBuffer buff -> do
+		cmds <- compileB (x,y) viewBoard buff
+--		putStrLn $ showCBIRs cmds
+		putMVar v2 cmds
+		loop (n+1) (error "no ChalkBoard")
 	  UpdateChalkBoard fn -> do
 		let brd = fn old_brd
 		cmds <- compile (x,y) viewBoard (move (0.5,0.5) brd)

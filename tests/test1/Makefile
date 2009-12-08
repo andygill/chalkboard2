@@ -2,7 +2,7 @@
 # Trivial testing framework, just uses diff
 #
 # This must match version number
-CHALKBOARD_SERVER=../../dist/build/chalkboard-server-1_9_0_16/chalkboard-server-1_9_0_16
+CHALKBOARD_SERVER=$(wildcard ../../dist/build/chalkboard-server-*/chalkboard-server-*[0-9])
 
 test::
 	rm -fR *png testout

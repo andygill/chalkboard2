@@ -31,6 +31,10 @@ import Debug.Trace
 compile :: (Int,Int) -> BufferId -> Board RGB -> IO [CBIR.Inst Int]
 compile (x,y) bufferId brd = compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) brd
 
+-- Unless we are compiling a Buffer
+compileB :: (Int,Int) -> BufferId -> Buffer RGB -> IO [CBIR.Inst Int]
+compileB (x,y) bufferId (Buffer low high raw) = compileInsideBufferRGB (initBoardContext (x,y) bufferId) low high raw
+
 mapPoint :: [Trans] -> (R,R) -> (R,R)
 mapPoint [] 			(x,y) = (x,y)
 mapPoint (Move (xd,yd) : r) 	(x,y) = mapPoint r (x + xd,y + yd)
@@ -200,7 +204,7 @@ compileBoardRGBA bc (Fmap f other) = do
 compileBoardRGBA bc (BufferInBoard def (Buffer (x0,y0) (x1,y1) buff)) = do
 	-- assume def is transparent!
 	-- assume the size of the buffer is okay. How do we do this?
-	code <- compileInsideBufferRGBA bc buff
+	code <- compileInsideBufferRGBA bc (x0,y0) (x1,y1) buff
 	return   [ Nested "buffer inside board" 
 		 	$ code
 		 ]
@@ -270,9 +274,11 @@ compileBoardRGB _ brd = error $ show ("RGB",brd)
 
 
 compileInsideBufferRGBA :: BoardContext
+		 -> (Int,Int)
+		 -> (Int,Int)
 		 -> InsideBuffer a
 		 -> IO [CBIR.Inst Int]	
-compileInsideBufferRGBA bc (Image arr) = do
+compileInsideBufferRGBA bc low high (Image arr) = do
 	let ((0,0,0), (maxy,maxx,3)) = IS.bounds arr
 	let moves = [Scale (fromIntegral (maxx+1),fromIntegral (maxy+1))] ++ bcTrans bc
 	newBoard <- newNumber
@@ -289,8 +295,32 @@ compileInsideBufferRGBA bc (Image arr) = do
 	  	   ]
 	         ]
 
--- Do you have overlapping shapes? Default to True, to be safe if do not know.
-	
+
+compileInsideBufferRGB 
+		 :: BoardContext
+		 -> (Int,Int)
+		 -> (Int,Int)
+		 -> InsideBuffer a
+		 -> IO [CBIR.Inst Int]	
+compileInsideBufferRGB bc low high (Image arr) = do
+	let ((0,0,0), (maxy,maxx,2)) = IS.bounds arr
+	let moves = [Scale (fromIntegral (maxx+1),fromIntegral (maxy+1))] ++ bcTrans bc
+	newBoard <- newNumber
+	return $ [ Nested ("Image create " ++ show (maxx,maxy)) 
+		   [ Allocate 
+			newBoard 	   -- tag for this ChalkBoardBufferObject
+        		(maxx+1,maxy+1)		   -- we know size
+        		RGB24Depth           -- depth of buffer
+			(BackgroundArr arr)
+		   , SplatPolygon newBoard (bcDest bc) 
+		    		[ PointMap (x,y) (mapPoint moves (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+	  	   ]
+	         ]
+
+
+-- Do you have overlapping shapes? Default to True, to be safe if do not know.	
 perhapsOverlapBoardBool :: Board a -> Bool
 perhapsOverlapBoardBool (Trans mv brd) = perhapsOverlapBoardBool brd
 perhapsOverlapBoardBool (Polygon _)    = False	-- single polygon; no overlap
