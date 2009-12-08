@@ -88,18 +88,6 @@ Executable chalkboard-tests-chalkmark
   Hs-Source-Dirs:       .,tests/chalkmark
   Ghc-Options:          -O2 -auto
   Main-Is:              Main.hs
-  
-flag simple { Default: False }
-Executable chalkboard-tests-simple
-  if flag(all) || flag(simple)
-    Build-Depends:        
-    buildable:            True
-  else
-    Build-Depends:        base
-    Buildable:           False
-  Hs-Source-Dirs:       .,tests/simple
-  Ghc-Options:          -O2
-  Main-Is:              Main.hs
 
 flag cbbe1 { Default: False }
 Executable chalkboard-tests-cbbe1
