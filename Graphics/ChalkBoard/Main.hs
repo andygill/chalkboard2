@@ -1,6 +1,7 @@
 module Graphics.ChalkBoard.Main 
 	( ChalkBoard
 	, drawChalkBoard
+	, drawChalkBuffer
 	, writeChalkBoard
 	, updateChalkBoard
 	, drawRawChalkBoard

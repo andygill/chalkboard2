@@ -89,6 +89,16 @@ Executable chalkboard-tests-chalkmark
   Ghc-Options:          -O2 -auto
   Main-Is:              Main.hs
 
+flag video1 { Default: False }
+Executable chalkboard-tests-video1
+  if flag(all) || flag(video1)
+    buildable:            True
+  else
+    Buildable:           False
+  Hs-Source-Dirs:       .,tests/video1
+  Ghc-Options:          -O2
+  Main-Is:              Main.hs
+
 flag cbbe1 { Default: False }
 Executable chalkboard-tests-cbbe1
   if flag(all) || flag(cbbe1)

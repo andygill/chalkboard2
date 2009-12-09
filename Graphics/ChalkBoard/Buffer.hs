@@ -10,6 +10,7 @@ module Graphics.ChalkBoard.Buffer
 	  -- * Ways of creating a new 'Board'.
 	, newBufferOf
 	, readBuffer
+	, newBufferRGB
 	) where
 
 
