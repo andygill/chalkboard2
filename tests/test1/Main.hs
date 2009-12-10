@@ -142,4 +142,18 @@ cbMain cb = do
 		 | a <- [0,0.5,0.7,0.9,1]
 		 ]
 
+
+	sequence_ [ do
+		buff <- readBuffer ("images/" ++ nm)
+		let ((0,0),(x,y)) = bufferBounds buff
+		let xy = max (x+1) (y+1)
+		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) imgBrd))
+		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ ".png"
+	   | nm <- [ "cb-text.gif"
+		   , "cb-text.jpg"
+		   , "cb-text.png"
+		   ] 
+	   ]
+
+
 	exitChalkBoard cb

@@ -55,7 +55,7 @@ withIStorableArray (IStorableArray sa _) k = S.withStorableArray sa k
 touchIStorableArray :: IStorableArray i -> IO ()
 touchIStorableArray (IStorableArray sa _) = S.touchStorableArray sa
 
-newIStorableArray :: (Ix i) => (i,i) -> (Ptr Word8 -> IO ()) -> IO (IStorableArray i)
+newIStorableArray :: (Show i, Ix i) => (i,i) -> (Ptr Word8 -> IO ()) -> IO (IStorableArray i)
 newIStorableArray arrBounds fn = do
 	arr <- newArray_ arrBounds
             

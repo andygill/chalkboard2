@@ -12,6 +12,7 @@
 
 module Graphics.ChalkBoard
 	( module Graphics.ChalkBoard.Board
+	, module Graphics.ChalkBoard.Buffer
 	, module Graphics.ChalkBoard.O
 	, module Graphics.ChalkBoard.Shapes
 	, module Graphics.ChalkBoard.Types
@@ -20,7 +21,8 @@ module Graphics.ChalkBoard
 	, module Graphics.ChalkBoard.Options
 	) where
 
-import Graphics.ChalkBoard.Board -- hiding (scale)
+import Graphics.ChalkBoard.Board
+import Graphics.ChalkBoard.Buffer
 import Graphics.ChalkBoard.O
 import Graphics.ChalkBoard.Shapes
 import Graphics.ChalkBoard.Types

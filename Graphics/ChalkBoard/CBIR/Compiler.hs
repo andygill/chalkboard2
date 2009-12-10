@@ -31,9 +31,12 @@ import Debug.Trace
 compile :: (Int,Int) -> BufferId -> Board RGB -> IO [CBIR.Inst Int]
 compile (x,y) bufferId brd = compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) brd
 
--- Unless we are compiling a Buffer
+-- Unless we are compiling a Buffer :-)
+
 compileB :: (Int,Int) -> BufferId -> Buffer RGB -> IO [CBIR.Inst Int]
-compileB (x,y) bufferId (Buffer low high raw) = compileInsideBufferRGB (initBoardContext (x,y) bufferId) low high raw
+compileB (x,y) bufferId (Buffer low high raw) = do
+	
+	compileInsideBufferRGB (initBoardContext (x,y) bufferId) low high raw
 
 mapPoint :: [Trans] -> (R,R) -> (R,R)
 mapPoint [] 			(x,y) = (x,y)
@@ -50,6 +53,7 @@ data BoardContext = BoardContext
 	, bcSize :: (Int,Int)		-- approx size of resolution required for final board
 	, bcDest :: BufferId			-- board to draw onto
 	}
+	deriving Show
 	
 updateTrans :: Trans -> BoardContext -> BoardContext 
 updateTrans mv bc = bc { bcTrans = mv : bcTrans bc }
@@ -204,7 +208,8 @@ compileBoardRGBA bc (Fmap f other) = do
 compileBoardRGBA bc (BufferInBoard def (Buffer (x0,y0) (x1,y1) buff)) = do
 	-- assume def is transparent!
 	-- assume the size of the buffer is okay. How do we do this?
-	code <- compileInsideBufferRGBA bc (x0,y0) (x1,y1) buff
+	let mv = Scale (fromIntegral (1+y1-y0),fromIntegral (1+x1-x0))
+	code <- compileInsideBufferRGBA (updateTrans mv bc) (x0,y0) (x1,y1) buff
 	return   [ Nested "buffer inside board" 
 		 	$ code
 		 ]
@@ -280,7 +285,7 @@ compileInsideBufferRGBA :: BoardContext
 		 -> IO [CBIR.Inst Int]	
 compileInsideBufferRGBA bc low high (Image arr) = do
 	let ((0,0,0), (maxy,maxx,3)) = IS.bounds arr
-	let moves = [Scale (fromIntegral (maxx+1),fromIntegral (maxy+1))] ++ bcTrans bc
+	let moves = {- [Scale (fromIntegral (maxx+1),fromIntegral (maxy+1))] ++ -} bcTrans bc
 	newBoard <- newNumber
 	return $ [ Nested ("Image create " ++ show (maxx,maxy)) 
 		   [ Allocate 
@@ -304,9 +309,9 @@ compileInsideBufferRGB
 		 -> IO [CBIR.Inst Int]	
 compileInsideBufferRGB bc low high (Image arr) = do
 	let ((0,0,0), (maxy,maxx,2)) = IS.bounds arr
-	let moves = [Scale (fromIntegral (maxx+1),fromIntegral (maxy+1))] ++ bcTrans bc
+	let moves = {- [Scale (fromIntegral (maxx+1),fromIntegral (maxy+1))] ++ -} bcTrans bc
 	newBoard <- newNumber
-	return $ [ Nested ("Image create " ++ show (maxx,maxy)) 
+	return $ [ Nested ("Image RGB create " ++ show (maxx,maxy)) 
 		   [ Allocate 
 			newBoard 	   -- tag for this ChalkBoardBufferObject
         		(maxx+1,maxy+1)		   -- we know size
