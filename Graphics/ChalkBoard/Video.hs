@@ -33,12 +33,11 @@ nextPPMFrame (InPipe h) = do
     let mxs = (map read (words mx) :: [Int]) -- TODO: Check that maxs = 255?
     print (head mxs)
 
-    let arrBounds = ((0,0,0), (fromIntegral height-1, fromIntegral width-1, 2))
-    arr <- newIStorableArray arrBounds (fn h width height (head mxs))
+    arr <- newReadOnlyCByteArray (width*height*3) (fn h width height (head mxs))
 	
-    return (True, newBufferRGB arr) -- TODO: Determine if the pipe has been closed and return True/False based on that
+    return (True, newBufferRGB arr (width,height)) -- TODO: Determine if the pipe has been closed and return True/False based on that
     
     where fn hIn w h mx ptr = do
-            bytesRead <- hGetBuf hIn ptr (w*h*mx`div`8) -- TODO: Use bytes read to determine if the pipe is closed
+            bytesRead <- hGetBuf hIn ptr (w*h*3) -- TODO: Use bytes read to determine if the pipe is closed
             return ()
 

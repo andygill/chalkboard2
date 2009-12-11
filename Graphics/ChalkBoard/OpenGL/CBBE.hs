@@ -569,10 +569,10 @@ allocateRawImgBuffer board (w,h) depth imagePtr = do
 
 
 
-allocateArrBuffer :: BufferId -> (Int,Int) -> Depth -> IStorableArray (Int,Int,Int) -> CBM ()
+allocateArrBuffer :: BufferId -> (Int,Int) -> Depth -> ReadOnlyCByteArray -> CBM ()
 allocateArrBuffer board (w,h) depth imageArr = do
         env <- getCBMEnv
-	liftIO $ IS.withIStorableArray imageArr $ \p -> do
+	liftIO $ IS.withReadOnlyCByteArray imageArr $ \p -> do
 	        runCBM (allocateRawImgBuffer board (w,h) depth (castPtr p)) env
 
 

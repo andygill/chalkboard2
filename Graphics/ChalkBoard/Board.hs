@@ -130,9 +130,9 @@ mask = Crop
 readBoard :: String -> IO (Int,Int,Board RGBA)
 readBoard filename = do
   arr <- readImage filename 
-  iStore <- iStorableArray arr 
+  iStore <- readOnlyCByteArray arr 
   let ((0,0,0), (h,w,3)) = U.bounds arr
-  return $ (h+1,w+1,BufferInBoard (O.transparent O.white) (Buffer (0,0) (h,w) $ Image iStore))
+  return $ (w+1,h+1,BufferInBoard (O.transparent O.white) (Buffer (0,0) (w,h) $ Image iStore))
   
 readNormalizedBoard :: String -> IO(Int,Int,Board RGBA)
 readNormalizedBoard filename = do

@@ -41,14 +41,13 @@ newBufferOf low hi a = Buffer low hi (BoardInBuffer (PrimConst a))
 readBuffer :: String -> IO (Buffer RGBA)
 readBuffer filename = do
   arr <- readImage filename 
-  iStore <- iStorableArray arr 
+  iStore <- readOnlyCByteArray arr 
   let ((0,0,0), (h,w,3)) = U.bounds arr
-  return $ Buffer (0,0) (h,w) (Image iStore)
+  print (h,w)
+  return $ Buffer (0,0) (w,h) (Image iStore)
 
-newBufferRGB :: IS.IStorableArray (Int,Int,Int) -> Buffer RGB
-newBufferRGB iStore = Buffer (l1,l2) (h1,h2) $ Image iStore
-    where ((l1,l2,0),(h1,h2,2)) = IS.bounds iStore
-	
+newBufferRGB :: ReadOnlyCByteArray -> (Int,Int) -> Buffer RGB
+newBufferRGB iStore (x,y) = Buffer (0,0) (x-1,y-1) $ Image iStore
 
 bufferBounds :: Buffer a -> ((Int,Int),(Int,Int))
 bufferBounds (Buffer low hi _) = (low,hi)

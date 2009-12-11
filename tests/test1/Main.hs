@@ -31,13 +31,6 @@ colors = zip
 	["white","black","red","green","blue","cyan","purple","yellow"]
 
 cbMain cb = do
-
-	-- first examples, pure colors.
-	sequence_ [ do drawChalkBoard cb (boardOf col)
-		       writeChalkBoard cb ("test1-" ++ nm ++ ".png")
-		  | (col,nm) <- colors
-		  ]
-
 	-- load an image to use for rotations, etc.
 	(x,y,imgBrd) <- readBoard ("images/cb-text.png")
 	let xy = fromIntegral $ max x y
@@ -46,6 +39,23 @@ cbMain cb = do
 	let yd = fromIntegral y / xy
 	let img = unAlpha <$> move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
 
+{-		
+-- LOCAL HACK
+	sequence [ do
+		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5)  (scale (1/250) b))
+		writeChalkBoard cb ("foo-" ++ xx ++".png")
+	    | (xx,b) <- 
+		[ ("img",imgBrd)
+		, ("b",choose (alpha red) (transparent white) <$> (box ((0,0),(198,59))))
+		]
+	    ]
+-- END LOCAL
+-}
+	-- first examples, pure colors.
+	sequence_ [ do drawChalkBoard cb (boardOf col)
+		       writeChalkBoard cb ("test1-" ++ nm ++ ".png")
+		  | (col,nm) <- colors
+		  ]
 	-- next, test basic shapes with rotations, scalings, etc.
         sequence_ [ do
 	   	sequence_ [ do drawChalkBoard cb (scale n shape)
@@ -84,9 +94,9 @@ cbMain cb = do
 					 ]
 			  ]
 			
-            | (shape,shape_name) <- [ (choose (red) (white) <$> square,"square")
+            | (shape,shape_name) <- [  (choose (red) (white) <$> square,"square")
 				    , (choose (blue) (white) <$> circle,"circle")
-				    , (img,"img")
+				    ,  (img,"img")
 				    , (choose (green) (white) <$> triangle (-0.5,-0.5) (0.5,-0.5) (0,0.5),"triangle")
 				    ]
             ]
@@ -126,7 +136,6 @@ cbMain cb = do
 
 -- This should show a single shape of overlap between the two snowmen.
 
-
 	sequence_ [ do let rs0 = [ move (i * 0.26,j * 0.26) circle
 			        | i <- [-1,1], j <- [-1,1]
 			        ]
@@ -142,11 +151,11 @@ cbMain cb = do
 		 | a <- [0,0.5,0.7,0.9,1]
 		 ]
 
-
 	sequence_ [ do
 		buff <- readBuffer ("images/" ++ nm)
 		let ((0,0),(x,y)) = bufferBounds buff
 		let xy = max (x+1) (y+1)
+		-- draw buffer board
 		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) imgBrd))
 		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ ".png"
 	   | nm <- [ "cb-text.gif"
@@ -154,6 +163,5 @@ cbMain cb = do
 		   , "cb-text.png"
 		   ] 
 	   ]
-
 
 	exitChalkBoard cb

@@ -61,7 +61,7 @@ KM: I would say the "draw this pixel if true" approach might be faster? Then cou
               -- this may have the same issue?
            | BackgroundRGB24Depth RGB
            | BackgroundRGBADepth RGBA
-	   | BackgroundArr (IStorableArray (Int,Int,Int))
+	   | BackgroundArr ReadOnlyCByteArray -- (IStorableArray (Int,Int,Int))
 
 instance Show Background where
 	show (BackgroundBit b) = "(BackgroundBit $ " ++ show b ++ ")"

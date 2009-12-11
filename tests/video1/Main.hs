@@ -8,10 +8,14 @@ main = startChalkBoard [] videoMain
 
 
 videoMain cb = do
-    videoPipe <- openVideoInPipe "cat ex5.ppm"
-    (worked, buffer) <- nextPPMFrame videoPipe
-    
-    drawChalkBuffer cb buffer
-    writeChalkBoard cb "test.png"
-    
+--    videoPipe <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm  -"
+    videoPipe <- openVideoInPipe "cat bigfoot.ppm"
+    let loop 500 = exitChalkBoard cb
+	loop n = do
+    	(worked, buffer) <- nextPPMFrame videoPipe
+    	drawChalkBuffer cb buffer
+	loop (n+1)
+	
+    loop 0
+
     exitChalkBoard cb
