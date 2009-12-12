@@ -205,16 +205,17 @@ compileBoardRGBA bc (Fmap f other) = do
 					++ show other
 	   FUN_TY (EXPR_TY RGBA_Ty) (EXPR_TY RGBA_Ty) -> error $ "fmap (... :: RGBA -> RGBA) brd, unsupported fmap argument"
 	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Board RGBA is not supported"
-compileBoardRGBA bc (BufferInBoard def (Buffer (x0,y0) (x1,y1) buff)) = do
+compileBoardRGBA bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 	-- assume def is transparent!
 	-- assume the size of the buffer is okay. How do we do this?
 	let (x,y) = bcSize bc
 -- TODO!
 	-- really, this is about 0 and 1, not x and y.
 	let mv = Scale (fromIntegral x,fromIntegral y) -- (fromIntegral (1+y1-y0),fromIntegral (1+x1-x0))
+	back_code <- compileBoard compileBoardRGBA bc back
 	code <- compileInsideBufferRGBA (updateTrans mv bc) (x0,y0) (x1,y1) buff
-	return   [ Nested "buffer inside board" 
-		 	$ code
+	return   [ Nested "buffer inside board" $
+			back_code ++ code
 		 ]
 compileBoardRGBA _ brd = error $ show ("RGBA",brd)
 
@@ -297,9 +298,33 @@ compileInsideBufferRGB
 		 -> IO [CBIR.Inst Int]	
 compileInsideBufferRGB bc low high (Image arr) = do
 	compileImage bc low high arr RGB24Depth
+compileInsideBufferRGB bc low high (FmapBuffer f buff) = do
+	fMapFn <- patternOf $ f
+	case typeOfFun f of
+	   FUN_TY (EXPR_TY RGBA_Ty) (EXPR_TY RGB_Ty) -> do
+		newBoard <- newNumber
+		let bc' = bc
+			 { bcDest = newBoard
+  		         }
+		rest <- compileInsideBufferRGBA bc' low high buff
+		return [ Nested ("RGBA -> RGB") $ 
+			[ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(bcSize bc)		   -- we know size
+        			RGBADepth           -- depth of buffer
+				(BackgroundRGBADepth (RGBA 1 1 1 1))	-- ???
+			] ++ rest ++
+			[  copyBoard newBoard (bcDest bc)
+			, Delete newBoard
+		        ]]
+	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Buffer RGB is not supported"
 	
+			
 -- compile image copies the relevent part of an image onto 
 -- the back buffer, 1 pixel for 1 pixel, after applying transformations.
+-- The first pixel inside an image array is the top-left pixel on the
+-- screen (hence the 1-y, below).
+
 compileImage bc low@(x0,y0) high@(x1,y1) arr depth = do
 	newBoard <- newNumber
 	let (tx,ty) = bcSize bc

@@ -16,6 +16,7 @@ module Graphics.ChalkBoard.Board
 	, triangle
 	, polygon
 	, readBoard
+	, bufferOnBoard
 	, readNormalizedBoard
 	) where
 
@@ -130,7 +131,25 @@ readBoard filename = do
   arr <- readImage filename 
   iStore <- readOnlyCByteArray arr 
   let ((0,0,0), (h,w,3)) = U.bounds arr
+  return $ (w+1,h+1,BufferOnBoard (Buffer (0,0) (w,h) $ Image iStore) (boardOf (O.transparent O.white)))
+
+{-
+readFunnyBoard :: IO (Int,Int,Board RGBA)
+readFunnyBoard = do
+  let arr :: UArray (Int,Int,Int) Word8
+      arr = array ((0,0,0),(128,255,3)) 
+	$ concat [ [ ((x,y,0), if x < 16 then (if even (y `div` 16) then 255 else fromIntegral x)  else fromIntegral x)
+		   , ((x,y,1), fromIntegral x)
+		   , ((x,y,2), 128)
+		   , ((x,y,3), 255)
+		   ] 
+		 | y <- [0..255]
+		 , x <- [0..128]
+		 ]
+  iStore <- readOnlyCByteArray arr 
+  let ((0,0,0), (h,w,3)) = U.bounds arr
   return $ (w+1,h+1,BufferInBoard (O.transparent O.white) (Buffer (0,0) (w,h) $ Image iStore))
+-}
   
 readNormalizedBoard :: String -> IO (Int,Int,Board RGBA)
 readNormalizedBoard filename = do
@@ -141,4 +160,9 @@ readNormalizedBoard filename = do
         yd = fromIntegral x / xy
         img = move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
     return (x,y,img)
+
+
+-- TODO: Consider, does this draw whole pixels, or interprelate between the center points?
+bufferOnBoard :: Buffer a -> Board a -> Board a
+bufferOnBoard buff brd = BufferOnBoard buff brd
 

@@ -33,6 +33,7 @@ colors = zip
 cbMain cb = do
 	-- load an image to use for rotations, etc.
 	(x,y,imgBrd) <- readBoard ("images/cb-text.png")
+--	(x,y,imgBrd) <- readFunnyBoard
 	let xy = fromIntegral $ max x y
 	let sc = 1 / xy
 	let xd = fromIntegral y / xy
@@ -144,8 +145,10 @@ cbMain cb = do
 		let ((0,0),(x,y)) = bufferBounds buff
 		let xy = max (x+1) (y+1)
 		-- draw buffer board
-		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) imgBrd))
-		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ ".png"
+		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) (bufferOnBoard buff $ boardOf (alpha green))))
+		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ "-as-Board.png"
+		drawChalkBuffer cb (unAlpha <$> buff)
+		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ "-as-Buffer.png"
 	   | nm <- [ "cb-text.gif"
 		   , "cb-text.jpg"
 		   , "cb-text.png"

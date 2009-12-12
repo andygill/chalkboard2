@@ -32,7 +32,7 @@ data Board a where
 --	Circle		:: 						Board Bool
 	-- only used in code generator, when types do not matter.
 	Over  		:: 	(a -> a -> a) -> Board a -> Board a -> 	Board a
-	BufferInBoard	:: O a -> Buffer a -> Board a
+	BufferOnBoard	:: Buffer a -> Board a -> Board a
 --	Image		:: IStorableArray (Int,Int,Int) -> Board RGBA
 
 instance Show (Board a) where
@@ -43,12 +43,13 @@ instance Show (Board a) where
 --	show (Circle {})    = "Circle"
 	show (Fmap _ brd)   = "Fmap (..) (" ++ show brd ++ ")"
 	show (Over _ brd1 brd2)   = "Over (..) (" ++ show brd1 ++ " " ++ show brd2 ++ ")"
+	show (BufferOnBoard buff brd)  = "BoardOnBuffer (" ++ show buff ++ ") (" ++ show brd ++ ")"
 
 instance Show (Buffer a) where
 	show (Buffer x y a) = "Buffer " ++ show (x,y) ++ " " ++ show a
 
 instance Show (InsideBuffer a) where
-	show (BoardInBuffer b)  = "Buffer (" ++ show b ++ ")"
+	show (BoardInBuffer brd) = "BoardInBuffer (" ++ show brd ++ ")"
 	show (FmapBuffer _ brd) = "FmapBuffer (..) (" ++ show brd ++ ")"
 	show (Image arr)        = "Image (..)"
 	
