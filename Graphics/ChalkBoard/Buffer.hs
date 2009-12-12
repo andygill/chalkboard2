@@ -43,7 +43,6 @@ readBuffer filename = do
   arr <- readImage filename 
   iStore <- readOnlyCByteArray arr 
   let ((0,0,0), (h,w,3)) = U.bounds arr
-  print (h,w)
   return $ Buffer (0,0) (w,h) (Image iStore)
 
 newBufferRGB :: ReadOnlyCByteArray -> (Int,Int) -> Buffer RGB

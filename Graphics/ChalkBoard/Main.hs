@@ -45,6 +45,16 @@ data ChalkBoardCommand
 	| ExitChalkBoard
 	| DrawRawChalkBoard [Inst BufferId]
 	
+{-
+	| OpenStream String (MVar Int)
+
+openStream (.. var) str = do
+	ref <- newEmptyMVar
+	putMVar var (OpenStream str ref)
+	ans <- takeMVar ref
+	return $ HOut ans
+-}
+
 data ChalkBoard = ChalkBoard (MVar ChalkBoardCommand) (MVar ())
 
 

@@ -35,22 +35,10 @@ cbMain cb = do
 	(x,y,imgBrd) <- readBoard ("images/cb-text.png")
 	let xy = fromIntegral $ max x y
 	let sc = 1 / xy
-	let xd = fromIntegral x / xy
-	let yd = fromIntegral y / xy
+	let xd = fromIntegral y / xy
+	let yd = fromIntegral x / xy
 	let img = unAlpha <$> move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
 
-{-		
--- LOCAL HACK
-	sequence [ do
-		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5)  (scale (1/250) b))
-		writeChalkBoard cb ("foo-" ++ xx ++".png")
-	    | (xx,b) <- 
-		[ ("img",imgBrd)
-		, ("b",choose (alpha red) (transparent white) <$> (box ((0,0),(198,59))))
-		]
-	    ]
--- END LOCAL
--}
 	-- first examples, pure colors.
 	sequence_ [ do drawChalkBoard cb (boardOf col)
 		       writeChalkBoard cb ("test1-" ++ nm ++ ".png")

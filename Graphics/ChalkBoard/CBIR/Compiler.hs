@@ -304,7 +304,6 @@ compileImage bc low@(x0,y0) high@(x1,y1) arr depth = do
 	newBoard <- newNumber
 	let (tx,ty) = bcSize bc
 	let (maxx,maxy) = (1 + x1 - x0, 1 + y1 - y0)
-	print (tx,maxx)
 	-- scale to fit
 	let mv = Scale (fromIntegral maxx / fromIntegral tx,
 		        fromIntegral maxy / fromIntegral ty)

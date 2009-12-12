@@ -124,8 +124,6 @@ instance Over a => Over (Board a) where
 mask :: ((R,R),(R,R)) -> Board a -> Board (Maybe a)
 mask = Crop
 
-
-
 -- | read a file containing a common image format (jpg, gif, etc.), and create a 'Board RGBA', and the X and Y size of the image.
 readBoard :: String -> IO (Int,Int,Board RGBA)
 readBoard filename = do
@@ -134,13 +132,13 @@ readBoard filename = do
   let ((0,0,0), (h,w,3)) = U.bounds arr
   return $ (w+1,h+1,BufferInBoard (O.transparent O.white) (Buffer (0,0) (w,h) $ Image iStore))
   
-readNormalizedBoard :: String -> IO(Int,Int,Board RGBA)
+readNormalizedBoard :: String -> IO (Int,Int,Board RGBA)
 readNormalizedBoard filename = do
     (x,y,imgBrd) <- readBoard (filename)
     let xy = fromIntegral $ max x y
         sc = 1 / xy
-        xd = fromIntegral x / xy
-        yd = fromIntegral y / xy
+        xd = fromIntegral y / xy
+        yd = fromIntegral x / xy
         img = move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
     return (x,y,img)
 
