@@ -306,7 +306,7 @@ compileImage bc low@(x0,y0) high@(x1,y1) arr depth = do
 	let (maxx,maxy) = (1 + x1 - x0, 1 + y1 - y0)
 	-- scale to fit
 	let mv = Scale (fromIntegral maxx / fromIntegral tx,
-		        fromIntegral maxy / fromIntegral ty)
+		       (fromIntegral maxy / fromIntegral ty))
 	return $ [ Nested ("Image RGB create " ++ show (low,high)) 
 		   [ Allocate 
 			newBoard 	   -- tag for this ChalkBoardBufferObject
@@ -314,7 +314,7 @@ compileImage bc low@(x0,y0) high@(x1,y1) arr depth = do
         		depth           -- depth of buffer
 			(BackgroundArr arr)
 		   , SplatPolygon newBoard (bcDest bc) 
-		    		[ PointMap (x,y) (mapPoint (bcTrans (updateTrans mv bc)) (x,y))
+		    		[ PointMap (x,1-y) (mapPoint (bcTrans (updateTrans mv bc)) (x,y))
 		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
 		    		]
 	  	   ]

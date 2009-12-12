@@ -56,8 +56,8 @@ withReadOnlyCByteArray (ReadOnlyCByteArray sz ptr) fn = withForeignPtr ptr fn
 -- This will disapear when DevIL gets updated.
 readOnlyCByteArray :: UArray (Int,Int,Int) Word8 -> IO ReadOnlyCByteArray
 readOnlyCByteArray arr = newReadOnlyCByteArray size $ \ ptr ->
---	sequence_ [  pokeElemOff ptr (U.index ((y0,x0,z0),(y1,x1,z1)) (y,x,z)) v | ((x,y,z),v) <- U.assocs arr ] 
-  	sequence_ [  pokeElemOff ptr (U.index (low,high) i) v | (i,v) <- U.assocs arr ] 
+	sequence_ [  pokeElemOff ptr (U.index ((x0,y0,z0),(x1,y1,z1)) (x0+x1-x,y,z)) v | ((x,y,z),v) <- U.assocs arr ] 
+--  	sequence_ [  pokeElemOff ptr (U.index (low,high) i) v | (i,v) <- U.assocs arr ] 
   where size = Ix.rangeSize (U.bounds arr)
 	(low@(x0,y0,z0),high@(x1,y1,z1)) = U.bounds arr
 {-	
