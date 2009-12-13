@@ -33,14 +33,15 @@ colors = zip
 cbMain cb = do
 	-- hack to let us control what is tested
 	let test :: String -> [IO ()] -> IO ()
---	    test "test2" = sequence_
---	    test "scale" = sequence_
---	    test _       = \ xs -> return ()
-	    test _       = sequence_
+	    test "test8" = sequence_
+	    test _       = \ xs -> return ()
+
+	
+	let test "test8" = \ _ -> return ()
+	    test _ = sequence_
 
 	-- load an image to use for rotations, etc.
 	(x,y,imgBrd) <- readBoard ("images/cb-text.png")
---	(x,y,imgBrd) <- readFunnyBoard
 	let xy = fromIntegral $ max x y
 	let sc = 1 / xy
 	let xd = fromIntegral y / xy
@@ -166,17 +167,48 @@ cbMain cb = do
 		   ] 
 	   ]
 
-{-
 	test "test8" [ do
 		buff <- readBuffer ("images/cb-text.png")
 		let ((0,0),(x,y)) = bufferBounds buff
 		let xy = max (x+1) (y+1)
-		-- draw buffer board
 		let brd = bufferOnBoard buff $ boardOf (alpha red)
-		let buff2 = boardToBuffer (10,10) (100,100) brd
+		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) brd))
+		writeChalkBoard cb $ "test8-0.png"
+		let buff2 = boardToBuffer (0,0) (150,70) brd
 		let brd2 = bufferOnBoard buff2 $ boardOf (alpha green)
 		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) brd2))
-		writeChalkBoard cb $ "test8.png"
+		writeChalkBoard cb $ "test8-1.png"
 	   ]
--}
+
+
 	exitChalkBoard cb
+
+
+{-
+	test "test9" [ do
+		drawRawChalkBoard cb (example1 (x,y))
+		writeChalkBoard cb $ "test9-" ++ show x  ++ "-" ++ show y ++ ".png"
+	    | (x,y) <- [(150,150),(100,100),(200,200)]
+	    ]
+
+
+-- example of fBO size probleme
+example1 sz = 
+     [ Allocate 1004 (150,150) RGBADepth (BackgroundRGBADepth $ RGBA 1.0 1.0 1.0 1.0)
+     , SaveImage 1004 "test9-1.png"
+     , SplatColor (RGBA 0.0 1.0 0.0 1.0) 1004 False [(0.0,0.0),(0.0,1.0),(1.0,1.0),(1.0,0.0)]
+     , SaveImage 1004 "test9-2.png"
+
+     ,  Allocate 1005 sz RGBADepth (BackgroundRGBADepth $ RGBA 0.0 0.0 1.0 1.0)
+     , SaveImage 1005 "test9-3.png"
+     , SplatColor (RGBA 1.0 0.0 0.0 1.0) 1005 False [(0.0,0.0),(0.0,1.0),(1.0,1.0),(1.0,0.0)]
+     , SaveImage 1005 "test9-4.png"
+
+     , SplatPolygon 1005 1004 [PointMap (0.0,0.0) (0.0,0.0),PointMap (1.0,0.0) (1.0,0.0),PointMap (1.0,1.0) (1.0,0.25),PointMap (0.0,1.0) (0.0,0.25)]
+     , SaveImage 1004 "test9-5.png"
+     , CopyBuffer WithSrcAlpha 1004 0
+     , SaveImage 0 "test9-6.png"
+
+     ]
+
+-}	

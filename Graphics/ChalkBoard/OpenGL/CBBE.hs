@@ -44,10 +44,6 @@ import Data.Unique
 --import Data.Time.Clock
 
 
-
-
-
-
 startRendering :: BufferId -> MVar () -> MVar ([Inst BufferId]) -> [Options] -> IO()
 startRendering board booted insts options = do
 
@@ -189,13 +185,12 @@ initGL = do
 resizeScene :: Size -> IO ()
 resizeScene (Size w 0) = resizeScene (Size w 1) -- prevents divide by zero
 resizeScene s@(Size width height) = do
---    print "resizeScene"
     let w = fromIntegral width
         h = fromIntegral height
-    viewport   $= (Position 0 0, s)	-- the whole window is used
+    viewport   $= (Position 0 0, Size (width*1) (height*1))	-- the whole window is used
     matrixMode $= Projection
     loadIdentity
-    ortho2D 0 w 0 h -- Will probably want to change this from using the window w/h
+    ortho2D 0 (w*1) 0 (h*1) -- Will probably want to change this from using the window w/h
     matrixMode $= Modelview 0
     flush -- Might not be necessary
     postRedisplay Nothing
@@ -260,7 +255,8 @@ initFBO = do
     -- Unbind this texture so it isn't the one currently being used
     glBindTexture gl_TEXTURE_2D 0
     -- Attach the texture to a FBO color attachment point
-    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
+    bindFrameBufferToTexture texId (w,h)
+    -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
     
     return (fboIdPtr, texIdPtr)
 
@@ -382,7 +378,7 @@ displayBoard = do
             
             texId <- peek texIdPtr
             
-            --{- Turn this off to center the image instead of snapping the window to its size
+            {- Turn this off to center the image instead of snapping the window to its size
             Size winW winH <- get windowSize
             when (winW /= fromIntegral w || winH /= fromIntegral h) $
                 if (w < 200)
@@ -500,9 +496,10 @@ allocateBuffer board (w,h) d c = do
                 -- colorType for both?
                 glTexImage2D gl_TEXTURE_2D 0 (fromIntegral colorType) (fromIntegral w) (fromIntegral h) 0 (fromIntegral colorType) gl_UNSIGNED_BYTE nullPtr 
                 -- Attach the texture to a FBO color attachment point
-                glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
+		bindFrameBufferToTexture texId (w,h)
+                -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
             
-            preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
+--            preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
                 clearColor $= bgcolor -- Change the clearColor to the color of the board being created
                 clear [ColorBuffer] -- Clear the screen to the new color to draw that color onto the board
                 flush
@@ -559,7 +556,8 @@ allocateRawImgBuffer board (w,h) depth imagePtr = do
             -- Done to mirror the other allocates (leaving the texture attached to the fbo), but should maybe just get rid of this:
             when (fboSupp) $ do
                     -- Attach the texture to a FBO color attachment point
-                    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
+		    bindFrameBufferToTexture texId (w,h)
+                    -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
             
             return texInfo
 
@@ -625,7 +623,8 @@ allocateImgBuffer board imagePath = do
             -- Done to mirror the other allocates (leaving the texture attached to the fbo), but should maybe just get rid of this:
             when (fboSupp) $ do
                     -- Attach the texture to a FBO color attachment point
-                    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
+		    bindFrameBufferToTexture texId (w,h)
+                    -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
             
             return texInfo
 
@@ -701,8 +700,10 @@ splatPolygon bS bD ps = do
                     glCopyTexImage2D gl_TEXTURE_2D 0 (fromIntegral colorType) 0 0 (fromIntegral w) (fromIntegral h) 0 
                     
                 else do
+
                     -- Attach the texture to a FBO color attachment point
-                    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
+		    bindFrameBufferToTexture texIdD (w,h)
+                    -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
                     -- Check to see if the texture is trying to recursively draw onto itself, and if so create a copy of the source texture
                     -- to prevent the undefined feedback loop that would result from drawing straight to the same texture that is being read
                     (texIdS, texIdPtrS) <- if (texIdD == texIdS')
@@ -840,7 +841,8 @@ splatColor (T.RGBA r g b a) bD _useBlend ps = do
                     -- Attach the texture to a FBO color attachment point
                     -- AJG: This is also taking a lot of time, presumbily because it stalls the pipeline.
                     -- We can store what we've alread done, and not redo this for each target.
-                    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
+		    bindFrameBufferToTexture texIdD (w,h)
+                    -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
             
             -- Switch the color to the one we are trying to splat
             color (Color4 (floatToGLclampf r) (floatToGLclampf g) (floatToGLclampf b) ((floatToGLclampf a)::GLclampf))
@@ -852,9 +854,23 @@ splatColor (T.RGBA r g b a) bD _useBlend ps = do
               else
                  blendFuncSeparate $= ((SrcAlpha, Zero), (SrcAlpha, Zero)) -- Specify color and alpha blend separately
 -}	
+
+--  	    clearColor $= Color4 (floatToGLclampf 0) (floatToGLclampf 0.5) (floatToGLclampf 0.5) ((floatToGLclampf a)::GLclampf) -- Change the clearColor to the color of the board being created
+--            clear [ColorBuffer] -- Clear the screen to the new color to draw that color onto the board
+            --flush
+
+	    -- there is some croping going on here!
+{-
+	    viewport   $= (Position 0 0, Size 200 200) -- (fromIntegral w) (fromIntegral h))
+            matrixMode $= Projection
+            loadIdentity
+            ortho2D 0 200 0 200 -- Will probably want to change this from using the window w/h
+            matrixMode $= Modelview 0
+	    flush
+-} 
             renderPrimitive Polygon $ do
                 placeColorVerticies w h ps
-            
+
             when (not fboSupp) $ do
                 -- Bind the destination texture so we can copy the new image out to it
                 glBindTexture gl_TEXTURE_2D texIdD
@@ -932,7 +948,8 @@ saveImage b savePath = do
                     -- Create the new texture object so that we can draw directly into it
                     glTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGBA) (fromIntegral w) (fromIntegral h) 0 gl_RGBA gl_UNSIGNED_BYTE nullPtr
                     -- Attach the new texture to a FBO color attachment point
-                    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId2 0
+		    bindFrameBufferToTexture texId2 (w,h)
+                    -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId2 0
                     
             -- Bind the original (non-RGBA) texture so that it can be copied into the new one
             glBindTexture gl_TEXTURE_2D texId
@@ -958,7 +975,8 @@ saveImage b savePath = do
             if (fboSupp)
                 then do
                     -- Unattach the new texture from the FBO color attachment point since it will be deleted
-                    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D 0 0
+		    bindFrameBufferToTexture 0 (1,1)	--- wrong size; does not matter?
+                    -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D 0 0
                 else do
                     -- Copy the texture from the screen to the new texture for saving
                     glCopyTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGBA) 0 0 (fromIntegral w) (fromIntegral h) 0   
@@ -1024,13 +1042,19 @@ floatToGLclampf :: Float -> GL.GLclampf
 floatToGLclampf = realToFrac
  
 
+-- Should be in the CB monad, and lookup the size in a table.
+bindFrameBufferToTexture :: (Integral a) => GLuint -> (a,a) -> IO ()
+bindFrameBufferToTexture tex (x,y) = do
+	    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D tex 0
+	    viewport   $= (Position 0 0, Size (fromIntegral x) (fromIntegral y)) -- (fromIntegral w) (fromIntegral h))
+            matrixMode $= Projection
+            loadIdentity
+            ortho2D 0 (fromIntegral x) 0 (fromIntegral y) -- Will probably want to change this from using the window w/h
+            matrixMode $= Modelview 0
+	    flush
 
 
-
-
-
-
-
+	
 {-
     -- Draw a circle (or an ellipse by scaling the circle)
     -- Parameters would be xPos, yPos, rotationDegree, xScale, yScale, Color4(RGBA), radius, slices (# of points used to draw it)

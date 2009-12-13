@@ -224,8 +224,9 @@ compileBoardRGBA bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 --	print ((x,y),(x1-x0,y1-y0))
 	return [ Nested "buffer inside board (RGBA)" $
 			back_code ++ code ++
+			[Nested (show ((x,y),bcTrans (updateTrans mv bc))) []] ++
 			[ SplatPolygon buffId (bcDest bc) 
-		    		[ PointMap (x,1-y) (mapPoint tr (x,y))
+		    		[ PointMap (x,y) (mapPoint tr (x,y))
 		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
 		    		]
 			]
@@ -307,7 +308,7 @@ compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 	return [ Nested "buffer inside board (RGB)" $
 			back_code ++ code ++
 			[ SplatPolygon buffId (bcDest bc) 
-		    		[ PointMap (x,1-y) (mapPoint tr (x,y))
+		    		[ PointMap (x,y) (mapPoint tr (x,y))
 		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
 		    		]
 			]
@@ -322,35 +323,24 @@ compileInsideBufferRGBA
 		 -> IO ([CBIR.Inst BufferId],BufferId)
 compileInsideBufferRGBA low high (Image arr) = do
 	compileImage low high arr RGBADepth
-{-
-compileInsideBufferRGBA bc low high (BoardInBuffer brd) = 
+compileInsideBufferRGBA low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 	newBoard <- newNumber
-	let (tx,ty) = bcSize bc
-	let (maxx,maxy) = (1 + x1 - x0, 1 + y1 - y0)
-	-- scale to fit
+	let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)
 
 	-- we want to map (x0,y0) x (x1,y1) onto the Board (0,0) x (1,1)
-
-	let bc' = bc { bcDest = newBoard
-  		     }
-	back_code <- compileBoard compileBoardRGBA bc' brd
-	let mv = Scale (fromIntegral maxx / fromIntegral tx,
-		       (fromIntegral maxy / fromIntegral ty))
-	return $ [ Nested ("Image RGB create " ++ show (low,high)) 
+	let mv = Move (fromIntegral x0,fromIntegral y0)
+	let sc = Scale (1 / fromIntegral sx,1 / fromIntegral sy)
+	let bc = updateTrans mv $ updateTrans sc $ initBoardContext (sx,sy) newBoard
+	rest <- compileBoard compileBoardRGBA bc brd
+	return ( [ Nested ("BoardInBuffer") $
 		   [ Allocate 
-			newBoard 	   -- tag for this ChalkBoardBufferObject
-        		(maxx,maxy)		   -- we know size
-        		depth           -- depth of buffer
+			newBoard 	-- tag for this ChalkBoardBufferObject
+			(sx,sy)	   	-- we know size
+			RGBADepth       -- depth of buffer
 			(BackgroundRGBADepth (RGBA 1 1 1 1))
-		   , SplatPolygon newBoard (bcDest bc)
-		    		[ PointMap (x,1-y) (mapPoint (bcTrans (updateTrans mv bc)) (x,y))
-		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
-		    		]
-	  	   ]
-	         ]
-	error "BoardInBuff/RGBA"
-	-- we need to create a board, by sampiling the buffer given.
--}
+		   ] ++ rest
+	         ], newBoard)
+
 compileInsideBufferRGB 
 		 :: (Int,Int)
 		 -> (Int,Int)
