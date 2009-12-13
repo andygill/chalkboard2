@@ -400,6 +400,7 @@ displayBoard = do
             -- Bind the texture so that we can display it
             glBindTexture gl_TEXTURE_2D texId
             
+    	    clearColor $= Color4 1 1 1 1 -- Clear the background color to white
             clear [ColorBuffer, DepthBuffer] -- clear the screen and the depth buffer
             loadIdentity -- reset view
             color (Color4 1 1 1 (1::GL.GLfloat))
@@ -499,10 +500,9 @@ allocateBuffer board (w,h) d c = do
 		bindFrameBufferToTexture texId (w,h)
                 -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
             
-            preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
-                clearColor $= bgcolor -- Change the clearColor to the color of the board being created
+--            preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
+	    do  clearColor $= bgcolor -- Change the clearColor to the color of the board being created
                 clear [ColorBuffer] -- Clear the screen to the new color to draw that color onto the board
---                flush
                 
             when (not fboSupp) $ do    
                 -- Copy the texture from the framebuffer
