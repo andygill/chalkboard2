@@ -499,10 +499,10 @@ allocateBuffer board (w,h) d c = do
 		bindFrameBufferToTexture texId (w,h)
                 -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
             
---            preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
+            preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
                 clearColor $= bgcolor -- Change the clearColor to the color of the board being created
                 clear [ColorBuffer] -- Clear the screen to the new color to draw that color onto the board
-                flush
+--                flush
                 
             when (not fboSupp) $ do    
                 -- Copy the texture from the framebuffer
@@ -848,26 +848,7 @@ splatColor (T.RGBA r g b a) bD _useBlend ps = do
             color (Color4 (floatToGLclampf r) (floatToGLclampf g) (floatToGLclampf b) ((floatToGLclampf a)::GLclampf))
             -- Uses relative positions (percentages) of source and destination boards
             -- most of the time is attributed to *renderPrimitive* (glBegin?)
-{-
-            if useBlend then
-                 blendFuncSeparate $= ((SrcAlpha, OneMinusSrcAlpha), (One, OneMinusSrcAlpha)) -- Specify color and alpha blend separately
-              else
-                 blendFuncSeparate $= ((SrcAlpha, Zero), (SrcAlpha, Zero)) -- Specify color and alpha blend separately
--}	
 
---  	    clearColor $= Color4 (floatToGLclampf 0) (floatToGLclampf 0.5) (floatToGLclampf 0.5) ((floatToGLclampf a)::GLclampf) -- Change the clearColor to the color of the board being created
---            clear [ColorBuffer] -- Clear the screen to the new color to draw that color onto the board
-            --flush
-
-	    -- there is some croping going on here!
-{-
-	    viewport   $= (Position 0 0, Size 200 200) -- (fromIntegral w) (fromIntegral h))
-            matrixMode $= Projection
-            loadIdentity
-            ortho2D 0 200 0 200 -- Will probably want to change this from using the window w/h
-            matrixMode $= Modelview 0
-	    flush
--} 
             renderPrimitive Polygon $ do
                 placeColorVerticies w h ps
 
@@ -1047,12 +1028,12 @@ bindFrameBufferToTexture :: (Integral a) => GLuint -> (a,a) -> IO ()
 bindFrameBufferToTexture tex (x,y) = do
 	    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D tex 0
 	    viewport   $= (Position 0 0, Size (fromIntegral x) (fromIntegral y)) -- (fromIntegral w) (fromIntegral h))
+
             matrixMode $= Projection
             loadIdentity
             ortho2D 0 (fromIntegral x) 0 (fromIntegral y) -- Will probably want to change this from using the window w/h
             matrixMode $= Modelview 0
-	    flush
-
+--	    flush
 
 	
 {-
