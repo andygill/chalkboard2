@@ -43,7 +43,7 @@ instance Show (Board a) where
 --	show (Circle {})    = "Circle"
 	show (Fmap _ brd)   = "Fmap (..) (" ++ show brd ++ ")"
 	show (Over _ brd1 brd2)   = "Over (..) (" ++ show brd1 ++ " " ++ show brd2 ++ ")"
-	show (BufferOnBoard buff brd)  = "BoardOnBuffer (" ++ show buff ++ ") (" ++ show brd ++ ")"
+	show (BufferOnBoard buff brd)  = "BufferOnBoard (" ++ show buff ++ ") (" ++ show brd ++ ")"
 
 instance Show (Buffer a) where
 	show (Buffer x y a) = "Buffer " ++ show (x,y) ++ " " ++ show a

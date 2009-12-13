@@ -29,14 +29,19 @@ import Debug.Trace
 
 -- We always compile  a RGB board.
 compile :: (Int,Int) -> BufferId -> Board RGB -> IO [CBIR.Inst Int]
-compile (x,y) bufferId brd = compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) brd
+compile (x,y) bufferId brd = 
+	compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) brd
 
 -- Unless we are compiling a Buffer :-)
+-- (Make this call compile)
 
 compileB :: (Int,Int) -> BufferId -> Buffer RGB -> IO [CBIR.Inst Int]
-compileB (x,y) bufferId (Buffer low high raw) = do
-	
-	compileInsideBufferRGB (initBoardContext (x,y) bufferId) low high raw
+compileB (x,y) bufferId buff = do
+	compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) (scaleXY (1/fromIntegral x,1/fromIntegral y) (BufferOnBoard buff (boardOf white)))
+--	compileInsideBufferRGB (initBoardContext (x,y) bufferId) low high raw
+
+
+
 
 mapPoint :: [Trans] -> (R,R) -> (R,R)
 mapPoint [] 			(x,y) = (x,y)
@@ -51,7 +56,7 @@ initBoardContext (x,y) i = BoardContext [] (x,y) i
 data BoardContext = BoardContext 
 	{ bcTrans :: [Trans]		-- movement of board
 	, bcSize :: (Int,Int)		-- approx size of resolution required for final board
-	, bcDest :: BufferId			-- board to draw onto
+	, bcDest :: BufferId		-- board to draw onto
 	}
 	deriving Show
 	
@@ -209,14 +214,22 @@ compileBoardRGBA bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 	-- assume def is transparent!
 	-- assume the size of the buffer is okay. How do we do this?
 	let (x,y) = bcSize bc
--- TODO!
+	-- TODO!
 	-- really, this is about 0 and 1, not x and y.
-	let mv = Scale (fromIntegral x,fromIntegral y) -- (fromIntegral (1+y1-y0),fromIntegral (1+x1-x0))
+	let mv = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,
+			fromIntegral (1 + y1-y0) / fromIntegral 1)
 	back_code <- compileBoard compileBoardRGBA bc back
-	code <- compileInsideBufferRGBA (updateTrans mv bc) (x0,y0) (x1,y1) buff
-	return   [ Nested "buffer inside board" $
-			back_code ++ code
-		 ]
+	(code,buffId) <- compileInsideBufferRGBA (x0,y0) (x1,y1) buff
+	let tr = bcTrans (updateTrans mv bc)
+--	print ((x,y),(x1-x0,y1-y0))
+	return [ Nested "buffer inside board (RGBA)" $
+			back_code ++ code ++
+			[ SplatPolygon buffId (bcDest bc) 
+		    		[ PointMap (x,1-y) (mapPoint tr (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+			]
+	       ]
 compileBoardRGBA _ brd = error $ show ("RGBA",brd)
 
 
@@ -279,57 +292,48 @@ compileBoardRGB bc (Fmap f other) = do
 			, Delete newBoard
 		        ]]
 	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Board RGB is not supported"
+compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
+	-- assume def is transparent!
+	-- assume the size of the buffer is okay. How do we do this?
+	let (x,y) = bcSize bc
+	-- TODO!
+	-- really, this is about 0 and 1, not x and y.
+	let mv = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,
+			fromIntegral (1 + y1-y0) / fromIntegral 1)
+	back_code <- compileBoard compileBoardRGB bc back
+	(code,buffId) <- compileInsideBufferRGB (x0,y0) (x1,y1) buff
+	let tr = bcTrans (updateTrans mv bc)
+--	print ((x,y),(x1-x0,y1-y0))
+	return [ Nested "buffer inside board (RGB)" $
+			back_code ++ code ++
+			[ SplatPolygon buffId (bcDest bc) 
+		    		[ PointMap (x,1-y) (mapPoint tr (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+			]
+	       ]
 compileBoardRGB _ brd = error $ show ("RGB",brd)
 
 
-compileInsideBufferRGBA :: BoardContext
-		 -> (Int,Int)
-		 -> (Int,Int)
-		 -> InsideBuffer a
-		 -> IO [CBIR.Inst Int]	
-compileInsideBufferRGBA bc low high (Image arr) = do
-	compileImage bc low high arr RGBADepth
-
-compileInsideBufferRGB 
-		 :: BoardContext
-		 -> (Int,Int)
+compileInsideBufferRGBA 
+		 :: (Int,Int)
 		 -> (Int,Int)
 		 -> InsideBuffer a
-		 -> IO [CBIR.Inst Int]	
-compileInsideBufferRGB bc low high (Image arr) = do
-	compileImage bc low high arr RGB24Depth
-compileInsideBufferRGB bc low high (FmapBuffer f buff) = do
-	fMapFn <- patternOf $ f
-	case typeOfFun f of
-	   FUN_TY (EXPR_TY RGBA_Ty) (EXPR_TY RGB_Ty) -> do
-		newBoard <- newNumber
-		let bc' = bc
-			 { bcDest = newBoard
-  		         }
-		rest <- compileInsideBufferRGBA bc' low high buff
-		return [ Nested ("RGBA -> RGB") $ 
-			[ Allocate 
-		        	newBoard 	   -- tag for this ChalkBoardBufferObject
-        			(bcSize bc)		   -- we know size
-        			RGBADepth           -- depth of buffer
-				(BackgroundRGBADepth (RGBA 1 1 1 1))	-- ???
-			] ++ rest ++
-			[  copyBoard newBoard (bcDest bc)
-			, Delete newBoard
-		        ]]
-	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Buffer RGB is not supported"
-	
-			
--- compile image copies the relevent part of an image onto 
--- the back buffer, 1 pixel for 1 pixel, after applying transformations.
--- The first pixel inside an image array is the top-left pixel on the
--- screen (hence the 1-y, below).
-
-compileImage bc low@(x0,y0) high@(x1,y1) arr depth = do
+		 -> IO ([CBIR.Inst BufferId],BufferId)
+compileInsideBufferRGBA low high (Image arr) = do
+	compileImage low high arr RGBADepth
+{-
+compileInsideBufferRGBA bc low high (BoardInBuffer brd) = 
 	newBoard <- newNumber
 	let (tx,ty) = bcSize bc
 	let (maxx,maxy) = (1 + x1 - x0, 1 + y1 - y0)
 	-- scale to fit
+
+	-- we want to map (x0,y0) x (x1,y1) onto the Board (0,0) x (1,1)
+
+	let bc' = bc { bcDest = newBoard
+  		     }
+	back_code <- compileBoard compileBoardRGBA bc' brd
 	let mv = Scale (fromIntegral maxx / fromIntegral tx,
 		       (fromIntegral maxy / fromIntegral ty))
 	return $ [ Nested ("Image RGB create " ++ show (low,high)) 
@@ -337,13 +341,74 @@ compileImage bc low@(x0,y0) high@(x1,y1) arr depth = do
 			newBoard 	   -- tag for this ChalkBoardBufferObject
         		(maxx,maxy)		   -- we know size
         		depth           -- depth of buffer
-			(BackgroundArr arr)
-		   , SplatPolygon newBoard (bcDest bc) 
+			(BackgroundRGBADepth (RGBA 1 1 1 1))
+		   , SplatPolygon newBoard (bcDest bc)
 		    		[ PointMap (x,1-y) (mapPoint (bcTrans (updateTrans mv bc)) (x,y))
 		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
 		    		]
 	  	   ]
 	         ]
+	error "BoardInBuff/RGBA"
+	-- we need to create a board, by sampiling the buffer given.
+-}
+compileInsideBufferRGB 
+		 :: (Int,Int)
+		 -> (Int,Int)
+		 -> InsideBuffer a
+		 -> IO ([CBIR.Inst BufferId],BufferId)
+compileInsideBufferRGB low high (Image arr) = do
+	compileImage low high arr RGB24Depth
+compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
+	let size =  (1+x1-x0,1+y1-y0)
+	fMapFn <- patternOf $ f
+	case typeOfFun f of
+	   FUN_TY (EXPR_TY RGBA_Ty) (EXPR_TY RGB_Ty) -> do
+		newBoard <- newNumber
+		(rest,buffId) <- compileInsideBufferRGBA low high buff
+		return ([ Nested ("RGBA -> RGB") $ 
+			rest ++
+			[ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			size		   -- we know size
+        			RGBADepth           -- depth of buffer
+				(BackgroundRGB24Depth (RGB 1 1 1))	-- ???
+			, copyBoard buffId newBoard
+			, Delete buffId
+		        ]],newBoard)
+	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Buffer RGB is not supported"
+			
+-- compile image copies the relevent part of an image onto 
+-- the back buffer, 1 pixel for 1 pixel, after applying transformations.
+-- The first pixel inside an image array is the top-left pixel on the
+-- screen (hence the 1-y, below).
+
+compileImage 
+	:: (Int,Int) -> (Int,Int) -> ReadOnlyCByteArray 
+	-> Depth 
+	-> IO ([CBIR.Inst BufferId],BufferId)
+
+compileImage low@(x0,y0) high@(x1,y1) arr depth = do
+	newBoard <- newNumber
+	let (maxx,maxy) = (1 + x1 - x0, 1 + y1 - y0)
+	-- scale to fit
+{-
+	let mv = Scale (fromIntegral maxx / fromIntegral tx,
+		       (fromIntegral maxy / fromIntegral ty))
+-}
+	return $ ([ Nested ("Image RGB create " ++ show (low,high)) 
+		   [ Allocate 
+			newBoard 	   -- tag for this ChalkBoardBufferObject
+        		(maxx,maxy)		   -- we know size
+        		depth           -- depth of buffer
+			(BackgroundArr arr)
+{-
+		   , SplatPolygon newBoard (bcDest bc) 
+		    		[ PointMap (x,1-y) (mapPoint (bcTrans (updateTrans mv bc)) (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+-}
+	  	   ]
+	         ], newBoard)
 
 
 -- Do you have overlapping shapes? Default to True, to be safe if do not know.	

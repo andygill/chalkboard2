@@ -7,10 +7,12 @@ module Graphics.ChalkBoard.Buffer
 	, (<$>)
 	  -- * Ways of looking at a Buffer
 	, bufferBounds
+	, bufferSize
 	  -- * Ways of creating a new 'Board'.
 	, newBufferOf
 	, readBuffer
 	, newBufferRGB
+	, boardToBuffer
 	) where
 
 
@@ -51,4 +53,9 @@ newBufferRGB iStore (x,y) = Buffer (0,0) (x-1,y-1) $ Image iStore
 bufferBounds :: Buffer a -> ((Int,Int),(Int,Int))
 bufferBounds (Buffer low hi _) = (low,hi)
 
+bufferSize :: Buffer a -> (Int,Int)
+bufferSize (Buffer (x0,y0) (x1,y1) _) = (1+x1-x0,1+y1-y0)
 
+-- how is this sampled? Is it supersampled?
+boardToBuffer :: (Int,Int) -> (Int,Int) -> Board a -> Buffer a
+boardToBuffer low high brd = Buffer low high $ BoardInBuffer brd

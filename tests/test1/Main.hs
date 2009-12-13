@@ -31,6 +31,13 @@ colors = zip
 	["white","black","red","green","blue","cyan","purple","yellow"]
 
 cbMain cb = do
+	-- hack to let us control what is tested
+	let test :: String -> [IO ()] -> IO ()
+--	    test "test2" = sequence_
+--	    test "scale" = sequence_
+--	    test _       = \ xs -> return ()
+	    test _       = sequence_
+
 	-- load an image to use for rotations, etc.
 	(x,y,imgBrd) <- readBoard ("images/cb-text.png")
 --	(x,y,imgBrd) <- readFunnyBoard
@@ -41,38 +48,41 @@ cbMain cb = do
 	let img = unAlpha <$> move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
 
 	-- first examples, pure colors.
-	sequence_ [ do drawChalkBoard cb (boardOf col)
+	test "test1" 
+	          [ do drawChalkBoard cb (boardOf col)
 		       writeChalkBoard cb ("test1-" ++ nm ++ ".png")
 		  | (col,nm) <- colors
 		  ]
+
 	-- next, test basic shapes with rotations, scalings, etc.
-        sequence_ [ do
-	   	sequence_ [ do drawChalkBoard cb (scale n shape)
+        test "test2" [ do
+	   	test "scale"
+	 		  [ do drawChalkBoard cb (scale n shape)
 		               writeChalkBoard cb ("test2-scale-" ++ shape_name ++ "-" ++ show n ++ ".png")
 	                  | n <- [1,0.5]
 		          ]
-	   	sequence_ [ do drawChalkBoard cb ((rotate r (scale 0.5 shape))
+	   	test "??" [ do drawChalkBoard cb ((rotate r (scale 0.5 shape))
 					 )
 		               writeChalkBoard cb ("test2-rotate-" ++ shape_name ++ "-" ++ nm ++ ".png")
 	             	  | (r,nm) <- zip
 				[0,0.1,-0.1,pi/10,pi,2*pi]
 				["0","0.1","neg0.1","pi_div10","pi","2pi"]
 		          ]
-	   	sequence_ [ do drawChalkBoard cb ((move (x,y) (scale 0.5 shape))
+	   	test "??" [ do drawChalkBoard cb ((move (x,y) (scale 0.5 shape))
 					 )
 		               writeChalkBoard cb ("test2-move-" ++ shape_name ++ "-" ++ nmY ++ nmX ++ ".png")
 	 	     	  | let amount = 0.25
 		          , (x,nmX) <- [(-amount,"left"),(0,"center"),(amount,"right")]
 	 	          , (y,nmY) <- [(amount,"top"),(0,"middle"),(-amount,"bottom")]
 		          ]
-		sequence_ [ do  drawChalkBoard cb ((scaleXY (x,y) shape)
+		test "??" [ do  drawChalkBoard cb ((scaleXY (x,y) shape)
 					 )
 		                writeChalkBoard cb ("test2-scaleXY-" ++ shape_name ++ "_" ++ nmX ++ "_" ++ nmY ++ "_.png")
 			  | let ranges =  [(1,"1"),(0.5,"0.5"),(0.1,"0.1"),(-0.1,"neg0.1")]
 			  , (x,nmX) <- ranges
 			  , (y,nmY) <- ranges
 			  ]
-		sequence_ [ do  drawChalkBoard cb ((f (scale 0.5 shape))
+		test "??" [ do  drawChalkBoard cb ((f (scale 0.5 shape))
 					 )
 		                writeChalkBoard cb ("test2-chain-" ++ shape_name ++ "-" ++ chain ++ ".png")
 			  | let ranges =  [(1,"1"),(0.5,"0.5"),(0.1,"0.1"),(-0.1,"neg0.1")]
@@ -91,7 +101,7 @@ cbMain cb = do
             ]
 
 	-- load an image; display it.
-	sequence_ [ do
+	test "??" [ do
 		(x,y,imgBrd) <- readBoard ("images/" ++ nm)
 		let xy = max x y
 		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) imgBrd))
@@ -102,7 +112,7 @@ cbMain cb = do
 		   ] 
 	   ]
 
-	sequence_ [ do let r = move (0.26,0.15)  (choose (withAlpha a red) (transparent white) <$> circle)
+	test "??" [ do let r = move (0.26,0.15)  (choose (withAlpha a red) (transparent white) <$> circle)
 	                   g = move (-0.26,0.15) (choose (withAlpha a green) (transparent white) <$> circle)
 	                   b = move (0,-0.3)      (choose (withAlpha a blue) (transparent white) <$> circle)
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> (r `over` b `over` g `over` boardOf (transparent white))))
@@ -113,7 +123,7 @@ cbMain cb = do
 	-- These should be a single color,
 	-- and not bleed through each other
 
-	sequence_ [ do let r = move (0.26,0.15) circle
+	test "??" [ do let r = move (0.26,0.15) circle
 	                   g = move (-0.26,0.15) circle
 	                   b = move (0,-0.3)    circle
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> 
@@ -125,7 +135,8 @@ cbMain cb = do
 
 -- This should show a single shape of overlap between the two snowmen.
 
-	sequence_ [ do let rs0 = [ move (i * 0.26,j * 0.26) circle
+	test "test6" [ do 
+		       let rs0 = [ move (i * 0.26,j * 0.26) circle
 			        | i <- [-1,1], j <- [-1,1]
 			        ]
 		       let rs = [ scale i b | (i,b) <- zip [1,0.9..] rs0 ]
@@ -140,7 +151,7 @@ cbMain cb = do
 		 | a <- [0,0.5,0.7,0.9,1]
 		 ]
 
-	sequence_ [ do
+	test "test7" [ do
 		buff <- readBuffer ("images/" ++ nm)
 		let ((0,0),(x,y)) = bufferBounds buff
 		let xy = max (x+1) (y+1)
@@ -155,4 +166,17 @@ cbMain cb = do
 		   ] 
 	   ]
 
+{-
+	test "test8" [ do
+		buff <- readBuffer ("images/cb-text.png")
+		let ((0,0),(x,y)) = bufferBounds buff
+		let xy = max (x+1) (y+1)
+		-- draw buffer board
+		let brd = bufferOnBoard buff $ boardOf (alpha red)
+		let buff2 = boardToBuffer (10,10) (100,100) brd
+		let brd2 = bufferOnBoard buff2 $ boardOf (alpha green)
+		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) brd2))
+		writeChalkBoard cb $ "test8.png"
+	   ]
+-}
 	exitChalkBoard cb
