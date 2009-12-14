@@ -503,6 +503,7 @@ allocateBuffer board (w,h) d c = do
 --            preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
 	    do  clearColor $= bgcolor -- Change the clearColor to the color of the board being created
                 clear [ColorBuffer] -- Clear the screen to the new color to draw that color onto the board
+                clearColor $= Color4 1 1 1 1 -- Clear the background color to white
                 
             when (not fboSupp) $ do    
                 -- Copy the texture from the framebuffer
