@@ -27,11 +27,11 @@ nextPPMFrame (InPipe h) = do
         _ -> error $ "bad PPM format: " ++ ty
     szs <- hGetLine h
     let [width,height] = (map read (words szs) :: [Int])
-    print width
-    print height   
+    --print width
+    --print height   
     mx <- hGetLine h
     let mxs = (map read (words mx) :: [Int]) -- TODO: Check that maxs = 255?
-    print (head mxs)
+    --print (head mxs)
 
     arr <- newReadOnlyCByteArray (width*height*3) (fn h width height (head mxs))
 	
@@ -40,4 +40,30 @@ nextPPMFrame (InPipe h) = do
     where fn hIn w h mx ptr = do
             bytesRead <- hGetBuf hIn ptr (w*h*3) -- TODO: Use bytes read to determine if the pipe is closed
             return ()
+
+
+
+openVideoOutPipe :: String -> IO (OutPipe)
+openVideoOutPipe ffmpegCmd = do
+    (Just hin, _, _, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, close_fds = True }
+    return (OutPipe hin)
+
+
+
+writeNextFrame :: OutPipe -> Buffer RGB -> IO (Bool)
+writeNextFrame (OutPipe h) = do
+    hPrint "P6"
+    hPrint ""
+
+
+
+
+ffmpegOutCmd :: String -> String
+ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i pipe: -f mpeg  " ++ filename
+
+ffmpegInCmd :: String -> String
+ffmpegInCmd filename = "ffmpeg -i " ++ filename ++ " -f image2pipe -vcodec ppm -"
+
+
+
 
