@@ -366,7 +366,24 @@ compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 			, Delete buffId
 		        ]],newBoard)
 	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Buffer RGB is not supported"
-			
+compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
+	newBoard <- newNumber
+	let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)
+
+	-- we want to map (x0,y0) x (x1,y1) onto the Board (0,0) x (1,1)
+	let mv = Move (fromIntegral x0,fromIntegral y0)
+	let sc = Scale (1 / fromIntegral sx,1 / fromIntegral sy)
+	let bc = updateTrans mv $ updateTrans sc $ initBoardContext (sx,sy) newBoard
+	rest <- compileBoard compileBoardRGB bc brd
+	return ( [ Nested ("BoardInBuffer") $
+		   [ Allocate 
+			newBoard 	-- tag for this ChalkBoardBufferObject
+			(sx,sy)	   	-- we know size
+			RGB24Depth       -- depth of buffer
+			(BackgroundRGB24Depth (RGB 1 1 1))
+		   ] ++ rest
+	         ], newBoard)			
+
 -- compile image copies the relevent part of an image onto 
 -- the back buffer, 1 pixel for 1 pixel, after applying transformations.
 -- The first pixel inside an image array is the top-left pixel on the

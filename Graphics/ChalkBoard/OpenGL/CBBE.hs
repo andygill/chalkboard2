@@ -1027,13 +1027,12 @@ floatToGLclampf = realToFrac
 bindFrameBufferToTexture :: (Integral a) => GLuint -> (a,a) -> IO ()
 bindFrameBufferToTexture tex (x,y) = do
 	    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D tex 0
-	    viewport   $= (Position 0 0, Size (fromIntegral x) (fromIntegral y)) -- (fromIntegral w) (fromIntegral h))
+	    viewport   $= (Position 0 0, Size (fromIntegral x) (fromIntegral y))
 
             matrixMode $= Projection
             loadIdentity
             ortho2D 0 (fromIntegral x) 0 (fromIntegral y) -- Will probably want to change this from using the window w/h
             matrixMode $= Modelview 0
---	    flush
 
 	
 {-
