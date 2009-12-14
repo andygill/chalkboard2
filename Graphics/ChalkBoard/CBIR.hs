@@ -151,6 +151,17 @@ AG: other considerations include
        var
        FilePath
        
+     | OpenStream
+       var
+       String
+     
+     | WriteStream
+       var
+       var
+     
+     | CloseStream
+       var
+       
      | Delete
        var
        
