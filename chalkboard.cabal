@@ -51,7 +51,7 @@ Library
        Graphics.ChalkBoard.Core
        Graphics.ChalkBoard.Expr
        Graphics.ChalkBoard.OpenGL.CBBE
-       Graphics.ChalkBoard.OpenGL.Monad
+       Graphics.ChalkBoard.OpenGL.Env
 -- We choose to build this with O2, because this is about acceleration
   Ghc-Options:  -O2
   Ghc-Options:  -Wall

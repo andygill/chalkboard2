@@ -1,9 +1,9 @@
--- ChalkBoard Monad
+-- ChalkBoard Environment
 -- October 2009
 -- Kevin Matlage, Andy Gill
 
 
-module Graphics.ChalkBoard.OpenGL.Monad where
+module Graphics.ChalkBoard.OpenGL.Env where
 
 import Graphics.ChalkBoard.CBIR( BufferId )
 import Graphics.Rendering.OpenGL.Raw.Core31 as GL ( GLint, GLuint, GLenum )
@@ -12,19 +12,6 @@ import Data.Map ( Map )
 import Control.Concurrent.MVar ( MVar, takeMVar, putMVar )
 
 
-
-
-
-data CBM a = CBM { runCBM :: CBenv -> IO a }
-
-
-instance Monad CBM where
-    return n = CBM $ \_ -> return n
-    m >>= k = CBM $ \env -> do
-        a <- runCBM m env
-        a' <- runCBM (k a) env
-        return a'
-    fail msg = CBM $ \_ -> fail msg
 
 
 data CBenv = CBenv
@@ -51,85 +38,68 @@ data TextureInfo = TextureInfo
 
 
 
+getDebugFrames :: CBenv -> IO (Bool)
+getDebugFrames env = return (debugFrames env)
 
+getDebugAll :: CBenv -> IO (Bool)
+getDebugAll env = return (debugAll env)
 
-getCBMEnv :: CBM CBenv
-getCBMEnv = CBM $ \env -> return env
+getDebugBoards :: CBenv -> IO ([BufferId])
+getDebugBoards env = return (debugBoards env)
 
-
-getDebugFrames :: CBM (Bool)
-getDebugFrames = CBM $ \env -> return (debugFrames env)
-
-getDebugAll :: CBM (Bool)
-getDebugAll = CBM $ \env -> return (debugAll env)
-
-getDebugBoards :: CBM ([BufferId])
-getDebugBoards = CBM $ \env -> return (debugBoards env)
-
-getFBOSupport :: CBM (Bool)
-getFBOSupport = CBM $ \env -> return (fboSupport env)
+getFBOSupport :: CBenv -> IO (Bool)
+getFBOSupport env = return (fboSupport env)
 
 
 
 
-
-
-setCBMState :: CBstate -> CBM ()
-setCBMState state = CBM $ \env -> do
+setCBMState :: CBenv -> CBstate -> IO ()
+setCBMState env state = do
         _ <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) state
 
-getCBMState :: CBM CBstate
-getCBMState = CBM $ \env -> do
+getCBMState :: CBenv -> IO (CBstate)
+getCBMState env = do
         st <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) st
         return (st)
 
 
 
-
-setTexMap :: Map BufferId TextureInfo -> CBM ()
-setTexMap texMap = CBM $ \env -> do
+setTexMap :: CBenv -> Map BufferId TextureInfo -> IO ()
+setTexMap env texMap = do
         st <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) (st {textureInfo = texMap})
 
-getTexMap :: CBM (Map BufferId TextureInfo)
-getTexMap = CBM $ \env -> do
+getTexMap :: CBenv -> IO (Map BufferId TextureInfo)
+getTexMap env = do
         st <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) st
         return (textureInfo st)
 
 
-setCurrentBoard :: BufferId -> CBM ()
-setCurrentBoard board = CBM $ \env -> do
+setCurrentBoard :: CBenv -> BufferId -> IO ()
+setCurrentBoard env board = do
         st <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) (st {currentBoard = board})
 
-getCurrentBoard :: CBM BufferId
-getCurrentBoard = CBM $ \env -> do
+getCurrentBoard :: CBenv -> IO (BufferId)
+getCurrentBoard env = do
         st <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) st
         return (currentBoard st)
 
 
-setFBOPtr :: Ptr GL.GLuint -> CBM ()
-setFBOPtr ptr = CBM $ \env -> do
+setFBOPtr :: CBenv -> Ptr GL.GLuint -> IO ()
+setFBOPtr env ptr = do
         st <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) (st {fboPtr = ptr})
 
-getFBOPtr :: CBM (Ptr GL.GLuint)
-getFBOPtr = CBM $ \env -> do
+getFBOPtr :: CBenv -> IO (Ptr GL.GLuint)
+getFBOPtr env = do
         st <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) st
         return (fboPtr st)
 
-
-
-
-
-liftIO :: IO a -> CBM a
-liftIO m = CBM $ \_ -> do
-        a <- m
-        return a
 
 
