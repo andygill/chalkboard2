@@ -11,6 +11,8 @@ import Graphics.ChalkBoard.IStorable as IS
 import Graphics.ChalkBoard.Core
 
 import Data.Binary
+import qualified Data.ByteString as BS
+import Data.ByteString (ByteString)
 import Control.Monad
 
 {-What do we need?
@@ -26,16 +28,8 @@ import Control.Monad
 -}
 
 
-type BufferId = Int		     -- make abstact later
-
-type CBIR = ([Inst CBBO],CBBO)       -- A list of instructions, and a Buffer to render
-
--- ChalkBoardBufferObject
-newtype CBBO = CBBO Int	-- unique 'label' or tag for each named thing.
-        deriving (Eq,Ord)
-
-instance Show CBBO where
-  show (CBBO n) = "_" ++ show n
+type BufferId 		= Int		     -- make abstact later
+type FragFunctionId 	= Int
 
 
 data Depth = BitDepth		-- 1 bit per pixel
@@ -61,14 +55,14 @@ KM: I would say the "draw this pixel if true" approach might be faster? Then cou
               -- this may have the same issue?
            | BackgroundRGB24Depth RGB
            | BackgroundRGBADepth RGBA
-	   | BackgroundArr ReadOnlyCByteArray -- (IStorableArray (Int,Int,Int))
+	   | BackgroundByteString ByteString 
 
 instance Show Background where
 	show (BackgroundBit b) = "(BackgroundBit $ " ++ show b ++ ")"
 	show (BackgroundG8Bit g) = "(BackgroundG8Bit $ " ++ show g ++ ")"
 	show (BackgroundRGB24Depth c) = "(BackgrounddRGB24Depth $ " ++ show c ++ ")"
 	show (BackgroundRGBADepth c) = "(BackgroundRGBADepth $ " ++ show c ++ ")"
-	show (BackgroundArr {}) = "(BackgroundArr undefined)"
+	show (BackgroundByteString bs) = "(BackgroundByteString ...)"
 	
         
 
@@ -167,10 +161,18 @@ AG: other considerations include
        
 --     | ScaleAlpha var UI	-- LATER
 
+
     | Nested String [Inst var]
 
-
     | Exit
+
+
+	-- GLSL extensions to CBIR
+
+    | AllocFragmentShader var String [String]	-- GLSL object, and names of args
+
+    | ShadeFragmentWith var [(String,var)] [Inst var]	-- Use a specific object, in the context of the given framement function
+
         deriving Show
 
 
@@ -271,14 +273,14 @@ instance Binary Background where
   put (BackgroundG8Bit g) 	 = put (1 :: Word8) >> put g
   put (BackgroundRGB24Depth rgb) = put (2 :: Word8) >> put rgb
   put (BackgroundRGBADepth rgba) = put (3 :: Word8) >> put rgba
-  put (BackgroundArr arr)        = put (4 :: Word8) >> put arr
+  put (BackgroundByteString arr) = put (4 :: Word8) >> put arr
   get = do tag <- getWord8
            case tag of
                   0 -> liftM BackgroundBit get
                   1 -> liftM BackgroundG8Bit get
                   2 -> liftM BackgroundRGB24Depth get
                   3 -> liftM BackgroundRGBADepth get
-                  4 -> liftM BackgroundArr get
+                  4 -> liftM BackgroundByteString get
 
 instance Binary var => Binary (Inst var) where
   put (Allocate v sz d b) 	= put (0 :: Word8) >> put v >> put sz >> put d >> put b

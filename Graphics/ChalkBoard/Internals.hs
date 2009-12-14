@@ -10,6 +10,7 @@ module Graphics.ChalkBoard.Internals
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.O
 import Graphics.ChalkBoard.IStorable as IS
+import Data.ByteString
 
 data Buffer a = Buffer (Int,Int) (Int,Int) (InsideBuffer a)
 
@@ -20,6 +21,8 @@ data InsideBuffer a where
 		-- we need a quick way to get to a pointer to the array
 		-- They are really actually constant.
 	Image		:: ReadOnlyCByteArray -> InsideBuffer a	-- RGB or RGBA
+	ImageRGB	:: ByteString -> InsideBuffer RGB
+	ImageRGBA	:: ByteString -> InsideBuffer RGBA
 
 data Board a where
 	PrimFun 	:: 		((R,R) -> O a)	-> Board a-- TODO: RM!
@@ -52,6 +55,8 @@ instance Show (InsideBuffer a) where
 	show (BoardInBuffer brd) = "BoardInBuffer (" ++ show brd ++ ")"
 	show (FmapBuffer _ brd) = "FmapBuffer (..) (" ++ show brd ++ ")"
 	show (Image arr)        = "Image (..)"
+	show (ImageRGB arr)        = "ImageRGB (..)"
+	show (ImageRGBA arr)        = "ImageRGBA (..)"
 	
 data Trans = Move (R,R)
 	   | Scale (R,R)

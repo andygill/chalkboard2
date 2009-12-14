@@ -12,6 +12,7 @@ module Graphics.ChalkBoard.Buffer
 	, newBufferOf
 	, readBuffer
 	, newBufferRGB
+	, newBufferRGBA
 	, boardToBuffer
 	) where
 
@@ -29,6 +30,8 @@ import Data.Array.Unboxed  as U
 import Data.Array.MArray
 import Data.Array.Storable
 import Data.Word
+import Data.ByteString as BS
+
 import Codec.Image.DevIL
 
 -- | 'fmap' like operator over a 'Board'.
@@ -43,12 +46,15 @@ newBufferOf low hi a = Buffer low hi (BoardInBuffer (PrimConst a))
 readBuffer :: String -> IO (Buffer RGBA)
 readBuffer filename = do
   arr <- readImage filename 
-  iStore <- readOnlyCByteArray arr 
-  let ((0,0,0), (h,w,3)) = U.bounds arr
-  return $ Buffer (0,0) (w,h) (Image iStore)
+  let (low@(0,0,0), high@(h,w,3)) = U.bounds arr
+  let bs = BS.pack [ arr U.! (x,y,z) | x <- [0..h], y <- [0..w], z <- [0..3]]
+  return $ newBufferRGBA bs (w+1,h+1)
 
-newBufferRGB :: ReadOnlyCByteArray -> (Int,Int) -> Buffer RGB
-newBufferRGB iStore (x,y) = Buffer (0,0) (x-1,y-1) $ Image iStore
+newBufferRGB :: ByteString -> (Int,Int) -> Buffer RGB
+newBufferRGB bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageRGB bs
+
+newBufferRGBA :: ByteString -> (Int,Int) -> Buffer RGBA
+newBufferRGBA bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageRGBA bs
 
 bufferBounds :: Buffer a -> ((Int,Int),(Int,Int))
 bufferBounds (Buffer low hi _) = (low,hi)

@@ -23,6 +23,7 @@ import Data.Array.MArray
 import Data.Array.IO
 import Control.Monad
 import Graphics.ChalkBoard.IStorable as IS
+import Data.ByteString(ByteString)
 
 import Unsafe.Coerce
 import Debug.Trace
@@ -321,8 +322,6 @@ compileInsideBufferRGBA
 		 -> (Int,Int)
 		 -> InsideBuffer a
 		 -> IO ([CBIR.Inst BufferId],BufferId)
-compileInsideBufferRGBA low high (Image arr) = do
-	compileImage low high arr RGBADepth
 compileInsideBufferRGBA low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 	newBoard <- newNumber
 	let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)
@@ -340,14 +339,18 @@ compileInsideBufferRGBA low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 			(BackgroundRGBADepth (RGBA 1 1 1 1))
 		   ] ++ rest
 	         ], newBoard)
+compileInsideBufferRGBA low high (ImageRGBA bs) = do
+	compileByteStringImage low high bs RGBADepth
+
+
 
 compileInsideBufferRGB 
 		 :: (Int,Int)
 		 -> (Int,Int)
 		 -> InsideBuffer a
 		 -> IO ([CBIR.Inst BufferId],BufferId)
-compileInsideBufferRGB low high (Image arr) = do
-	compileImage low high arr RGB24Depth
+compileInsideBufferRGB low high (ImageRGB bs) = do
+	compileByteStringImage low high bs RGB24Depth
 compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 	let size =  (1+x1-x0,1+y1-y0)
 	fMapFn <- patternOf $ f
@@ -389,12 +392,41 @@ compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 -- The first pixel inside an image array is the top-left pixel on the
 -- screen (hence the 1-y, below).
 
+compileByteStringImage 
+	:: (Int,Int) -> (Int,Int) -> ByteString
+	-> Depth 
+	-> IO ([CBIR.Inst BufferId],BufferId)
+
+compileByteStringImage low@(x0,y0) high@(x1,y1) bs depth = do
+	newBoard <- newNumber
+	let (maxx,maxy) = (1 + x1 - x0, 1 + y1 - y0)
+	-- scale to fit
+{-
+	let mv = Scale (fromIntegral maxx / fromIntegral tx,
+		       (fromIntegral maxy / fromIntegral ty))
+-}
+	return $ ([ Nested ("Image RGB create " ++ show (low,high)) 
+		   [ Allocate 
+			newBoard 	   -- tag for this ChalkBoardBufferObject
+        		(maxx,maxy)		   -- we know size
+        		depth           -- depth of buffer
+			(BackgroundByteString bs)
+{-
+		   , SplatPolygon newBoard (bcDest bc) 
+		    		[ PointMap (x,1-y) (mapPoint (bcTrans (updateTrans mv bc)) (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+-}
+	  	   ]
+	         ], newBoard)
+
 compileImage 
 	:: (Int,Int) -> (Int,Int) -> ReadOnlyCByteArray 
 	-> Depth 
 	-> IO ([CBIR.Inst BufferId],BufferId)
 
-compileImage low@(x0,y0) high@(x1,y1) arr depth = do
+compileImage low@(x0,y0) high@(x1,y1) arr depth = do error "compileImage"
+{-
 	newBoard <- newNumber
 	let (maxx,maxy) = (1 + x1 - x0, 1 + y1 - y0)
 	-- scale to fit
@@ -416,7 +448,7 @@ compileImage low@(x0,y0) high@(x1,y1) arr depth = do
 -}
 	  	   ]
 	         ], newBoard)
-
+-}
 
 -- Do you have overlapping shapes? Default to True, to be safe if do not know.	
 perhapsOverlapBoardBool :: Board a -> Bool

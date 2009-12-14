@@ -28,6 +28,7 @@ import Graphics.ChalkBoard.O.Internals
 import Graphics.ChalkBoard.Core
 import Graphics.ChalkBoard.Utils
 import Graphics.ChalkBoard.Expr
+import Graphics.ChalkBoard.Buffer
 import Graphics.ChalkBoard.IStorable as IS
 
 import Data.Array.Unboxed  as U
@@ -128,10 +129,9 @@ mask = Crop
 -- | read a file containing a common image format (jpg, gif, etc.), and create a 'Board RGBA', and the X and Y size of the image.
 readBoard :: String -> IO (Int,Int,Board RGBA)
 readBoard filename = do
-  arr <- readImage filename 
-  iStore <- readOnlyCByteArray arr 
-  let ((0,0,0), (h,w,3)) = U.bounds arr
-  return $ (w+1,h+1,BufferOnBoard (Buffer (0,0) (w,h) $ Image iStore) (boardOf (O.transparent O.white)))
+  buff <- readBuffer filename
+  let (x,y) = bufferSize buff
+  return $ (x,y,BufferOnBoard buff (boardOf (O.transparent O.white)))
 
 {-
 readFunnyBoard :: IO (Int,Int,Board RGBA)

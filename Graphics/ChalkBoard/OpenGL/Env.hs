@@ -5,7 +5,7 @@
 
 module Graphics.ChalkBoard.OpenGL.Env where
 
-import Graphics.ChalkBoard.CBIR( BufferId )
+import Graphics.ChalkBoard.CBIR( BufferId, FragFunctionId )
 import Graphics.Rendering.OpenGL.Raw.Core31 as GL ( GLint, GLuint, GLenum )
 import Foreign.Ptr ( Ptr )
 import Data.Map ( Map )
@@ -25,9 +25,9 @@ data CBenv = CBenv
 data CBstate = CBstate
         { currentBoard :: BufferId
         , textureInfo  :: Map BufferId TextureInfo
+	, fracFunctionInfo :: Map FragFunctionId FragFunctionInfo
         , fboPtr       :: Ptr GL.GLuint
         }
-
 
 data TextureInfo = TextureInfo
 	{ texPtr    :: Ptr GL.GLuint
@@ -35,6 +35,10 @@ data TextureInfo = TextureInfo
 	, texFormat :: GL.GLenum
 	}
 
+data FragFunctionInfo = FragFunctionInfo
+	{ ffUniform :: [String]
+	, ffId	    :: ()
+	}
 
 
 

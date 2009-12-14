@@ -35,6 +35,10 @@ import Data.Array.Unboxed as U
 import Data.Array.Storable ( withStorableArray, StorableArray )
 import Data.Array.MArray ( unsafeThaw, newArray_, MArray )
 import System.Exit ( exitWith, ExitCode(..) )
+import Data.ByteString (ByteString)
+import Data.ByteString.Internal (toForeignPtr)
+import Foreign.ForeignPtr (withForeignPtr)
+import Foreign.Ptr (plusPtr)
 
 -- Debugging Packages
 import System.IO ( writeFile, appendFile )
@@ -134,7 +138,7 @@ startRendering board booted insts options = do
 
 -- Function to initialize the state of the CBBE
 initCBMState :: BufferId -> CBstate
-initCBMState board = CBstate board (empty::Map BufferId TextureInfo) nullPtr
+initCBMState board = CBstate board (empty::Map BufferId TextureInfo) (empty) nullPtr
 
 
 -- TODO: add option for verboseness
@@ -421,7 +425,7 @@ drawInsts :: CBenv -> [Inst BufferId] -> IO ()
 drawInsts _   []     = return ()
 drawInsts env (i:is) = do 
     case i of
-            (Allocate b size depth (BackgroundArr arr)) -> allocateArrBuffer env b size depth arr
+            (Allocate b size depth (BackgroundByteString arr)) -> allocateArrBuffer env b size depth arr
             (Allocate b size depth bgColor) -> allocateBuffer env b size depth bgColor
             (AllocateImage b imagePath ) -> allocateImgBuffer env b imagePath
             (SplatTriangle bSource bDest ptMap1 ptMap2 ptMap3) -> splatPolygon env bSource bDest [ptMap1, ptMap2, ptMap3]
@@ -432,6 +436,7 @@ drawInsts env (i:is) = do
             (SaveImage b savePath) -> saveImage env b savePath
             (Delete b) -> deleteBuffer env b
             (Nested _ insts') -> drawInsts env insts'
+            (AllocFragmentShader f txt args) -> allocFragmentShader f txt args
             (CBIR.Exit) -> exitWith ExitSuccess 
     drawInsts env is
 
@@ -555,11 +560,13 @@ allocateRawImgBuffer env board (w,h) depth imagePtr = do
 
 
 
-allocateArrBuffer :: CBenv -> BufferId -> (Int,Int) -> Depth -> ReadOnlyCByteArray -> IO ()
-allocateArrBuffer env board (w,h) depth imageArr = do
-        IS.withReadOnlyCByteArray imageArr $ \p -> do
-	    allocateRawImgBuffer env board (w,h) depth (castPtr p)
-
+allocateArrBuffer :: CBenv -> BufferId -> (Int,Int) -> Depth -> ByteString -> IO ()
+allocateArrBuffer env board (w,h) depth bs = do
+	do let (fptr,off,len) = toForeignPtr bs
+		    -- assert len == w * h * depth
+	   if len == w * h * 4 then withForeignPtr fptr $ \ p -> do
+	           		runCBM (allocateRawImgBuffer board (w,h) depth (plusPtr (castPtr p) off)) env
+	        else error $ "allocateArrBuffer problem " ++ show (len,w*h)
 
 
 
@@ -990,11 +997,9 @@ deleteBuffer env b = do
     setTexMap env (delete b texMap)
 
 
-
-
-
-
-
+allocFragmentShader :: FragFunctionId -> String -> [String] -> CBM ()
+allocFragmentShader f txt args = do
+	return ()
 
 
 
