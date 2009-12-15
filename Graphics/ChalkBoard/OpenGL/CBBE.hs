@@ -258,8 +258,7 @@ initFBO = do
     -- Unbind this texture so it isn't the one currently being used
     glBindTexture gl_TEXTURE_2D 0
     -- Attach the texture to a FBO color attachment point
-    bindFrameBufferToTexture texId (w,h)
-    -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
+    glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
     
     return (fboIdPtr, texIdPtr)
 
@@ -486,14 +485,20 @@ allocateBuffer env board (w,h) d c = do
     
     let texInfo = TextureInfo texIdPtr (fromIntegral w, fromIntegral h) colorType
     
+    -- FBO is NOT unbound, nor is the texture image detached from the FBO
+    -- AJG: set before the call to bindFrameBufferToTexture
+    setTexMap env (insert board texInfo texMap)
+
     when (fboSupp) $ do
         -- Set up the texture so that it's image can be stored when drawing to the framebuffer
         -- colorType for both?
         glTexImage2D gl_TEXTURE_2D 0 (fromIntegral colorType) (fromIntegral w) (fromIntegral h) 0 (fromIntegral colorType) gl_UNSIGNED_BYTE nullPtr 
         -- Attach the texture to a FBO color attachment point
-        bindFrameBufferToTexture texId (w,h)
+        bindFrameBufferToTexture env texId (Right board)
         -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
     
+     -- TODO: there might be a faster way to do this than binding then clearing the color?
+
     --preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
     do  clearColor $= bgcolor -- Change the clearColor to the color of the board being created
         clear [ColorBuffer] -- Clear the screen to the new color to draw that color onto the board
@@ -506,9 +511,7 @@ allocateBuffer env board (w,h) d c = do
     -- Unbind Texture until it is needed (may want to take this out depending on how we order instructions coming in)
     glBindTexture gl_TEXTURE_2D 0
     
-    -- FBO is NOT unbound, nor is the texture image detached from the FBO
-    setTexMap env (insert board texInfo texMap)
-
+ 
 
 
 
@@ -547,14 +550,16 @@ allocateRawImgBuffer env board (w,h) depth imagePtr = do
     -- Unbind this texture so it isn't the one currently being used
     glBindTexture gl_TEXTURE_2D 0
     
-    -- Done to mirror the other allocates (leaving the texture attached to the fbo), but should maybe just get rid of this:
-    when (fboSupp) $ do
-            -- Attach the texture to a FBO color attachment point
-            bindFrameBufferToTexture texId (w,h)
-            -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
-
     -- FBO is NOT unbound, nor is the texture image detached from the FBO
     setTexMap env (insert board texInfo texMap)
+
+    -- Done to mirror the other allocates (leaving the texture attached to the fbo), but should maybe just get rid of this:
+    -- TODO: remove this
+    when (fboSupp) $ do
+            -- Attach the texture to a FBO color attachment point
+            bindFrameBufferToTexture env texId (Right board)
+            -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
+
 
 
 
@@ -613,14 +618,15 @@ allocateImgBuffer env board imagePath = do
     -- Unbind this texture so it isn't the one currently being used
     glBindTexture gl_TEXTURE_2D 0
     
+    -- FBO is NOT unbound, nor is the texture image detached from the FBO
+    setTexMap env (insert board texInfo texMap)
+
     -- Done to mirror the other allocates (leaving the texture attached to the fbo), but should maybe just get rid of this:
     when (fboSupp) $ do
             -- Attach the texture to a FBO color attachment point
-            bindFrameBufferToTexture texId (w,h)
+            bindFrameBufferToTexture env texId (Right board)
             -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
 
-    -- FBO is NOT unbound, nor is the texture image detached from the FBO
-    setTexMap env (insert board texInfo texMap)
 
 
 
@@ -691,7 +697,7 @@ splatPolygon env bS bD ps = do
             
         else do
             -- Attach the texture to a FBO color attachment point
-            bindFrameBufferToTexture texIdD (w,h)
+            bindFrameBufferToTexture env texIdD (Right bD)
             -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
             -- Check to see if the texture is trying to recursively draw onto itself, and if so create a copy of the source texture
             -- to prevent the undefined feedback loop that would result from drawing straight to the same texture that is being read
@@ -833,7 +839,7 @@ splatColor env (T.RGBA r g b a) bD _useBlend ps = do
             -- Attach the texture to a FBO color attachment point
             -- AJG: This is also taking a lot of time, presumbily because it stalls the pipeline.
             -- We can store what we've alread done, and not redo this for each target.
-            bindFrameBufferToTexture texIdD (w,h)
+            bindFrameBufferToTexture env texIdD (Right bD)
             -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
     
     -- Switch the color to the one we are trying to splat
@@ -919,7 +925,7 @@ saveImage env b savePath = do
             -- Create the new texture object so that we can draw directly into it
             glTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGBA) (fromIntegral w) (fromIntegral h) 0 gl_RGBA gl_UNSIGNED_BYTE nullPtr
             -- Attach the new texture to a FBO color attachment point
-            bindFrameBufferToTexture texId2 (w,h)
+            bindFrameBufferToTexture env texId2 (Left (w,h))
             -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId2 0
             
     -- Bind the original (non-RGBA) texture so that it can be copied into the new one
@@ -946,8 +952,8 @@ saveImage env b savePath = do
     if (fboSupp)
         then do
             -- Unattach the new texture from the FBO color attachment point since it will be deleted
-            bindFrameBufferToTexture 0 (1,1)	--- wrong size; does not matter?
-            -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D 0 0
+	    cbBrd <- getCurrentBoard env
+            bindFrameBufferToTexture env 0 (Right cbBrd)
         else do
             -- Copy the texture from the screen to the new texture for saving
             glCopyTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGBA) 0 0 (fromIntegral w) (fromIntegral h) 0   
@@ -1011,15 +1017,23 @@ floatToGLclampf = realToFrac
  
 
 -- Should be in the CB monad, and lookup the size in a table.
-bindFrameBufferToTexture :: (Integral a) => GLuint -> (a,a) -> IO ()
-bindFrameBufferToTexture tex (x,y) = do
-            glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D tex 0
-            viewport   $= (Position 0 0, Size (fromIntegral x) (fromIntegral y))
-
-            matrixMode $= Projection
-            loadIdentity
-            ortho2D 0 (fromIntegral x) 0 (fromIntegral y) -- Will probably want to change this from using the window w/h
-            matrixMode $= Modelview 0
+bindFrameBufferToTexture :: (Integral a) => CBenv -> GLuint -> Either (a,a) BufferId -> IO ()
+bindFrameBufferToTexture env tex arg =
+	case arg of 
+	    (Left (x,y)) -> bindPlease x y
+	    (Right buffId) -> do
+	 	texMap <- getTexMap env
+	 	case lookup buffId texMap of
+	    		Just texInfo -> do let (x,y) = texSize texInfo
+					   bindPlease x y 
+	    		Nothing -> error $ "opps, can not find texture to bind to : " ++ show tex
+  where bindPlease x y = do
+         	glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D tex 0
+         	viewport   $= (Position 0 0, Size (fromIntegral x) (fromIntegral y))
+         	matrixMode $= Projection
+         	loadIdentity
+         	ortho2D 0 (fromIntegral x) 0 (fromIntegral y) -- Will probably want to change this from using the window w/h
+         	matrixMode $= Modelview 0
 
 
 

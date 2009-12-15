@@ -23,7 +23,7 @@ data CBenv = CBenv
         }
 
 data CBstate = CBstate
-        { currentBoard :: BufferId
+        { currentBoard :: BufferId			-- The main drawing onto the screen (viewing) board
         , textureInfo  :: Map BufferId TextureInfo
 	, fracFunctionInfo :: Map FragFunctionId FragFunctionInfo
         , fboPtr       :: Ptr GL.GLuint
