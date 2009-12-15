@@ -565,7 +565,7 @@ allocateArrBuffer env board (w,h) depth bs = do
 	do let (fptr,off,len) = toForeignPtr bs
 		    -- assert len == w * h * depth
 	   if len == w * h * 4 then withForeignPtr fptr $ \ p -> do
-	           		runCBM (allocateRawImgBuffer board (w,h) depth (plusPtr (castPtr p) off)) env
+	           		allocateRawImgBuffer env board (w,h) depth (plusPtr (castPtr p) off)
 	        else error $ "allocateArrBuffer problem " ++ show (len,w*h)
 
 
@@ -997,7 +997,7 @@ deleteBuffer env b = do
     setTexMap env (delete b texMap)
 
 
-allocFragmentShader :: FragFunctionId -> String -> [String] -> CBM ()
+allocFragmentShader :: FragFunctionId -> String -> [String] -> IO ()
 allocFragmentShader f txt args = do
 	return ()
 
