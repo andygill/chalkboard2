@@ -16,6 +16,7 @@ import qualified Data.Foldable as F
 import Data.Reify.Graph
 import Data.Reify
 import Data.List as L
+import Debug.Trace
 	
 ------------------------------------------------------------------------------------------------
 -- Our O (Observable) structure.
@@ -65,10 +66,11 @@ typeOfO (O a e) =
 typeOfO' :: Int -> O a -> OType
 typeOfO' i o@(O {}) = typeOfO o
 
+typeOfFun :: (O a -> O b) -> OType
 typeOfFun = typeOfFun' 0 
 
 
-typeOfFun' i e = FUN_TY ty1 ty2
+typeOfFun' i e = trace (show ty2) $ FUN_TY ty1 ty2
 	   where
 	     e' = (e (O (error "typeoOfO") (E $ Var i)))
   	     ty2 = typeOfO (e (O (error "typeoOfO") (E $ Var i)))

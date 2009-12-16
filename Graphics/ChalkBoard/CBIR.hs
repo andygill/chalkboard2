@@ -119,9 +119,14 @@ AG: other considerations include
      | SplatColor
        RGBA --Should probably make a color type or something?
        var
-       Bool		-- do you do alpha blending (True), or just copy bits (False)
+       Bool		-- do you do alpha blending (True), or just copy bits (False) (TODO: consider removing)
        [UIPoint]
 
+     | SplatWithFunction
+       var			-- FragFunId
+       [var]			-- argument BufferId(s)
+       var			-- target BufferId
+       [PointMap]
 {-
      | SplatWholeBoardColor
 	RGBA
@@ -172,6 +177,8 @@ AG: other considerations include
     | AllocFragmentShader var String [String]	-- GLSL object, and names of args
 
     | ShadeFragmentWith var [(String,var)] [Inst var]	-- Use a specific object, in the context of the given framement function
+
+    | DeleteFragmentShader var
 
         deriving Show
 

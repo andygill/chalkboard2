@@ -293,6 +293,33 @@ compileBoardRGB bc (Fmap f other) = do
 			[  copyBoard newBoard (bcDest bc)
 			, Delete newBoard
 		        ]]
+	   FUN_TY (EXPR_TY RGB_Ty) (EXPR_TY RGB_Ty) -> do
+	      let e = applyVar f
+	      case e of
+		 (Hook msg (E (Var 0))) -> do
+			-- turn rgb*ALPHA* thing, and translate this into a rgb.
+		-- Assume unAlpha (for now)
+			newBoard <- newNumber
+			newFrag <- newNumber
+			let bc' = bc
+			 	{ bcDest = newBoard
+  		         	}
+			rest <- compileBoard compileBoardRGB bc' other
+			return [ Nested ("fmap magic") $ 
+				[ Allocate 
+		        		newBoard 	   -- tag for this ChalkBoardBufferObject
+        				(bcSize bc)		   -- we know size
+        				RGB24Depth           -- depth of buffer
+					(BackgroundRGB24Depth (RGB 1 1 1))	-- ???
+				] ++ rest ++
+				[ AllocFragmentShader newFrag msg []
+				, copyBoard newBoard (bcDest bc)
+				, SplatWithFunction newFrag [newBoard] (bcDest bc) [PointMap (x,y) (x,y) | (x,y) <- [(0,0),(1,0),(1,0.5),(0,0.5)]]
+				, Delete newBoard
+		        	]]
+		 _ -> do print ""
+			 error $ "fmap (...) :: Board RGB problem : " ++ show e
+
 	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Board RGB is not supported"
 compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 	-- assume def is transparent!

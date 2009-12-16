@@ -19,6 +19,7 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, cyan
 	, purple
 	, yellow
+	, hook
 	) where
 	
 import Graphics.ChalkBoard.Types as Ty
@@ -104,6 +105,11 @@ unAlpha (O a e) = O (C.unAlpha a) (E $ Expr.UnAlpha e)
 -- | Observable function to add a transparent alpha channel.
 transparent :: O RGB -> O RGBA
 transparent (O a e) = O (C.alpha a) (E $ Expr.Alpha 0 e)
+
+-- Hook for something interesting, like a pointwise function.
+-- Will always disappear before API release.
+hook :: String -> O RGB -> O RGB
+hook str (O a e) = O (error $ "hook: " ++ show str) (E $ Hook str e)
 
 
 

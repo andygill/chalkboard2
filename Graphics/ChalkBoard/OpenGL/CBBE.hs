@@ -19,6 +19,7 @@ import Graphics.UI.GLUT hiding ( GLuint, GLint, GLfloat )
 import qualified Graphics.UI.GLUT as GLUT 
 import Graphics.Rendering.OpenGL.Raw.Core31 as GL
 import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility (gl_LUMINANCE)
+-- import Graphics.Rendering.OpenGL.GL.Shaders
 import Codec.Image.DevIL
 
 -- Base Packages
@@ -29,6 +30,7 @@ import Foreign.Ptr ( Ptr, nullPtr, castPtr )
 import Foreign.C.Types ( CUChar )
 import Foreign.Marshal.Alloc ( malloc, free )
 import Foreign.Storable ( peek )
+import Foreign.Marshal.Array (withArray )
 import Data.Map ( Map, empty, insert, delete, lookup, notMember )
 import Data.Maybe ( fromMaybe )
 import Data.Array.Unboxed as U  
@@ -39,6 +41,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Internal (toForeignPtr)
 import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Ptr (plusPtr)
+import Data.IORef
 
 -- Debugging Packages
 import System.IO ( writeFile, appendFile )
@@ -133,25 +136,23 @@ startRendering board booted insts options = do
 
 
 
-
-
-
 -- Function to initialize the state of the CBBE
 initCBMState :: BufferId -> CBstate
-initCBMState board = CBstate board (empty::Map BufferId TextureInfo) (empty) nullPtr
-
+initCBMState board = CBstate board board (empty::Map BufferId TextureInfo) nullPtr
 
 -- TODO: add option for verboseness
 --Funciton to initialize the environment of the CBBE monad
-initCBMEnv :: [Options] -> CBstate -> IO ( CBenv )
+initCBMEnv :: [Options] -> CBstate -> IO CBenv
 initCBMEnv options state = do
         let fboSupport' = not $ NoFBO `elem` options
             debugFrames' = DebugFrames `elem` options
             debugAll' = DebugAll `elem` options
             debugBoards' = concat [ids | DebugBoards ids <- options]
         v <- newEmptyMVar
+	ffi <- newIORef empty
+	prog <- newIORef Nothing
         putMVar v state
-        return $ CBenv debugFrames' debugAll' debugBoards' fboSupport' v
+        return $ CBenv debugFrames' debugAll' debugBoards' fboSupport' v ffi prog
 
 
 
@@ -431,11 +432,12 @@ drawInsts env (i:is) = do
             (SplatPolygon bSource bDest ptMaps) -> splatPolygon env bSource bDest ptMaps
             (SplatColor sColor bDest useBlend ptList) -> splatColor env sColor bDest useBlend ptList
             (SplatBuffer bSource bDest) -> splatPolygon env bSource bDest [ PointMap p p | p <- [(0,0),(0,1),(1,1),(1,0)] ]
+	    (SplatWithFunction fnId args bDest ptMaps) -> splatWithFunction env fnId args bDest ptMaps
             (CopyBuffer alpha bSource bDest) -> copyBuffer env alpha bSource bDest
             (SaveImage b savePath) -> saveImage env b savePath
             (Delete b) -> deleteBuffer env b
             (Nested _ insts') -> drawInsts env insts'
-            (AllocFragmentShader f txt args) -> allocFragmentShader f txt args
+            (AllocFragmentShader f txt args) -> allocFragmentShader env f txt args
             (CBIR.Exit) -> exitWith ExitSuccess 
     drawInsts env is
 
@@ -514,6 +516,12 @@ allocateBuffer env board (w,h) d c = do
  
 
 
+-- | How many bytes we pixel?
+depthToBytes :: Depth -> Int
+depthToBytes BitDepth   = 1
+depthToBytes G8BitDepth = 1
+depthToBytes RGB24Depth = 3
+depthToBytes RGBADepth  = 4
 
 
 {- I've cut and pasted this from allocateImgBuffer -}
@@ -553,13 +561,14 @@ allocateRawImgBuffer env board (w,h) depth imagePtr = do
     -- FBO is NOT unbound, nor is the texture image detached from the FBO
     setTexMap env (insert board texInfo texMap)
 
+{-
     -- Done to mirror the other allocates (leaving the texture attached to the fbo), but should maybe just get rid of this:
     -- TODO: remove this
     when (fboSupp) $ do
             -- Attach the texture to a FBO color attachment point
             bindFrameBufferToTexture env texId (Right board)
             -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
-
+-}
 
 
 
@@ -569,7 +578,8 @@ allocateArrBuffer :: CBenv -> BufferId -> (Int,Int) -> Depth -> ByteString -> IO
 allocateArrBuffer env board (w,h) depth bs = do
 	do let (fptr,off,len) = toForeignPtr bs
 		    -- assert len == w * h * depth
-	   if len == w * h * 4 then withForeignPtr fptr $ \ p -> do
+	   if len == w * h * depthToBytes depth
+		then withForeignPtr fptr $ \ p -> do
 	           		allocateRawImgBuffer env board (w,h) depth (plusPtr (castPtr p) off)
 	        else error $ "allocateArrBuffer problem " ++ show (len,w*h)
 
@@ -620,13 +630,13 @@ allocateImgBuffer env board imagePath = do
     
     -- FBO is NOT unbound, nor is the texture image detached from the FBO
     setTexMap env (insert board texInfo texMap)
-
+{-
     -- Done to mirror the other allocates (leaving the texture attached to the fbo), but should maybe just get rid of this:
     when (fboSupp) $ do
             -- Attach the texture to a FBO color attachment point
             bindFrameBufferToTexture env texId (Right board)
             -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
-
+-}
 
 
 
@@ -1003,12 +1013,127 @@ deleteBuffer env b = do
     setTexMap env (delete b texMap)
 
 
-allocFragmentShader :: FragFunctionId -> String -> [String] -> IO ()
-allocFragmentShader f txt args = do
-	return ()
+allocFragmentShader :: CBenv -> FragFunctionId -> String -> [String] -> IO ()
+allocFragmentShader env f txt args = do
+	[shader] <- genObjectNames 1
+	let types_ = (shader :: FragmentShader)
+        shaderSource shader $= [txt]
+        compileShader shader
+        reportErrors
+        ok <- get $ compileStatus shader
+        infoLog <- get $ shaderInfoLog shader
+        putStrLn $ "Compile log: " ++ show infoLog
+	when (not ok) $ do 
+             error "Compilation failed"
+
+        [brickProg] <- genObjectNames 1
+        attachedShaders brickProg $= ([], [shader])
+        linkProgram brickProg
+        reportErrors
+        ok <- get (linkStatus brickProg)
+        infoLog <- get (programInfoLog brickProg)
+        mapM_ putStrLn ["Program info log:", infoLog, ""]
+        when (not ok) $ do
+           deleteObjectNames [brickProg]
+           ioError (userError "linking failed")
+
+        fracFunctionInfo env $~ insert f (FragFunctionInfo args brickProg)
+
+{-
+
+        let setUniform var val = do
+             location <- get (uniformLocation brickProg var)
+             reportErrors
+             uniform location $= val
+       setUniform "BrickColor" (Color3 1.0 0.3 (0.2 :: GLfloat))
+       setUniform "MortarColor" (Color3 0.85 0.86 (0.84 :: GLfloat))
+       setUniform "BrickSize" (Vertex2 0.30 (0.15 :: GLfloat))
+       setUniform "BrickPct" (Vertex2 0.90 (0.85 :: GLfloat))
+       setUniform "LightPosition" (Vertex3 0 0 (4 :: GLfloat))
+-}	
+        return ()
+
+splatWithFunction env fnId args@[bSrc] bDest ptMaps = do
+        texMap <- getTexMap env
+	mp <- get (fracFunctionInfo env)
+	case lookup fnId mp of
+	   Nothing -> error $ "can not find function # " ++ show fnId
+	   Just ffi -> do
+		currentProgram $= Just (ffProg ffi)
+		location <- get (uniformLocation (ffProg ffi) "sampler0")
+             	reportErrors
+		case lookup bSrc texMap  of
+		   Nothing -> error $ " oops: can not find src buffer "
+		   Just srcTexInfo -> do 
+			-- we are assuming that we are using texture location 0 here
+			texIdS <- peek (texPtr srcTexInfo)
+			glBindTexture gl_TEXTURE_2D texIdS
+			u <- get (activeUniforms (ffProg ffi))
+			print u
+--			glUniform1i (head [ n | (n,Sampler2D,"tex0") <- u ]) 0
+          		uniform location $= (Index1 (0 :: GLint))
+	        print ">????"
+		location <- get (uniformLocation (ffProg ffi) "tc_offset")
+             	reportErrors
+		withArray ([Vertex2 (x*(1/480)) (y*(1/360)) | y <- [-1,0,1],x <- [-1,0,1]] :: [Vertex2 GLfloat]) $ \ ptr ->
+			uniformv location 9 ptr
+             	reportErrors
+	        print ">????"
+		splatPolygon2 env bSrc bDest ptMaps
+		currentProgram $= Nothing
+
+splatPolygon2 env bS bD ps = do
+    fboSupp <- getFBOSupport env
+    texMap <- getTexMap env
+
+    -- Check to make sure both the source and destination boards exist
+    when (notMember bD texMap) $ do
+            print "Error: The destination board to splat to doesn't exist."
+            exitWith (ExitFailure 1)
+    when (notMember bS texMap) $ do
+            print "Error: The source board to splat doesn't exist."
+            exitWith (ExitFailure 1)
+    
+    -- Look up all of the values that will be needed
+    let (Just texInfoD) = lookup bD texMap
+        (Just texInfoS) = lookup bS texMap
+        texIdPtrD = texPtr texInfoD
+        texIdPtrS' = texPtr texInfoS
+        (w,h) = texSize texInfoD
+        colorType = texFormat texInfoD
+    
+    texIdD <- peek texIdPtrD
+    texIdS' <- peek texIdPtrS'
+    
+    if False
+        then return ()            
+        else do
+            -- Attach the texture to a FBO color attachment point
+            bindFrameBufferToTexture env texIdD (Right bD)
+            -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
+            -- Check to see if the texture is trying to recursively draw onto itself, and if so create a copy of the source texture
+            -- to prevent the undefined feedback loop that would result from drawing straight to the same texture that is being read
+            (texIdS, texIdPtrS) <- if (texIdD == texIdS')
+                                       then fixTexLoopback texInfoS --Could call after binding texIdS' to avoid an extra binding or two maybe?
+                                       else return (texIdS', texIdPtrS')
+    
+            -- Bind the source texture that will be splatted on    
+--            glBindTexture gl_TEXTURE_2D texIdS
+            --Uses relative positions (percentages) of source and destination boards
+            renderPrimitive Polygon $
+                placeVerticies w h ps  
+
+            -- If a new source texture was created to prevent a feedback loop, then delete it
+--            when (texIdS /= texIdS') $ do
+--                    glDeleteTextures 1 texIdPtrS
+
+            -- Unbind Texture until it is needed (may want to take this out depending on how we order instructions coming in)
+  --          glBindTexture gl_TEXTURE_2D 0
 
 
 
+
+-- These help with the GHC "RULES", to allow fusion.
 floatToGLfloat :: Float -> GL.GLfloat
 floatToGLfloat = realToFrac
 
@@ -1025,6 +1150,7 @@ bindFrameBufferToTexture env tex arg =
 	 	texMap <- getTexMap env
 	 	case lookup buffId texMap of
 	    		Just texInfo -> do let (x,y) = texSize texInfo
+--					   print (buffId,tex)
 					   bindPlease x y 
 	    		Nothing -> error $ "opps, can not find texture to bind to : " ++ show tex
   where bindPlease x y = do
@@ -1037,9 +1163,10 @@ bindFrameBufferToTexture env tex arg =
 
 
 
-
-
-
+bindFunctionToPipeline :: CBenv -> Maybe FragFunctionId -> IO ()
+bindFunctionToPipeline env Nothing = do
+	currentProgram $= Nothing	
+	
 
 
 
