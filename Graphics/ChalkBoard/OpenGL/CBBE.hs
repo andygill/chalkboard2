@@ -139,12 +139,8 @@ startRendering board booted insts options = do
 
 -- Function to initialize the state of the CBBE
 initCBMState :: BufferId -> CBstate
-<<<<<<< HEAD:Graphics/ChalkBoard/OpenGL/CBBE.hs
-initCBMState board = CBstate board board (empty::Map BufferId TextureInfo) nullPtr
-=======
-initCBMState board = CBstate board nullPtr (empty) (empty) (empty)
+initCBMState board = CBstate board board nullPtr (empty) (empty)
 
->>>>>>> Getting closer to video output.:Graphics/ChalkBoard/OpenGL/CBBE.hs
 
 -- TODO: add option for verboseness
 --Funciton to initialize the environment of the CBBE monad

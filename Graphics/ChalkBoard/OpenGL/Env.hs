@@ -50,10 +50,10 @@ NOTE: we use IORef because *all* the OpenGL code must be inside a single thread
 data CBstate = CBstate
         { currentBoard :: BufferId			-- The main drawing onto the screen (viewing) board
         , boundFBOBoard :: BufferId
+        , fboPtr       :: Ptr GL.GLuint
         , textureInfo  :: Map BufferId TextureInfo
 --      , fracFunctionInfo :: Map FragFunctionId FragFunctionInfo
 --      , currentFunction :: Maybe FragFunctionId	-- Currently used fragment
-        , fboPtr       :: Ptr GL.GLuint
         , outStreams :: Map StreamId OutPipe
         }
 
