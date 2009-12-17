@@ -25,7 +25,7 @@ main = do startChalkBoard [] main2
 -- Do we want an mvar for the board as well so that we can switch which board we are displaying?
 main2 :: ChalkBoard -> IO ()
 main2 cb = do
-    let ex = example3
+    let ex = example2
     let   animation speed 100 _ = drawRawChalkBoard cb [Exit]
 	  animation speed count [] =  drawRawChalkBoard cb [Exit]
 	  animation speed count (inst:insts) = do
@@ -61,16 +61,21 @@ example2 = ( [ Allocate 0 (500,500) RGBADepth (BackgroundG8Bit 0.8)
 	     , Allocate 3 (1,1) RGBADepth (BackgroundG8Bit 0.8)
              , AllocateImage 6 "jhwk_RF_250px.gif"
 	     , SplatPolygon 3 0 [(PointMap (0,0) (0,0)), (PointMap (1,0) (1,0)), (PointMap (1,1) (1,1)), (PointMap (0,1) (0,1))]
+	     , OpenStream 7 (ffmpegOutCmd "test.mpeg")
              ] :
  	     [ [ SplatPolygon 2 0 [(PointMap (t0,t0) (0,0)), (PointMap (t1,t0) (1,0)), (PointMap (t1,t1) (1,1)), (PointMap (t0,t1) (0,1))]
 	       , SplatPolygon 6 0 [(PointMap (0,0) (0+x,0.5 - y)), (PointMap (0,1) (0 + x,1 - y)), (PointMap (1,1) (0.5 + x,1 - y)), (PointMap (1,0) (0.5  + x,0.5 - y))]
+	       , WriteStream 0 7
 	       ]
 	     | (x,y,z) <- zip3 (let t = take (50 * 5) [0,0.002..] in cycle (t ++ reverse t))
 			       (let t = take (40 * 5) [0,0.0025..] in cycle (t ++ reverse t))
-			       (let t = take (40 * 20) [0,0.00025..] in cycle (t ++ reverse t))
+			       (take 100 (let t = take (40 * 20) [0,0.00025..] in cycle (t ++ reverse t)))
 	     , let t0 = z
 	     , let t1 = 1 - z
 	     ]
+	     ++ [[ 
+             CloseStream 7
+             ]]
            , 0
            )
            
@@ -101,13 +106,12 @@ example3 = ( [[ AllocateImage 1 "back.jpg"
              ,  SaveImage 0 "TestImage3.bmp"
              ,  SplatBuffer 0 0
              ,  SaveImage 0 "TestImage0.bmp"
-             , OpenStream 7 (ffmpegOutCmd "test.mpeg")
-             , WriteStream 3 7
-             , WriteStream 3 7
-             , WriteStream 3 7
-             , WriteStream 3 7
-             , WriteStream 3 7
-             , CloseStream 7
+             , OpenStream 7 (ffmpegOutCmd "test.avi")
+             ]
+             ++ [
+             WriteStream 3 7 | x <- [0..100] ]
+             ++ [ 
+             CloseStream 7
              ]]
            , 0
            )

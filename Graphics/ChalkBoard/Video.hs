@@ -55,17 +55,16 @@ openVideoOutPipe ffmpegCmd = do
 
 writeNextFrame :: OutPipe -> (Int, Int) -> Ptr Word8 -> IO ()
 writeNextFrame (OutPipe hout) (w,h) buffer = do
-    --(_,_,_,_)<- createProcess (shell "cat TestPPM.ppm"){ std_out = UseHandle hout }
-    --return ()
-    hPrint hout "P6"
-    hPrint hout (show w ++ " " ++ show h)
-    hPrint hout "255"
+    hPutStrLn hout "P6"
+    hPutStrLn hout (show w ++ " " ++ show h)
+    hPutStrLn hout "255"
     hPutBuf hout buffer (w*h*3)
-    
+    hPutStrLn hout ""
+
 
 
 ffmpegOutCmd :: String -> String
-ffmpegOutCmd filename = "ffmpeg -r 1 -f image2pipe -vcodec ppm -i - -vcodec mpeg1video -r 50 " ++ filename
+ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i - -f avi -mbd rd -flags +4mv+aic -trellis 2 -cmp 2 -subcmp 2 -g 300 -pass 1/2 " ++ filename
 
 ffmpegInCmd :: String -> String
 ffmpegInCmd filename = "ffmpeg -i " ++ filename ++ " -f image2pipe -vcodec ppm -"

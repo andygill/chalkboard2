@@ -1052,6 +1052,7 @@ writeStream env b streamID = do
         let (Just texInfo) = lookup b texMap
             texIdPtr = texPtr texInfo
             (w,h) = texSize texInfo
+            colorType = gl_RGB
         
         texId <- peek texIdPtr
 
@@ -1070,7 +1071,7 @@ writeStream env b streamID = do
         
         when (fboSupp) $ do
                 -- Create the new texture object so that we can draw directly into it
-                glTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGBA) (fromIntegral w) (fromIntegral h) 0 gl_RGBA gl_UNSIGNED_BYTE nullPtr
+                glTexImage2D gl_TEXTURE_2D 0 (fromIntegral colorType) (fromIntegral w) (fromIntegral h) 0 colorType gl_UNSIGNED_BYTE nullPtr
                 -- Attach the new texture to a FBO color attachment point
                 bindFrameBufferToTexture env texId2 (Left (w,h))
                 -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId2 0
@@ -1084,13 +1085,13 @@ writeStream env b streamID = do
         color (Color4 1 1 1 (1::GL.GLfloat))
         -- Render the final board we want to save to file
         renderPrimitive Quads $ do
-            texCoord (TexCoord2 0 (0::GL.GLfloat)) -- Bottom Left
+            texCoord (TexCoord2 0 (1::GL.GLfloat)) -- Bottom Left
             vertex (Vertex3 0 0 (0::GL.GLfloat)) -- Used to be GL.GLsizei, does it matter?
-            texCoord (TexCoord2 1 (0::GL.GLfloat)) -- Bottom Right
+            texCoord (TexCoord2 1 (1::GL.GLfloat)) -- Bottom Right
             vertex (Vertex3 (fromIntegral w) 0 (0::GL.GLfloat))
-            texCoord (TexCoord2 1 (1::GL.GLfloat)) -- Top Right
+            texCoord (TexCoord2 1 (0::GL.GLfloat)) -- Top Right
             vertex (Vertex3 (fromIntegral w) (fromIntegral h) (0::GL.GLfloat))
-            texCoord (TexCoord2 0 (1::GL.GLfloat)) -- Top Left
+            texCoord (TexCoord2 0 (0::GL.GLfloat)) -- Top Left
             vertex (Vertex3 0 (fromIntegral h) (0::GL.GLfloat))
         
         -- Bind the new texture again so that it can be saved
@@ -1103,16 +1104,16 @@ writeStream env b streamID = do
                 bindFrameBufferToTexture env 0 (Right cbBrd)
             else do
                 -- Copy the texture from the screen to the new texture for saving
-                glCopyTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGBA) 0 0 (fromIntegral w) (fromIntegral h) 0   
+                glCopyTexImage2D gl_TEXTURE_2D 0 (fromIntegral colorType) 0 0 (fromIntegral w) (fromIntegral h) 0   
 
 
         -- Create a new array with the image data so that we can write it out with devIL
-        let arrBounds = ((0,0,0), (fromIntegral h-1, fromIntegral w-1, 3))
+        let arrBounds = ((0,0,0), (fromIntegral h-1, fromIntegral w-1, 2))
         arr <- (newArray_ arrBounds) :: IO (StorableArray (Int,Int,Int) Word8)
         
         -- Have OpenGL fill the array with the texture data and then write out that data to an image file using DevIL
         withStorableArray arr $ \ptr2 -> do
-            glGetTexImage gl_TEXTURE_2D 0 gl_RGBA gl_UNSIGNED_BYTE (castPtr ptr2)
+            glGetTexImage gl_TEXTURE_2D 0 colorType gl_UNSIGNED_BYTE (castPtr ptr2)
             writeNextFrame outpipe (fromIntegral w, fromIntegral h) (castPtr ptr2)
         
         -- Unbind this texture so it isn't the one being used anymore
