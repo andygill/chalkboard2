@@ -14,6 +14,7 @@ import Control.Concurrent
 import Foreign.Ptr (Ptr)
 import Foreign.C.Types (CUChar)
 import Graphics.ChalkBoard.Core	-- TODO: remove, and fix with O
+import Graphics.ChalkBoard.Video ( ffmpegOutCmd )
 
 
 
@@ -24,7 +25,7 @@ main = do startChalkBoard [] main2
 -- Do we want an mvar for the board as well so that we can switch which board we are displaying?
 main2 :: ChalkBoard -> IO ()
 main2 cb = do
-    let ex = example1
+    let ex = example3
     let   animation speed 100 _ = drawRawChalkBoard cb [Exit]
 	  animation speed count [] =  drawRawChalkBoard cb [Exit]
 	  animation speed count (inst:insts) = do
@@ -100,6 +101,13 @@ example3 = ( [[ AllocateImage 1 "back.jpg"
              ,  SaveImage 0 "TestImage3.bmp"
              ,  SplatBuffer 0 0
              ,  SaveImage 0 "TestImage0.bmp"
+             , OpenStream 7 (ffmpegOutCmd "test.mpeg")
+             , WriteStream 3 7
+             , WriteStream 3 7
+             , WriteStream 3 7
+             , WriteStream 3 7
+             , WriteStream 3 7
+             , CloseStream 7
              ]]
            , 0
            )

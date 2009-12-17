@@ -28,8 +28,9 @@ import Control.Monad
 -}
 
 
-type BufferId 		= Int		     -- make abstact later
-type FragFunctionId 	= Int
+type BufferId       = Int		     -- make abstact later
+type StreamId       = Int
+type FragFunctionId = Int
 
 
 data Depth = BitDepth		-- 1 bit per pixel
@@ -151,15 +152,15 @@ AG: other considerations include
        FilePath
        
      | OpenStream
-       var
+       StreamId
        String
      
      | WriteStream
-       var
-       var
+       BufferId
+       StreamId
      
      | CloseStream
-       var
+       StreamId
        
      | Delete
        var

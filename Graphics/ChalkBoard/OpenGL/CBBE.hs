@@ -14,6 +14,7 @@ import Graphics.ChalkBoard.IStorable as IS
 import Graphics.ChalkBoard.Types as T (RGB(..),RGBA(..))
 import Graphics.ChalkBoard.OpenGL.Env
 import Graphics.ChalkBoard.Options
+import Graphics.ChalkBoard.Video ( openVideoOutPipe, writeNextFrame )
 
 import Graphics.UI.GLUT hiding ( GLuint, GLint, GLfloat )
 import qualified Graphics.UI.GLUT as GLUT 
@@ -138,7 +139,12 @@ startRendering board booted insts options = do
 
 -- Function to initialize the state of the CBBE
 initCBMState :: BufferId -> CBstate
+<<<<<<< HEAD:Graphics/ChalkBoard/OpenGL/CBBE.hs
 initCBMState board = CBstate board board (empty::Map BufferId TextureInfo) nullPtr
+=======
+initCBMState board = CBstate board nullPtr (empty) (empty) (empty)
+
+>>>>>>> Getting closer to video output.:Graphics/ChalkBoard/OpenGL/CBBE.hs
 
 -- TODO: add option for verboseness
 --Funciton to initialize the environment of the CBBE monad
@@ -435,6 +441,9 @@ drawInsts env (i:is) = do
 	    (SplatWithFunction fnId args bDest ptMaps) -> splatWithFunction env fnId args bDest ptMaps
             (CopyBuffer alpha bSource bDest) -> copyBuffer env alpha bSource bDest
             (SaveImage b savePath) -> saveImage env b savePath
+            (OpenStream streamID cmd) -> openStream env streamID cmd
+            (WriteStream bufferID streamID) -> writeStream env bufferID streamID
+            (CloseStream streamID) -> closeStream env streamID
             (Delete b) -> deleteBuffer env b
             (Nested _ insts') -> drawInsts env insts'
             (AllocFragmentShader f txt args) -> allocFragmentShader env f txt args
@@ -500,6 +509,8 @@ allocateBuffer env board (w,h) d c = do
         -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId 0
     
      -- TODO: there might be a faster way to do this than binding then clearing the color?
+        -- KM: I believe these are both pretty light-weight operations and should be faster than drawing a
+        --     single color polygon. I may be wrong though.
 
     --preservingAttrib [ColorBufferAttributes] $ do --Temporarily change the clear color to make the buffer
     do  clearColor $= bgcolor -- Change the clearColor to the color of the board being created
@@ -1013,6 +1024,115 @@ deleteBuffer env b = do
     setTexMap env (delete b texMap)
 
 
+
+
+
+
+
+
+openStream :: CBenv -> StreamId -> String -> IO ()
+openStream env streamID cmd = do
+        outpipe <- openVideoOutPipe cmd
+        addOutStream env streamID outpipe
+
+
+closeStream :: CBenv -> StreamId -> IO ()
+closeStream env streamID = do
+        rmOutStream env streamID
+
+
+writeStream :: CBenv -> BufferId -> StreamId -> IO ()
+writeStream env b streamID = do
+        outpipe <- getOutStream env streamID
+        fboSupp <- getFBOSupport env
+        texMap <- getTexMap env
+        
+        -- Check to make sure the board being saved exists
+        when (notMember b texMap) $ do
+                print "Error: The board to be saved doesn't exist."
+                exitWith (ExitFailure 1)
+        
+        -- Look up the board we need to save
+        let (Just texInfo) = lookup b texMap
+            texIdPtr = texPtr texInfo
+            (w,h) = texSize texInfo
+        
+        texId <- peek texIdPtr
+
+        -- Create and bind a new texture object to use as the RGBA texture for outputting
+        texIdPtr2 <- malloc :: IO(Ptr GLuint)
+        glGenTextures 1 texIdPtr2
+        texId2 <- peek texIdPtr2
+        glBindTexture gl_TEXTURE_2D texId2
+        
+        --Set up the texture object and its parameters
+        glTexParameteri gl_TEXTURE_2D gl_TEXTURE_MAG_FILTER $ fromIntegral gl_LINEAR
+        glTexParameteri gl_TEXTURE_2D gl_TEXTURE_MIN_FILTER $ fromIntegral gl_LINEAR
+        --glTexParameteri gl_TEXTURE_2D gl_TEXTURE_MIN_FILTER $ fromIntegral gl_LINEAR_MIPMAP_LINEAR
+        glTexParameteri gl_TEXTURE_2D gl_TEXTURE_WRAP_S $ fromIntegral gl_CLAMP_TO_EDGE
+        glTexParameteri gl_TEXTURE_2D gl_TEXTURE_WRAP_T $ fromIntegral gl_CLAMP_TO_EDGE
+        
+        when (fboSupp) $ do
+                -- Create the new texture object so that we can draw directly into it
+                glTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGBA) (fromIntegral w) (fromIntegral h) 0 gl_RGBA gl_UNSIGNED_BYTE nullPtr
+                -- Attach the new texture to a FBO color attachment point
+                bindFrameBufferToTexture env texId2 (Left (w,h))
+                -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texId2 0
+                
+        -- Bind the original (non-RGBA) texture so that it can be copied into the new one
+        glBindTexture gl_TEXTURE_2D texId
+        
+        clear [ColorBuffer, DepthBuffer] -- clear the screen and the depth buffer
+        loadIdentity -- reset view
+        
+        color (Color4 1 1 1 (1::GL.GLfloat))
+        -- Render the final board we want to save to file
+        renderPrimitive Quads $ do
+            texCoord (TexCoord2 0 (0::GL.GLfloat)) -- Bottom Left
+            vertex (Vertex3 0 0 (0::GL.GLfloat)) -- Used to be GL.GLsizei, does it matter?
+            texCoord (TexCoord2 1 (0::GL.GLfloat)) -- Bottom Right
+            vertex (Vertex3 (fromIntegral w) 0 (0::GL.GLfloat))
+            texCoord (TexCoord2 1 (1::GL.GLfloat)) -- Top Right
+            vertex (Vertex3 (fromIntegral w) (fromIntegral h) (0::GL.GLfloat))
+            texCoord (TexCoord2 0 (1::GL.GLfloat)) -- Top Left
+            vertex (Vertex3 0 (fromIntegral h) (0::GL.GLfloat))
+        
+        -- Bind the new texture again so that it can be saved
+        glBindTexture gl_TEXTURE_2D texId2
+        
+        if (fboSupp)
+            then do
+                -- Unattach the new texture from the FBO color attachment point since it will be deleted
+                cbBrd <- getCurrentBoard env
+                bindFrameBufferToTexture env 0 (Right cbBrd)
+            else do
+                -- Copy the texture from the screen to the new texture for saving
+                glCopyTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGBA) 0 0 (fromIntegral w) (fromIntegral h) 0   
+
+
+        -- Create a new array with the image data so that we can write it out with devIL
+        let arrBounds = ((0,0,0), (fromIntegral h-1, fromIntegral w-1, 3))
+        arr <- (newArray_ arrBounds) :: IO (StorableArray (Int,Int,Int) Word8)
+        
+        -- Have OpenGL fill the array with the texture data and then write out that data to an image file using DevIL
+        withStorableArray arr $ \ptr2 -> do
+            glGetTexImage gl_TEXTURE_2D 0 gl_RGBA gl_UNSIGNED_BYTE (castPtr ptr2)
+            writeNextFrame outpipe (fromIntegral w, fromIntegral h) (castPtr ptr2)
+        
+        -- Unbind this texture so it isn't the one being used anymore
+        glBindTexture gl_TEXTURE_2D 0
+        
+        -- Delete the texture since it won't be needed anymore
+        glDeleteTextures 1 texIdPtr2
+        free texIdPtr2        
+
+
+
+
+
+
+
+
 allocFragmentShader :: CBenv -> FragFunctionId -> String -> [String] -> IO ()
 allocFragmentShader env f txt args = do
 	[shader] <- genObjectNames 1
@@ -1038,7 +1158,6 @@ allocFragmentShader env f txt args = do
            ioError (userError "linking failed")
 
         fracFunctionInfo env $~ insert f (FragFunctionInfo args brickProg)
-
 {-
 
         let setUniform var val = do
@@ -1052,6 +1171,8 @@ allocFragmentShader env f txt args = do
        setUniform "LightPosition" (Vertex3 0 0 (4 :: GLfloat))
 -}	
         return ()
+
+
 
 splatWithFunction env fnId args@[bSrc] bDest ptMaps = do
         texMap <- getTexMap env

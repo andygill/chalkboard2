@@ -5,13 +5,17 @@
 
 module Graphics.ChalkBoard.OpenGL.Env where
 
-import Graphics.ChalkBoard.CBIR( BufferId, FragFunctionId )
+import Prelude hiding ( lookup )
+import Graphics.ChalkBoard.CBIR( BufferId, StreamId, FragFunctionId )
+import Graphics.ChalkBoard.Video ( OutPipe )
 import Graphics.Rendering.OpenGL.Raw.Core31 as GL ( GLint, GLuint, GLenum )
 import Graphics.Rendering.OpenGL
 import Foreign.Ptr ( Ptr )
-import Data.Map ( Map )
+import Data.Map ( Map, insert, delete, lookup, notMember )
 import Control.Concurrent.MVar ( MVar, takeMVar, putMVar )
 import Data.IORef
+import System.Exit ( exitWith, ExitCode(..) )
+import Control.Monad ( when )
 
 
 
@@ -22,9 +26,9 @@ data CBenv = CBenv
         , debugBoards :: [BufferId]
         , fboSupport :: Bool
         , envForStateVar :: MVar CBstate
-	  -- the variables
-	, fracFunctionInfo :: IORef (Map FragFunctionId FragFunctionInfo)
-	, currentFunction  :: IORef (Maybe FragFunctionId)
+        -- the variables
+        , fracFunctionInfo :: IORef (Map FragFunctionId FragFunctionInfo)
+        , currentFunction  :: IORef (Maybe FragFunctionId)
         }
 
 {- Examples of using the fracFunctionInfo variable
@@ -45,11 +49,12 @@ NOTE: we use IORef because *all* the OpenGL code must be inside a single thread
 
 data CBstate = CBstate
         { currentBoard :: BufferId			-- The main drawing onto the screen (viewing) board
-	, boundFBOBoard :: BufferId
+        , boundFBOBoard :: BufferId
         , textureInfo  :: Map BufferId TextureInfo
---	, fracFunctionInfo :: Map FragFunctionId FragFunctionInfo
---	, currentFunction :: Maybe FragFunctionId	-- Currently used fragment
+--      , fracFunctionInfo :: Map FragFunctionId FragFunctionInfo
+--      , currentFunction :: Maybe FragFunctionId	-- Currently used fragment
         , fboPtr       :: Ptr GL.GLuint
+        , outStreams :: Map StreamId OutPipe
         }
 
 data TextureInfo = TextureInfo
@@ -59,9 +64,9 @@ data TextureInfo = TextureInfo
 	}
 
 data FragFunctionInfo = FragFunctionInfo
-	{ ffUniform :: [String]		-- names of arguments
-	, ffProg    :: Program		-- the program
-	}
+        { ffUniform :: [String]		-- names of arguments
+        , ffProg    :: Program		-- the program
+        }
 
 
 
@@ -150,6 +155,32 @@ getFBOPtr env = do
         st <- takeMVar (envForStateVar env)
         putMVar (envForStateVar env) st
         return (fboPtr st)
+
+
+addOutStream :: CBenv -> StreamId -> OutPipe -> IO ()
+addOutStream env sid opipe = do
+        st <- takeMVar (envForStateVar env)
+        let ostreams = outStreams st
+            newOutStreams = (insert sid opipe ostreams)
+        putMVar (envForStateVar env) (st {outStreams = newOutStreams})
+
+rmOutStream :: CBenv -> StreamId -> IO ()
+rmOutStream env sid = do
+        st <- takeMVar (envForStateVar env)
+        let ostreams = outStreams st
+            newOutStreams = (delete sid ostreams)
+        putMVar (envForStateVar env) (st {outStreams = newOutStreams})
+
+getOutStream :: CBenv -> StreamId -> IO (OutPipe)
+getOutStream env sid = do
+        st <- takeMVar (envForStateVar env)
+        putMVar (envForStateVar env) st
+        let ostreams = outStreams st
+        when (notMember sid ostreams) $ do
+            print "Error: The specified output stream does not exist."
+            exitWith (ExitFailure 1)
+        let (Just outstream) = lookup sid ostreams
+        return outstream
 
 
 

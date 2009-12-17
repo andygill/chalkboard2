@@ -9,6 +9,8 @@ import qualified Data.ByteString.Internal as BSI
 
 import System.Process
 import System.IO
+import Foreign.Ptr ( Ptr )
+import Data.Word ( Word8 )
 
 
 newtype InPipe = InPipe Handle
@@ -44,23 +46,26 @@ nextPPMFrame (InPipe h) = do
             return ()
 
 
+
 openVideoOutPipe :: String -> IO (OutPipe)
 openVideoOutPipe ffmpegCmd = do
     (Just hin, _, _, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, close_fds = True }
     return (OutPipe hin)
 
 
-{-
-writeNextFrame :: OutPipe -> Buffer RGB -> IO (Bool)
-writeNextFrame (OutPipe h) = do
-    hPrint "P6"
-    hPrint ""
-
--}
+writeNextFrame :: OutPipe -> (Int, Int) -> Ptr Word8 -> IO ()
+writeNextFrame (OutPipe hout) (w,h) buffer = do
+    --(_,_,_,_)<- createProcess (shell "cat TestPPM.ppm"){ std_out = UseHandle hout }
+    --return ()
+    hPrint hout "P6"
+    hPrint hout (show w ++ " " ++ show h)
+    hPrint hout "255"
+    hPutBuf hout buffer (w*h*3)
+    
 
 
 ffmpegOutCmd :: String -> String
-ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i pipe: -f mpeg  " ++ filename
+ffmpegOutCmd filename = "ffmpeg -r 1 -f image2pipe -vcodec ppm -i - -vcodec mpeg1video -r 50 " ++ filename
 
 ffmpegInCmd :: String -> String
 ffmpegInCmd filename = "ffmpeg -i " ++ filename ++ " -f image2pipe -vcodec ppm -"
