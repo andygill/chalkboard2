@@ -43,6 +43,7 @@ import Prelude hiding (lookup)
 
 instance OFunctor Board where
   (<$>) f brd = Fmap f brd -- PrimConst (lamO $ f) <*> brd
+  ozip b1 b2 = Zip b1 b2
 
 -- | 'pure' like operator for 'Board'.	
 boardOf :: O a -> Board a
@@ -120,7 +121,6 @@ instance Over a => Over (Board a) where
 	-- 'over' overlays two 'Board's.
 	over b1 b2 = Over over b1 b2
 
-
 -- I would rather mask to be a Board Bool, and we could use <$>,
 -- to choose, but the Board transformer will do for now.
 mask :: ((R,R),(R,R)) -> Board a -> Board (Maybe a)
@@ -132,24 +132,6 @@ readBoard filename = do
   buff <- readBuffer filename
   let (x,y) = bufferSize buff
   return $ (x,y,BufferOnBoard buff (boardOf (O.transparent O.white)))
-
-{-
-readFunnyBoard :: IO (Int,Int,Board RGBA)
-readFunnyBoard = do
-  let arr :: UArray (Int,Int,Int) Word8
-      arr = array ((0,0,0),(128,255,3)) 
-	$ concat [ [ ((x,y,0), if x < 16 then (if even (y `div` 16) then 255 else fromIntegral x)  else fromIntegral x)
-		   , ((x,y,1), fromIntegral x)
-		   , ((x,y,2), 128)
-		   , ((x,y,3), 255)
-		   ] 
-		 | y <- [0..255]
-		 , x <- [0..128]
-		 ]
-  iStore <- readOnlyCByteArray arr 
-  let ((0,0,0), (h,w,3)) = U.bounds arr
-  return $ (w+1,h+1,BufferInBoard (O.transparent O.white) (Buffer (0,0) (w,h) $ Image iStore))
--}
   
 readNormalizedBoard :: String -> IO (Int,Int,Board RGBA)
 readNormalizedBoard filename = do

@@ -31,12 +31,13 @@ data Expr s
 	| ScaleAlpha UI s			-- RGBA -> RGBA
 	| UnAlpha s
 	| Hook String s			-- magic hook, to allow tunneling
+	| Hook2 String s s
 	deriving Show
 
 newtype E = E (Expr E)
 	deriving Show
 
-data ExprType = BOOL_Ty | RGB_Ty | RGBA_Ty	-- we seems to have this all over
+data ExprType = BOOL_Ty | RGB_Ty | RGBA_Ty | Pair_Ty ExprType ExprType	-- we seems to have this all over
 	deriving (Show, Eq)
 
 exprTypeE :: E -> Maybe ExprType
@@ -65,7 +66,7 @@ exprUnify (O_RGBA {}) RGBA_Ty = []
 exprUnify (Alpha _ e) RGBA_Ty = exprUnifyE e RGB_Ty
 exprUnify (UnAlpha e) RGB_Ty = exprUnifyE e RGBA_Ty
 exprUnify (ScaleAlpha _ e) RGBA_Ty = exprUnifyE e RGBA_Ty
-exprUnify (Hook _ e)  RGB_Ty = exprUnifyE e RGB_Ty
+exprUnify (Hook _ e) RGB_Ty = exprUnifyE e (Pair_Ty RGB_Ty RGB_Ty)
 exprUnify (Var i) ty = [(i,ty)]
 exprUnify other ty = error $ "exprUnify" ++ show (other,ty)
 
@@ -113,6 +114,7 @@ instance T.Traversable Expr where
 	traverse f (Var i)		= pure $ Var i
 	traverse f (O_RGBA v)		= pure $ O_RGBA v
 	traverse f (Hook s v)           = pure (Hook s) <*> f v
+	traverse f (Hook2 s v1 v2)      = pure (Hook2 s) <*> f v1 <*> f v2
 	-- TODO
 	
 instance F.Foldable Expr where

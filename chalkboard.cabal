@@ -1,5 +1,5 @@
 Name:                chalkboard
-Version:             1.9.0.17
+Version:             1.9.0.18
 Synopsis:            Combinators for building and processing 2D images. 
 Description:	     ChalkBoard is a Haskell hosted Domain Specific Language (DSL) for image generation and processing.
 		The basic structure is a Chalk Board, a two-dimensional canvas of values, typically colors. 
@@ -41,7 +41,8 @@ Library
        Graphics.ChalkBoard.Main,
        Graphics.ChalkBoard.O,
        Graphics.ChalkBoard.Utils
-       Graphics.ChalkBoard.Options
+       Graphics.ChalkBoard.Options,
+       Graphics.ChalkBoard.Shader
   Other-modules:
        Graphics.ChalkBoard.Internals,
        Graphics.ChalkBoard.O.Internals,
@@ -60,7 +61,7 @@ Library
 -- The server is by default always built.
 -- The suffix number is the same as a version number, above.
 flag server { Default: True }
-Executable chalkboard-server-1_9_0_17
+Executable chalkboard-server-1_9_0_18
   if flag(server)
     buildable:            True
   else

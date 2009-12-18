@@ -1169,27 +1169,33 @@ allocFragmentShader env f txt args = do
 -}	
         return ()
 
-
-
-splatWithFunction env fnId args@[bSrc] bDest ptMaps = do
+splatWithFunction env fnId args@[bSrc1,bSrc2] bDest ptMaps = do
         texMap <- getTexMap env
 	mp <- get (fracFunctionInfo env)
 	case lookup fnId mp of
 	   Nothing -> error $ "can not find function # " ++ show fnId
 	   Just ffi -> do
 		currentProgram $= Just (ffProg ffi)
+		srcTexInfo1 <- case lookup bSrc1 texMap  of
+		   		Nothing -> error $ " oops: can not find src buffer "
+		   		Just i -> return i 
+		srcTexInfo2 <- case lookup bSrc2 texMap  of
+		   		Nothing -> error $ " oops: can not find src buffer "
+		   		Just i -> return i 
+
+		-- we are assuming that we are using texture location 0 here
+		texIdS1 <- peek (texPtr srcTexInfo1)
+		texIdS2 <- peek (texPtr srcTexInfo2)
+		glActiveTexture (gl_TEXTURE0 + 0)
+		glBindTexture gl_TEXTURE_2D texIdS1
+		glActiveTexture (gl_TEXTURE0 + 1)
+		glBindTexture gl_TEXTURE_2D texIdS2
 		location <- get (uniformLocation (ffProg ffi) "sampler0")
              	reportErrors
-		case lookup bSrc texMap  of
-		   Nothing -> error $ " oops: can not find src buffer "
-		   Just srcTexInfo -> do 
-			-- we are assuming that we are using texture location 0 here
-			texIdS <- peek (texPtr srcTexInfo)
-			glBindTexture gl_TEXTURE_2D texIdS
-			u <- get (activeUniforms (ffProg ffi))
-			print u
---			glUniform1i (head [ n | (n,Sampler2D,"tex0") <- u ]) 0
-          		uniform location $= (Index1 (0 :: GLint))
+          	uniform location $= (Index1 (0 :: GLint))
+		location <- get (uniformLocation (ffProg ffi) "sampler1")
+             	reportErrors
+          	uniform location $= (Index1 (1 :: GLint))
 	        print ">????"
 		location <- get (uniformLocation (ffProg ffi) "tc_offset")
              	reportErrors
@@ -1197,8 +1203,10 @@ splatWithFunction env fnId args@[bSrc] bDest ptMaps = do
 			uniformv location 9 ptr
              	reportErrors
 	        print ">????"
-		splatPolygon2 env bSrc bDest ptMaps
+		splatPolygon2 env bSrc1 bDest ptMaps
 		currentProgram $= Nothing
+		glActiveTexture (gl_TEXTURE0 + 0)
+		glBindTexture gl_TEXTURE_2D 0
 
 splatPolygon2 env bS bD ps = do
     fboSupp <- getFBOSupport env

@@ -20,6 +20,7 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, purple
 	, yellow
 	, hook
+	, hook2
 	) where
 	
 import Graphics.ChalkBoard.Types as Ty
@@ -43,6 +44,7 @@ infixl 4 <$>
 
 class OFunctor f where
 	(<$>) :: (O a -> O b) -> f a -> f b
+	ozip  :: f a -> f b -> f (a,b)
 
 ------------------------------------------------------------------------------------------------
 -- Projection
@@ -111,7 +113,10 @@ transparent (O a e) = O (C.alpha a) (E $ Expr.Alpha 0 e)
 hook :: String -> O RGB -> O RGB
 hook str (O a e) = O (error $ "hook: " ++ show str) (E $ Hook str e)
 
-
+-- Hook for something interesting, like a pointwise function.
+-- Will always disappear before API release.
+hook2 :: String -> O (RGB,RGB) -> O RGB
+hook2 str (O _ e) = O (error $ "hook: " ++ show str) (E $ Hook str e)
 
 red    :: O RGB
 red    = o $ RGB 1.0 0.0 0.0

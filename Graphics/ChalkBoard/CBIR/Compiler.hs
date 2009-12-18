@@ -249,8 +249,8 @@ compileBoardRGB bc (BI.PrimConst o) =
 	   _ -> error "pure a :: Board RGB, can not compute a??"
 compileBoardRGB bc (Fmap f other) = do
 	fMapFn <- patternOf $ f
-	case typeOfFun f of
-	   FUN_TY (EXPR_TY BOOL_Ty) (EXPR_TY RGB_Ty) -> do
+	case argTypeForFunX f RGB_Ty of
+	   Just BOOL_Ty -> do
 		backBoard <- newNumber
 		frontBoard <- newNumber
 --		print $ runToFind (O_Bool False) fMapFn
@@ -275,7 +275,7 @@ compileBoardRGB bc (Fmap f other) = do
 			, copyBoard backBoard (bcDest bc)
 			] ++ rest ++ 
 			[ Delete backBoard, Delete frontBoard]]
-	   FUN_TY (EXPR_TY RGBA_Ty) (EXPR_TY RGB_Ty) -> do
+	   Just RGBA_Ty -> do
 		-- turn rgb*ALPHA* thing, and translate this into a rgb.
 		-- Assume unAlpha (for now)
 		newBoard <- newNumber
@@ -293,34 +293,42 @@ compileBoardRGB bc (Fmap f other) = do
 			[  copyBoard newBoard (bcDest bc)
 			, Delete newBoard
 		        ]]
-	   FUN_TY (EXPR_TY RGB_Ty) (EXPR_TY RGB_Ty) -> do
+	   Just (Pair_Ty RGB_Ty RGB_Ty) -> do
 	      let e = applyVar f
-	      case e of
-		 (Hook msg (E (Var 0))) -> do
+	      case (e,other) of
+		 (Hook msg (E (Var 0)),Zip b1 b2) -> do
 			-- turn rgb*ALPHA* thing, and translate this into a rgb.
 		-- Assume unAlpha (for now)
-			newBoard <- newNumber
+			newBoard1 <- newNumber
+			newBoard2 <- newNumber
 			newFrag <- newNumber
-			let bc' = bc
-			 	{ bcDest = newBoard
-  		         	}
-			rest <- compileBoard compileBoardRGB bc' other
+			let bc' = bc { bcDest = newBoard1 }
+			rest1 <- compileBoard compileBoardRGB bc' b1
+			let bc' = bc { bcDest = newBoard2 }
+			rest2 <- compileBoard compileBoardRGB bc' b2
+			let (x0,x1,y0,y1) = (0.05,0.7,0.35,0.92)
 			return [ Nested ("fmap magic") $ 
 				[ Allocate 
-		        		newBoard 	   -- tag for this ChalkBoardBufferObject
+		        		newBoard1	   -- tag for this ChalkBoardBufferObject
         				(bcSize bc)		   -- we know size
         				RGB24Depth           -- depth of buffer
 					(BackgroundRGB24Depth (RGB 1 1 1))	-- ???
-				] ++ rest ++
+				] ++
+				[ Allocate 
+		        		newBoard2	   -- tag for this ChalkBoardBufferObject
+        				(bcSize bc)		   -- we know size
+        				RGB24Depth           -- depth of buffer
+					(BackgroundRGB24Depth (RGB 1 1 1))	-- ???
+				] ++ rest1 ++ rest2 ++
 				[ AllocFragmentShader newFrag msg []
-				, copyBoard newBoard (bcDest bc)
-				, SplatWithFunction newFrag [newBoard] (bcDest bc) [PointMap (x,y) (x,y) | (x,y) <- [(0,0),(1,0),(1,0.5),(0,0.5)]]
-				, Delete newBoard
+				, copyBoard newBoard1 (bcDest bc)
+				, SplatWithFunction newFrag [newBoard1,newBoard2] (bcDest bc) [PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+				, Delete newBoard1, Delete newBoard2
 		        	]]
 		 _ -> do print ""
 			 error $ "fmap (...) :: Board RGB problem : " ++ show e
 
-	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Board RGB is not supported"
+	   a -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show RGB_Ty ++ ") brd :: Board RGB is not supported"
 compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 	-- assume def is transparent!
 	-- assume the size of the buffer is okay. How do we do this?
@@ -341,7 +349,7 @@ compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 		    		]
 			]
 	       ]
-compileBoardRGB _ brd = error $ show ("RGB",brd)
+compileBoardRGB _ brd = error $ show ("compileBoardRGB",brd)
 
 
 compileInsideBufferRGBA 
@@ -381,8 +389,8 @@ compileInsideBufferRGB low high (ImageRGB bs) = do
 compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 	let size =  (1+x1-x0,1+y1-y0)
 	fMapFn <- patternOf $ f
-	case typeOfFun f of
-	   FUN_TY (EXPR_TY RGBA_Ty) (EXPR_TY RGB_Ty) -> do
+	case argTypeForFunX f RGB_Ty of
+	   Just RGBA_Ty -> do
 		newBoard <- newNumber
 		(rest,buffId) <- compileInsideBufferRGBA low high buff
 		return ([ Nested ("RGBA -> RGB") $ 
@@ -395,7 +403,7 @@ compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 			, copyBoard buffId newBoard
 			, Delete buffId
 		        ]],newBoard)
-	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Buffer RGB is not supported"
+	   ans -> error $ "fmap (... :: " ++ show ans ++ " -> " ++ show RGB_Ty ++ ") brd :: Buffer RGB is not supported"
 compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 	newBoard <- newNumber
 	let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)
@@ -476,6 +484,13 @@ compileImage low@(x0,y0) high@(x1,y1) arr depth = do error "compileImage"
 	  	   ]
 	         ], newBoard)
 -}
+
+
+
+--compileBoardPair bc (Zip f b1 b) = do
+--	case typeOfO f of
+--	   foo -> error $ show ("Zip",foo)
+
 
 -- Do you have overlapping shapes? Default to True, to be safe if do not know.	
 perhapsOverlapBoardBool :: Board a -> Bool

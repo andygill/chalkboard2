@@ -32,9 +32,10 @@ colors = zip
 
 cbMain cb = do
 	-- hack to let us control what is tested
-	let test :: String -> [IO ()] -> IO ()
-	    test "test8" = sequence_
-	    test _       = \ xs -> return ()
+--	let test :: String -> [IO ()] -> IO ()
+--	    test "test6" = sequence_
+--	    test "circle" = sequence_
+--	    test _       = \ xs -> return ()
 
 	
 	let test "test8" = \ _ -> return ()
@@ -52,7 +53,7 @@ cbMain cb = do
 	test "test1" 
 	          [ do drawChalkBoard cb (boardOf col)
 		       writeChalkBoard cb ("test1-" ++ nm ++ ".png")
-		  | (col,nm) <- colors
+		  | (col,nm) <- colors -- (cycle colors)
 		  ]
 
 	-- next, test basic shapes with rotations, scalings, etc.
@@ -62,9 +63,10 @@ cbMain cb = do
 		               writeChalkBoard cb ("test2-scale-" ++ shape_name ++ "-" ++ show n ++ ".png")
 	                  | n <- [1,0.5]
 		          ]
-	   	test "??" [ do drawChalkBoard cb ((rotate r (scale 0.5 shape))
+	   	test "circle"
+	 		  [ do drawChalkBoard cb ((rotate r (scale 0.5 shape))
 					 )
-		               writeChalkBoard cb ("test2-rotate-" ++ shape_name ++ "-" ++ nm ++ ".png")
+		               writeChalkBoard cb ("test2-rotate-" ++ shape_name ++ "-" ++ nm ++ ".png") 
 	             	  | (r,nm) <- zip
 				[0,0.1,-0.1,pi/10,pi,2*pi]
 				["0","0.1","neg0.1","pi_div10","pi","2pi"]
@@ -94,8 +96,9 @@ cbMain cb = do
 					 ]
 			  ]
 			
-            | (shape,shape_name) <- [  (choose (red) (white) <$> square,"square")
-				    , (choose (blue) (white) <$> circle,"circle")
+            | (shape,shape_name) <-  
+				    [  (choose (red) (white) <$> square,"square")
+				    , (choose (blue) (white) <$> circle,"circle") 
 				    ,  (img,"img")
 				    , (choose (green) (white) <$> triangle (-0.5,-0.5) (0.5,-0.5) (0,0.5),"triangle")
 				    ]
