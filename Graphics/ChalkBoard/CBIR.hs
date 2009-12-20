@@ -9,6 +9,7 @@ import Data.Array.MArray
 import Data.Array.Storable
 import Graphics.ChalkBoard.IStorable as IS
 import Graphics.ChalkBoard.Core
+import Graphics.ChalkBoard.Internals
 
 import Data.Binary
 import qualified Data.ByteString as BS
@@ -125,7 +126,8 @@ AG: other considerations include
 
      | SplatWithFunction
        var			-- FragFunId
-       [var]			-- argument BufferId(s)
+       [(String,var)]		-- argument BufferId(s)
+       [(String,UniformArgument)]		-- the extra uniform args
        var			-- target BufferId
        [PointMap]
 {-

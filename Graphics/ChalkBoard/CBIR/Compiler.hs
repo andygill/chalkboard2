@@ -293,6 +293,7 @@ compileBoardRGB bc (Fmap f other) = do
 			[  copyBoard newBoard (bcDest bc)
 			, Delete newBoard
 		        ]]
+{-
 	   Just (Pair_Ty RGB_Ty RGB_Ty) -> do
 	      let e = applyVar f
 	      case (e,other) of
@@ -327,6 +328,7 @@ compileBoardRGB bc (Fmap f other) = do
 		        	]]
 		 _ -> do print ""
 			 error $ "fmap (...) :: Board RGB problem : " ++ show e
+-}
 
 	   a -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show RGB_Ty ++ ") brd :: Board RGB is not supported"
 compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
@@ -349,6 +351,77 @@ compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 		    		]
 			]
 	       ]
+compileBoardRGB bc (BoardGSI fn bargs vargs) = do
+	let boards_RGB = [ (nm,brd) | (nm,BoardRGBArgument brd) <- bargs ]
+	num_for_boards_RGB <- sequence [ newNumber | _ <- boards_RGB ]
+	let create_Boards
+	 	  = [ Allocate 
+		        num		   -- tag for this ChalkBoardBufferObject
+        		(bcSize bc)		   -- we know size
+        		RGB24Depth           -- depth of buffer
+			(BackgroundRGB24Depth (RGB 1 1 1))
+		    | num <- num_for_boards_RGB
+		    ]
+	fill_Boards <- sequence [ compileBoard compileBoardRGB (bc { bcDest = brdId }) brd
+				| ((_,brd),brdId) <- zip boards_RGB num_for_boards_RGB
+				]
+	let delete_Boards
+		  = [ Delete num 
+	            | num <- num_for_boards_RGB
+	            ]
+
+	print create_Boards
+
+
+
+	newFrag <- newNumber
+
+ 	let (x0,x1,y0,y1) = (0,1,0,1) 
+	return $ [ AllocFragmentShader newFrag fn [] ]
+		++ create_Boards
+		++ concat fill_Boards
+		++ [ SplatWithFunction newFrag 
+				[ (nm,brdId) 
+				| ((nm,_),brdId) <- zip boards_RGB num_for_boards_RGB
+				]
+				vargs
+				(bcDest bc) 
+				[PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+		   ]
+		++ delete_Boards
+{-
+			newBoardWithCode <- buildNewBoard 
+			newBoard1 <- newNumber
+			newBoard2 <- newNumber
+			newFrag <- newNumber
+			let bc' = bc { bcDest = newBoard1 }
+			rest1 <- compileBoard compileBoardRGB bc' b1
+			let bc' = bc { bcDest = newBoard2 }
+			rest2 <- compileBoard compileBoardRGB bc' b2
+			let (x0,x1,y0,y1) = (0.05,0.7,0.35,0.92)
+			return [ Nested ("fmap magic") $ 
+				[ Allocate 
+		        		newBoard1	   -- tag for this ChalkBoardBufferObject
+        				(bcSize bc)		   -- we know size
+        				RGB24Depth           -- depth of buffer
+					(BackgroundRGB24Depth (RGB 1 1 1))	-- ???
+				| (BoardRGBArgument brd, ] ++
+				[ Allocate 
+		        		newBoard2	   -- tag for this ChalkBoardBufferObject
+        				(bcSize bc)		   -- we know size
+        				RGB24Depth           -- depth of buffer
+					(BackgroundRGB24Depth (RGB 1 1 1))	-- ???
+				] ++ rest1 ++ rest2 ++
+				[ AllocFragmentShader newFrag msg []
+				, copyBoard newBoard1 (bcDest bc)
+				, SplatWithFunction newFrag [newBoard1,newBoard2] (bcDest bc) [PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+				, Delete newBoard1, Delete newBoard2
+		        	]]
+		 _ -> do print ""
+			 error $ "fmap (...) :: Board RGB problem : " ++ show e
+-}
+
+	
 compileBoardRGB _ brd = error $ show ("compileBoardRGB",brd)
 
 

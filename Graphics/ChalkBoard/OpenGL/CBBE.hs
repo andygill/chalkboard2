@@ -20,6 +20,7 @@ import Graphics.UI.GLUT hiding ( GLuint, GLint, GLfloat )
 import qualified Graphics.UI.GLUT as GLUT 
 import Graphics.Rendering.OpenGL.Raw.Core31 as GL
 import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility (gl_LUMINANCE)
+import qualified Graphics.ChalkBoard.Internals as CBI
 -- import Graphics.Rendering.OpenGL.GL.Shaders
 import Codec.Image.DevIL
 
@@ -434,7 +435,7 @@ drawInsts env (i:is) = do
             (SplatPolygon bSource bDest ptMaps) -> splatPolygon env bSource bDest ptMaps
             (SplatColor sColor bDest useBlend ptList) -> splatColor env sColor bDest useBlend ptList
             (SplatBuffer bSource bDest) -> splatPolygon env bSource bDest [ PointMap p p | p <- [(0,0),(0,1),(1,1),(1,0)] ]
-	    (SplatWithFunction fnId args bDest ptMaps) -> splatWithFunction env fnId args bDest ptMaps
+	    (SplatWithFunction fnId bargs uargs bDest ptMaps) -> splatWithFunction env fnId bargs uargs bDest ptMaps
             (CopyBuffer alpha bSource bDest) -> copyBuffer env alpha bSource bDest
             (SaveImage b savePath) -> saveImage env b savePath
             (OpenStream streamID cmd) -> openStream env streamID cmd
@@ -1169,13 +1170,42 @@ allocFragmentShader env f txt args = do
 -}	
         return ()
 
-splatWithFunction env fnId args@[bSrc1,bSrc2] bDest ptMaps = do
+splatWithFunction env fnId args@[(s1,bSrc1),(s2,bSrc2)] uargs bDest ptMaps = do
         texMap <- getTexMap env
 	mp <- get (fracFunctionInfo env)
 	case lookup fnId mp of
 	   Nothing -> error $ "can not find function # " ++ show fnId
 	   Just ffi -> do
 		currentProgram $= Just (ffProg ffi)
+		sequence 
+		   [ do texInfo <- case lookup bSrc1 texMap  of
+		     		   Nothing -> error $ " oops: can not find src buffer "
+		   		   Just i -> return i 
+			texIdS <- peek (texPtr texInfo)
+			glActiveTexture (gl_TEXTURE0 + i)
+			glBindTexture gl_TEXTURE_2D texIdS
+			location <- get (uniformLocation (ffProg ffi) s)
+             		reportErrors
+          		uniform location $= (Index1 (fromIntegral i :: GLint))
+		   | ((s,bSrc),i) <- zip args [1..]
+		   ]
+
+
+
+
+		sequence 
+		   [ do	location <- get (uniformLocation (ffProg ffi) s)
+             		reportErrors
+			case arg of
+			   CBI.ArrVec2 vecs -> 
+				withArray [ Vertex2 (realToFrac x) (realToFrac y) :: Vertex2 GLfloat
+				          | (x,y) <- vecs 
+				          ] $ \ ptr -> uniformv location (fromIntegral $ length vecs) ptr
+			   _ -> error $ "Opps: " ++ show (s,arg)
+		   | (s,CBI.UniformArgument arg) <- uargs
+		   ]
+			
+
 		srcTexInfo1 <- case lookup bSrc1 texMap  of
 		   		Nothing -> error $ " oops: can not find src buffer "
 		   		Just i -> return i 
@@ -1190,10 +1220,10 @@ splatWithFunction env fnId args@[bSrc1,bSrc2] bDest ptMaps = do
 		glBindTexture gl_TEXTURE_2D texIdS1
 		glActiveTexture (gl_TEXTURE0 + 1)
 		glBindTexture gl_TEXTURE_2D texIdS2
-		location <- get (uniformLocation (ffProg ffi) "sampler0")
+		location <- get (uniformLocation (ffProg ffi) s1)
              	reportErrors
           	uniform location $= (Index1 (0 :: GLint))
-		location <- get (uniformLocation (ffProg ffi) "sampler1")
+		location <- get (uniformLocation (ffProg ffi) s2)
              	reportErrors
           	uniform location $= (Index1 (1 :: GLint))
 	        print ">????"

@@ -6,7 +6,10 @@ module Graphics.ChalkBoard.Internals
 	, InsideBuffer(..)
 	, Trans(..)
 	, UniformArgument(..)
-	, BoardArgument(..)
+	, UniformTexture(..)
+	, Argument(..)
+	, board
+	, uniform
 	) where
 		
 import Graphics.ChalkBoard.Types
@@ -42,14 +45,47 @@ data Board a where
 	Over  		:: 	(a -> a -> a) -> Board a -> Board a -> 	Board a
 	BufferOnBoard	:: Buffer a -> Board a -> Board a
 	-- FFI into the Graphics shader langauge.
-	BoardGSI 	:: String -> [UniformArgument] -> [BoardArgument] -> Board a	
+	BoardGSI 	:: String -> [(String,UniformTexture)] -> [(String,UniformArgument)] -> Board a	
 	
-data UniformArgument = forall a. (Uniform a) => UniformArgument String a
-		     | forall a .(Uniform a) => UniformListArgument String [a]
+data UniformArgument = UniformArgument Argument
+		     | UniformListArgument [Argument]
+	deriving Show
 
-data BoardArgument = BoardRGBArgument String (Board RGB)
+data UniformTexture  = BoardRGBArgument (Board RGB)
+	deriving Show
 
---	Image		:: IStorableArray (Int,Int,Int) -> Board RGBA
+--		     | forall a . (GSArg a) => ScalarArg a
+--		     | forall a . (GSArg a) => VectorArg a
+---		     | forall a . (GSArg a) => VectorOfVectorArg a
+
+data Argument
+	= Int Int
+	| Float Float
+	| Vec2 (Float,Float)
+	| Arr [Float]
+	| ArrVec2 [(Float,Float)]
+	deriving Show
+
+class UniformBoard a where 
+  board :: Board a -> UniformTexture
+
+instance UniformBoard RGB where
+  board = BoardRGBArgument
+
+uniform  :: Argument -> UniformArgument
+uniform = UniformArgument
+
+{-
+   want to allow
+
+    :: Float
+    :: Int
+    :: (Float,Float)
+    :: (Float,Float,Float)
+    :: (Float,Float,Float,Float)
+    :: [any of the above]
+
+-}
 
 instance Show (Board a) where
 	show (PrimFun {}) = "PrimFun"
@@ -61,6 +97,9 @@ instance Show (Board a) where
 	show (Zip brd1 brd2)   = "Zip (" ++ show brd1 ++ ") (" ++ show brd2 ++ ")"
 	show (Over _ brd1 brd2)   = "Over (..) (" ++ show brd1 ++ " " ++ show brd2 ++ ")"
 	show (BufferOnBoard buff brd)  = "BufferOnBoard (" ++ show buff ++ ") (" ++ show brd ++ ")"
+	show (BoardGSI nm arg1 arg2) = "BoardGSI ffi " 
+				++ show (Prelude.map fst arg1) 
+				++ show (Prelude.map fst arg2) 
 
 instance Show (Buffer a) where
 	show (Buffer x y a) = "Buffer " ++ show (x,y) ++ " " ++ show a
