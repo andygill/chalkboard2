@@ -1170,7 +1170,7 @@ allocFragmentShader env f txt args = do
 -}	
         return ()
 
-splatWithFunction env fnId args@[(s1,bSrc1),(s2,bSrc2)] uargs bDest ptMaps = do
+splatWithFunction env fnId args  uargs bDest ptMaps = do
         texMap <- getTexMap env
 	mp <- get (fracFunctionInfo env)
 	case lookup fnId mp of
@@ -1178,7 +1178,7 @@ splatWithFunction env fnId args@[(s1,bSrc1),(s2,bSrc2)] uargs bDest ptMaps = do
 	   Just ffi -> do
 		currentProgram $= Just (ffProg ffi)
 		sequence 
-		   [ do texInfo <- case lookup bSrc1 texMap  of
+		   [ do texInfo <- case lookup bSrc texMap  of
 		     		   Nothing -> error $ " oops: can not find src buffer "
 		   		   Just i -> return i 
 			texIdS <- peek (texPtr texInfo)
@@ -1205,7 +1205,7 @@ splatWithFunction env fnId args@[(s1,bSrc1),(s2,bSrc2)] uargs bDest ptMaps = do
 		   | (s,CBI.UniformArgument arg) <- uargs
 		   ]
 			
-
+{-
 		srcTexInfo1 <- case lookup bSrc1 texMap  of
 		   		Nothing -> error $ " oops: can not find src buffer "
 		   		Just i -> return i 
@@ -1233,7 +1233,22 @@ splatWithFunction env fnId args@[(s1,bSrc1),(s2,bSrc2)] uargs bDest ptMaps = do
 			uniformv location 9 ptr
              	reportErrors
 	        print ">????"
-		splatPolygon2 env bSrc1 bDest ptMaps
+-}
+--		splatPolygon2 env bSrc1 bDest ptMaps
+
+ 		let (Just texInfoD) = lookup bDest texMap
+        	    texIdPtrD = texPtr texInfoD
+        	    (w,h) = texSize texInfoD
+        	    colorType = texFormat texInfoD
+
+    		texIdD <- peek texIdPtrD
+
+            	bindFrameBufferToTexture env texIdD (Right bDest)
+
+
+            	renderPrimitive Polygon $
+                	placeVerticies w h ptMaps 
+
 		currentProgram $= Nothing
 		glActiveTexture (gl_TEXTURE0 + 0)
 		glBindTexture gl_TEXTURE_2D 0
@@ -1265,7 +1280,6 @@ splatPolygon2 env bS bD ps = do
         then return ()            
         else do
             -- Attach the texture to a FBO color attachment point
-            bindFrameBufferToTexture env texIdD (Right bD)
             -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
             -- Check to see if the texture is trying to recursively draw onto itself, and if so create a copy of the source texture
             -- to prevent the undefined feedback loop that would result from drawing straight to the same texture that is being read

@@ -4,6 +4,7 @@
 
 uniform sampler2D sampler0;
 uniform sampler2D sampler1;
+uniform sampler2D sampler2;
 uniform vec2 tc_offset[9];
 
 void main(void)
@@ -125,6 +126,16 @@ void main(void)
 	v += 5.0 * distance(vec2(Pb,Pr),vec2(Pb2,Pr2));
     }
 
+    float len = length(texture2D(sampler0,gl_TexCoord[0].st).rgb) -
+	        length(texture2D(sampler2,gl_TexCoord[0].st).rgb);
+     if (len < -0.1) { 
+		v += 2.0;
+     } else if (len > 0.03) {
+//		v -= 0.5;		
+     }
+
+
+
  
     vec4 here = 
 	(sample[4] * 8.0) - 
@@ -174,8 +185,21 @@ void main(void)
 	gl_FragColor.rgb = vec3(1.0,0.5,0.1);	
         gl_FragColor.a = 0.2;
     }
+  } else {
+/*
+	gl_FragColor.rgb = (vec3(1.0,1.0,1.0) 
+		- texture2D(sampler0,gl_TexCoord[0].st).rgb 
+		+ texture2D(sampler2,gl_TexCoord[0].st).rgb) / vec3(2.0,2.0,2.0);
+*/
+	float len = length(texture2D(sampler0,gl_TexCoord[0].st).rgb) -
+	 	    length(texture2D(sampler2,gl_TexCoord[0].st).rgb);
+		if (len < -0.03) { 
+		gl_FragColor.rgb = texture2D(sampler0,gl_TexCoord[0].st).rgb;	
+	} else {
+		gl_FragColor.rgb = vec3(1,1,1);		
+	}
+        gl_FragColor.a = 1.0;
   }
-
 /*
     if (abs (R * Y2 - R2 * Y) > 0.005) { 
 	rVote = 1;

@@ -8,12 +8,13 @@ import Graphics.Rendering.OpenGL as GL hiding (uniform)
 
 main = startChalkBoard [BoardSize (480*2) (360*2)] videoMain
 
-mkMix :: IO (Board RGB -> Board RGB -> Board RGB)
+mkMix :: IO (Board RGB -> Board RGB -> Board RGB -> Board RGB)
 mkMix = do 
 	fileContents <- readFile "laplacian.fs"
-	return $ \ b1 b2 -> gslBoard fileContents
+	return $ \ b1 b2 b3 -> gslBoard fileContents
 				[ ("sampler0",board b1)
 				, ("sampler1",board b2)
+				, ("sampler2",board b3)
 				]
 				[ ("tc_offset",uniform $ 
 						ArrVec2 [ (x*(1/480),y*(1/360))
@@ -24,17 +25,18 @@ mkMix = do
 videoMain cb = do
 --    videoPipe <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm  -"
     videoPipe <- openVideoInPipe "cat bigfoot.ppm"
-    msg' <- readFile "fst.fs"
     morph <- mkMix
 
     (worked, buffer0) <- nextPPMFrame videoPipe
 
-    let loop 500 = exitChalkBoard cb
-	loop n = do
+    let loop 500 _ = exitChalkBoard cb
+	loop n bufferP = do
     	  (worked, buffer) <- nextPPMFrame videoPipe
     	  drawChalkBuffer cb (boardToBuffer (0,0) (480*2,360*2) $ move (0,360*2) $ 
 					(morph 	(scaleXY (2,-2) $ bufferOnBoard buffer (boardOf white))
-						(scaleXY (2,-2) $ bufferOnBoard buffer0 (boardOf white))))
+						(scaleXY (2,-2) $ bufferOnBoard buffer0 (boardOf white))
+						(scaleXY (2,-2) $ bufferOnBoard bufferP (boardOf white))
+						))
 {-
     	  drawChalkBuffer cb (boardToBuffer (0,0) (480*2,360*2) 
 					$ move (0,360*2) 
@@ -43,9 +45,9 @@ videoMain cb = do
 -}
 --  	  threadDelay (1000 * 1000)
 --	  _ <- getLine
-          loop (n+1)
+          loop (n+1) buffer
 	
-    loop 0
+    loop 0 buffer0
 
 --    exitChalkBoard cb
 
