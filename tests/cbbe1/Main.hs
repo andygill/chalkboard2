@@ -56,7 +56,7 @@ example1 = (
   where scale = 0.2
         sz = 200
 example2:: ([[Inst BufferId]], BufferId)
-example2 = ( [ Allocate 0 (500,500) RGBADepth (BackgroundG8Bit 0.8)
+example2 = ( [ Allocate 0 (500,500) G8BitDepth (BackgroundG8Bit 0.8)
 	     , AllocateImage 2 "back.jpg"
 	     , Allocate 3 (1,1) RGBADepth (BackgroundG8Bit 0.8)
              , AllocateImage 6 "jhwk_RF_250px.gif"
