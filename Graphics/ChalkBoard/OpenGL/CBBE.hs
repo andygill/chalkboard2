@@ -14,7 +14,7 @@ import Graphics.ChalkBoard.IStorable as IS
 import Graphics.ChalkBoard.Types as T (RGB(..),RGBA(..))
 import Graphics.ChalkBoard.OpenGL.Env
 import Graphics.ChalkBoard.Options
-import Graphics.ChalkBoard.Video ( openVideoOutPipe, writeNextFrame )
+import Graphics.ChalkBoard.Video ( openVideoOutPipe, closeVideoOutPipe, writeNextFrame )
 
 import Graphics.UI.GLUT hiding ( GLuint, GLint, GLfloat )
 import qualified Graphics.UI.GLUT as GLUT 
@@ -152,10 +152,11 @@ initCBMEnv options state = do
             debugAll' = DebugAll `elem` options
             debugBoards' = concat [ids | DebugBoards ids <- options]
         v <- newEmptyMVar
+	putMVar v state
 	ffi <- newIORef empty
 	prog <- newIORef Nothing
-        putMVar v state
-        return $ CBenv debugFrames' debugAll' debugBoards' fboSupport' v ffi prog
+	streamid <- newIORef Nothing
+        return $ CBenv debugFrames' debugAll' debugBoards' fboSupport' v ffi prog streamid
 
 
 
@@ -353,6 +354,12 @@ drawBoard env = do
             flush
             swapBuffers
 
+    stream <- readIORef (currentStream env)
+    case stream of
+        Nothing -> return ()
+        Just streamid -> do
+                b <- getCurrentBoard env
+                writeStream env b streamid
 
 
 
@@ -1031,11 +1038,15 @@ openStream :: CBenv -> StreamId -> String -> IO ()
 openStream env streamID cmd = do
         outpipe <- openVideoOutPipe cmd
         addOutStream env streamID outpipe
+        writeIORef (currentStream env) (Just streamID)
 
 
 closeStream :: CBenv -> StreamId -> IO ()
 closeStream env streamID = do
+        stream <- getOutStream env streamID
+        closeVideoOutPipe stream
         rmOutStream env streamID
+        writeIORef (currentStream env) (Nothing)
 
 
 writeStream :: CBenv -> BufferId -> StreamId -> IO ()

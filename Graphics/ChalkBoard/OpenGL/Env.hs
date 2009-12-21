@@ -29,6 +29,7 @@ data CBenv = CBenv
         -- the variables
         , fracFunctionInfo :: IORef (Map FragFunctionId FragFunctionInfo)
         , currentFunction  :: IORef (Maybe FragFunctionId)
+        , currentStream :: IORef (Maybe StreamId)
         }
 
 {- Examples of using the fracFunctionInfo variable

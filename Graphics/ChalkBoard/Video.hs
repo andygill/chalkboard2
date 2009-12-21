@@ -61,6 +61,9 @@ writeNextFrame (OutPipe hout) (w,h) buffer = do
     hPutBuf hout buffer (w*h*3)
     hPutStrLn hout ""
 
+closeVideoOutPipe :: OutPipe -> IO ()
+closeVideoOutPipe (OutPipe hout) = do
+    hClose hout
 
 
 ffmpegOutCmd :: String -> String

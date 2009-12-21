@@ -24,12 +24,18 @@ mkMix = do
 
 videoMain cb = do
 --    videoPipe <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm  -"
-    videoPipe <- openVideoInPipe "cat bigfoot.ppm"
+--    videoPipe <- openVideoInPipe "cat bigfoot.ppm"
+    videoPipe <- openVideoInPipe (ffmpegInCmd "bigfoot.mpeg")
+    
     morph <- mkMix
 
     (worked, buffer0) <- nextPPMFrame videoPipe
 
-    let loop 500 _ = exitChalkBoard cb
+    startDefaultWriteStream cb "test.mpeg"
+
+    let loop 500 _ = do
+          endWriteStream cb
+          exitChalkBoard cb
 	loop n bufferP = do
     	  (worked, buffer) <- nextPPMFrame videoPipe
     	  drawChalkBuffer cb (boardToBuffer (0,0) (480*2,360*2) $ move (0,360*2) $ 
@@ -37,6 +43,7 @@ videoMain cb = do
 						(scaleXY (2,-2) $ bufferOnBoard buffer0 (boardOf white))
 						(scaleXY (2,-2) $ bufferOnBoard bufferP (boardOf white))
 						))
+						
 {-
     	  drawChalkBuffer cb (boardToBuffer (0,0) (480*2,360*2) 
 					$ move (0,360*2) 

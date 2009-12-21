@@ -3,6 +3,9 @@ module Graphics.ChalkBoard.Main
 	, drawChalkBoard
 	, drawChalkBuffer
 	, writeChalkBoard
+	, startMyWriteStream
+	, startDefaultWriteStream
+	, endWriteStream
 	, updateChalkBoard
 	, drawRawChalkBoard
 	, exitChalkBoard
@@ -26,11 +29,14 @@ import Graphics.ChalkBoard.CBIR.Compiler
 import Graphics.ChalkBoard.OpenGL.CBBE
 import Graphics.ChalkBoard.O
 import Graphics.ChalkBoard.Options
+import Graphics.ChalkBoard.Video ( ffmpegOutCmd )
 import Codec.Image.DevIL
 
 import Data.Word
+import Data.IORef
 import Control.Concurrent.MVar
 import Control.Concurrent
+import Control.Monad ( when )
 import System.Cmd
 import Data.Binary as Bin
 
@@ -42,6 +48,9 @@ data ChalkBoardCommand
 	| DrawChalkBuffer (Buffer RGB)
 	| UpdateChalkBoard (Board RGB -> Board RGB)
 	| WriteChalkBoard FilePath
+	| StartMyWriteStream String
+	| StartDefaultWriteStream FilePath
+	| EndWriteStream
 	| ExitChalkBoard
 	| DrawRawChalkBoard [Inst BufferId]
 	
@@ -72,6 +81,18 @@ drawChalkBuffer (ChalkBoard var _) buff = putMVar var (DrawChalkBuffer buff)
 -- | Write the contents of a ChalkBoard into a File.
 writeChalkBoard :: ChalkBoard -> FilePath -> IO ()
 writeChalkBoard (ChalkBoard var _) nm = putMVar var (WriteChalkBoard nm)
+
+-- | Start streaming the contents of a ChalkBoard buffer into a File.
+startMyWriteStream :: ChalkBoard -> String -> IO ()
+startMyWriteStream (ChalkBoard var _) cmd = putMVar var (StartMyWriteStream cmd)
+
+-- | Start streaming the contents of a ChalkBoard buffer into a File, with given ffmpeg command
+startDefaultWriteStream :: ChalkBoard -> FilePath -> IO ()
+startDefaultWriteStream (ChalkBoard var _) nm = putMVar var (StartDefaultWriteStream nm)
+
+-- | End streaming the contents of a ChalkBoard buffer into a File.
+endWriteStream :: ChalkBoard -> IO ()
+endWriteStream (ChalkBoard var _) = putMVar var (EndWriteStream)
 
 -- | modify the current ChalkBoard.
 updateChalkBoard :: ChalkBoard -> (Board RGB -> Board RGB) -> IO ()
@@ -149,6 +170,7 @@ openChalkBoard args = do
 viewBoard :: Int
 viewBoard = 0
 
+
 compiler :: [Options] -> MVar ChalkBoardCommand -> MVar [Inst Int] -> IO ()
 compiler options v1 v2 = do
 	putMVar v2 [Allocate viewBoard (x,y) RGB24Depth (BackgroundRGB24Depth (RGB 1 1 1))]
@@ -180,6 +202,15 @@ compiler options v1 v2 = do
 	  WriteChalkBoard filename -> do
 		putMVar v2 [SaveImage viewBoard filename]
 		loop (n+1) old_brd
+	  StartMyWriteStream openCmd -> do
+	        putMVar v2 [OpenStream viewBoard openCmd]
+	        loop (n+1) old_brd
+	  StartDefaultWriteStream filename -> do
+	        putMVar v2 [OpenStream viewBoard (ffmpegOutCmd filename)]
+	        loop (n+1) old_brd  
+	  EndWriteStream -> do
+	        putMVar v2 [CloseStream viewBoard]
+	        loop (n+1) old_brd
 
 	  ExitChalkBoard -> putMVar v2 [Exit]
 
