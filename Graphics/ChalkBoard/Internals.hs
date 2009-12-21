@@ -30,6 +30,7 @@ data InsideBuffer a where
 	ImageG		:: ByteString -> InsideBuffer UI
 	ImageRGB	:: ByteString -> InsideBuffer RGB
 	ImageRGBA	:: ByteString -> InsideBuffer RGBA
+	ImageUI		:: ByteString -> InsideBuffer UI
 	FlipLR		:: InsideBuffer a -> InsideBuffer a
 	FlipTB		:: InsideBuffer a -> InsideBuffer a
 	
@@ -114,6 +115,7 @@ instance Show (InsideBuffer a) where
 	show (Image arr)        = "Image (..)"
 	show (ImageRGB arr)        = "ImageRGB (..)"
 	show (ImageRGBA arr)        = "ImageRGBA (..)"
+	show (ImageUI arr)        = "ImageUI (..)"
 	
 data Trans = Move (R,R)
 	   | Scale (R,R)

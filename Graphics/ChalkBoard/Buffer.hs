@@ -56,6 +56,10 @@ newBufferRGB bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageRGB bs
 newBufferRGBA :: ByteString -> (Int,Int) -> Buffer RGBA
 newBufferRGBA bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageRGBA bs
 
+-- | building a 2d byte buffer
+newBufferUI :: ByteString -> (Int,Int) -> Buffer UI
+newBufferUI bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageUI bs
+
 bufferBounds :: Buffer a -> ((Int,Int),(Int,Int))
 bufferBounds (Buffer low hi _) = (low,hi)
 
