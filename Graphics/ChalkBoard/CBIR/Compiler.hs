@@ -141,6 +141,19 @@ compileBoardBool dw bc (Polygon nodes) = do
 	[(x0,y0),(x1,y1),(x2,y2)] = map (mapPoint [ Scale (a,b) | Scale (a,b) <- bcTrans bc]) [(0,0),(1,0),(0,1)]
 	res   = 1 + max (abs (fromIntegral x * (x0 - x1))) (abs (fromIntegral y * (y0 - y2)))
 	(x,y)  = bcSize bc
+
+compileBoardBool dw bc (PrimConst o) = 
+	case (evalE $ runO0 o) of
+	   Just (E (O_Bool True)) -> do
+		return [ Nested ("Const (True :: Bool)") $
+		    (drawWiths dw (bcDest bc) 
+		    	       (mapPoint []) -- now sure abot this??
+			       [(0,0),(0,1),(1,1),(1,0)])
+	       	       ]
+	   Just (E (O_Bool False)) ->	-- background *is* false
+		return []
+	   other -> error $ "pure a :: Board Bool, can not compute a, found " ++ show other
+
 compileBoardBool _ _ brd = error $ show ("Bool",brd)
 
 
@@ -352,74 +365,50 @@ compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 			]
 	       ]
 compileBoardRGB bc (BoardGSI fn bargs vargs) = do
-	let boards_RGB = [ (nm,brd) | (nm,BoardRGBArgument brd) <- bargs ]
+	let boards_RGB  = [ (nm,brd) | (nm,BoardRGBArgument brd) <- bargs ]
+	let boards_Bool = [ (nm,brd) | (nm,BoardBoolArgument brd) <- bargs ]
+
 	num_for_boards_RGB <- sequence [ newNumber | _ <- boards_RGB ]
+	num_for_boards_Bool <- sequence [ newNumber | _ <- boards_Bool ]
 	let create_Boards
 	 	  = [ Allocate 
 		        num		   -- tag for this ChalkBoardBufferObject
         		(bcSize bc)		   -- we know size
         		RGB24Depth           -- depth of buffer
-			(BackgroundRGB24Depth (RGB 1 1 1))
-		    | num <- num_for_boards_RGB
+			(BackgroundRGB24Depth (RGB 0 0 0))	-- black is the background, now! (== False)
+		    | num <- num_for_boards_RGB ++ num_for_boards_Bool
 		    ]
-	fill_Boards <- sequence [ compileBoard compileBoardRGB (bc { bcDest = brdId }) brd
-				| ((_,brd),brdId) <- zip boards_RGB num_for_boards_RGB
-				]
+	fill_Boards_RGB
+	 	<- sequence [ compileBoard compileBoardRGB (bc { bcDest = brdId }) brd
+			    | ((_,brd),brdId) <- zip boards_RGB num_for_boards_RGB
+			    ]
+	fill_Boards_Bool
+	 	<- sequence [ compileBoard (compileBoardBool [DrawWithColor (RGBA 1 1 1 1) False]) (bc { bcDest = brdId }) brd
+			    | ((_,brd),brdId) <- zip boards_Bool num_for_boards_Bool
+			    ]
+
 	let delete_Boards
 		  = [ Delete num 
-	            | num <- num_for_boards_RGB
+	            | num <- num_for_boards_RGB ++ num_for_boards_Bool
 	            ]
 
-	print create_Boards
-
-
-
 	newFrag <- newNumber
-
+	
  	let (x0,x1,y0,y1) = (0,1,0,1) 
 	return $ [ AllocFragmentShader newFrag fn [] ]
 		++ create_Boards
-		++ concat fill_Boards
+		++ concat fill_Boards_RGB
+		++ concat fill_Boards_Bool
 		++ [ SplatWithFunction newFrag 
 				[ (nm,brdId) 
-				| ((nm,_),brdId) <- zip boards_RGB num_for_boards_RGB
+				| (nm,brdId) <- zip (map fst boards_RGB ++ map fst boards_Bool)
+						    (num_for_boards_RGB ++ num_for_boards_Bool)
 				]
 				vargs
 				(bcDest bc) 
 				[PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
 		   ]
 		++ delete_Boards
-{-
-			newBoardWithCode <- buildNewBoard 
-			newBoard1 <- newNumber
-			newBoard2 <- newNumber
-			newFrag <- newNumber
-			let bc' = bc { bcDest = newBoard1 }
-			rest1 <- compileBoard compileBoardRGB bc' b1
-			let bc' = bc { bcDest = newBoard2 }
-			rest2 <- compileBoard compileBoardRGB bc' b2
-			let (x0,x1,y0,y1) = (0.05,0.7,0.35,0.92)
-			return [ Nested ("fmap magic") $ 
-				[ Allocate 
-		        		newBoard1	   -- tag for this ChalkBoardBufferObject
-        				(bcSize bc)		   -- we know size
-        				RGB24Depth           -- depth of buffer
-					(BackgroundRGB24Depth (RGB 1 1 1))	-- ???
-				| (BoardRGBArgument brd, ] ++
-				[ Allocate 
-		        		newBoard2	   -- tag for this ChalkBoardBufferObject
-        				(bcSize bc)		   -- we know size
-        				RGB24Depth           -- depth of buffer
-					(BackgroundRGB24Depth (RGB 1 1 1))	-- ???
-				] ++ rest1 ++ rest2 ++
-				[ AllocFragmentShader newFrag msg []
-				, copyBoard newBoard1 (bcDest bc)
-				, SplatWithFunction newFrag [newBoard1,newBoard2] (bcDest bc) [PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
-				, Delete newBoard1, Delete newBoard2
-		        	]]
-		 _ -> do print ""
-			 error $ "fmap (...) :: Board RGB problem : " ++ show e
--}
 
 	
 compileBoardRGB _ brd = error $ show ("compileBoardRGB",brd)

@@ -62,7 +62,7 @@ KM: I would say the "draw this pixel if true" approach might be faster? Then cou
 instance Show Background where
 	show (BackgroundBit b) = "(BackgroundBit $ " ++ show b ++ ")"
 	show (BackgroundG8Bit g) = "(BackgroundG8Bit $ " ++ show g ++ ")"
-	show (BackgroundRGB24Depth c) = "(BackgrounddRGB24Depth $ " ++ show c ++ ")"
+	show (BackgroundRGB24Depth c) = "(BackgroundRGB24Depth $ " ++ show c ++ ")"
 	show (BackgroundRGBADepth c) = "(BackgroundRGBADepth $ " ++ show c ++ ")"
 	show (BackgroundByteString bs) = "(BackgroundByteString ...)"
 	

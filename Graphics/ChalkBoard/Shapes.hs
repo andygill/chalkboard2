@@ -9,10 +9,12 @@
 --
 -- This module contains some basic shape generators, expressed as @Board Bool@.
 --
+-- TODO: Bad name for this module! Should be a Utils style module.
 
 module Graphics.ChalkBoard.Shapes where
 
 import Graphics.ChalkBoard.Board
+import Graphics.ChalkBoard.Shader
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.O
 import Graphics.ChalkBoard.Utils
@@ -95,4 +97,5 @@ functionLine line width steps = pointsToLine samples width
 --arrowhead :: Point -> Radian -> R -> Board Bool
 --arrowhead p rad sz = move p $ rotate rad $ scale sz $ (\ (x,y) -> y >= 0 && y <= 1 && abs x * 2 <= 1 - y) <$> coord		
 		 
+
 

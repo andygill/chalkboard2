@@ -52,6 +52,7 @@ data UniformArgument = UniformArgument Argument
 	deriving Show
 
 data UniformTexture  = BoardRGBArgument (Board RGB)
+		     | BoardBoolArgument (Board Bool)
 	deriving Show
 
 --		     | forall a . (GSArg a) => ScalarArg a
@@ -71,6 +72,9 @@ class UniformBoard a where
 
 instance UniformBoard RGB where
   board = BoardRGBArgument
+
+instance UniformBoard Bool where
+  board = BoardBoolArgument
 
 uniform  :: Argument -> UniformArgument
 uniform = UniformArgument
