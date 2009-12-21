@@ -11,6 +11,7 @@ import System.Process
 import System.IO
 import Foreign.Ptr ( Ptr )
 import Data.Word ( Word8 )
+import Control.Concurrent.MVar ( MVar, newEmptyMVar, takeMVar, putMVar )
 
 
 newtype InPipe = InPipe Handle
@@ -37,12 +38,17 @@ nextPPMFrame (InPipe h) = do
     let mxs = (map read (words mx) :: [Int]) -- TODO: Check that maxs = 255?
     --print (head mxs)
 
-    bs <- BSI.create (width * height * 3) (fn h width height (head mxs))
-	
-    return (True, newBufferRGB bs (width,height)) -- TODO: Determine if the pipe has been closed and return True/False based on that
+    checkEOF <- newEmptyMVar    
+    bs <- BSI.create (width * height * 3) (fn h width height (head mxs) checkEOF)
+    eof <- takeMVar checkEOF
+
+    return (eof, newBufferRGB bs (width,height)) -- TODO: Determine if the pipe has been closed and return True/False based on that
     
-    where fn hIn w h mx ptr = do
+    where fn hIn w h mx eof ptr = do
             bytesRead <- hGetBuf hIn ptr (w*h*3) -- TODO: Use bytes read to determine if the pipe is closed
+            if (bytesRead == w*h*3)
+                then putMVar eof True
+                else putMVar eof False
             return ()
 
 
@@ -67,7 +73,7 @@ closeVideoOutPipe (OutPipe hout) = do
 
 
 ffmpegOutCmd :: String -> String
-ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i - -f avi -mbd rd -flags +4mv+aic -trellis 2 -cmp 2 -subcmp 2 -g 300 -pass 1/2 " ++ filename
+ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i - -f h264 -b 500k " ++ filename
 
 ffmpegInCmd :: String -> String
 ffmpegInCmd filename = "ffmpeg -i " ++ filename ++ " -f image2pipe -vcodec ppm -"

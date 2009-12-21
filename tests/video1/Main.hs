@@ -4,9 +4,10 @@ import Graphics.ChalkBoard
 import Graphics.ChalkBoard.Video
 import Graphics.ChalkBoard.Shader
 import Control.Concurrent
+import Control.Monad ( when )
 import Graphics.Rendering.OpenGL as GL hiding (uniform)
 
-main = startChalkBoard [BoardSize (480*2) (360*2)] videoMain
+main = startChalkBoard [BoardSize (480) (360)] videoMain
 
 mkMix :: IO (Board RGB -> Board RGB -> Board RGB -> Board RGB)
 mkMix = do 
@@ -31,32 +32,33 @@ videoMain cb = do
 
     (worked, buffer0) <- nextPPMFrame videoPipe
 
-    startDefaultWriteStream cb "test.mpeg"
+    startDefaultWriteStream cb "test.avi"
 
-    let loop 500 _ = do
-          endWriteStream cb
-          exitChalkBoard cb
-	loop n bufferP = do
-    	  (worked, buffer) <- nextPPMFrame videoPipe
-    	  drawChalkBuffer cb (boardToBuffer (0,0) (480*2,360*2) $ move (0,360*2) $ 
-					(morph 	(scaleXY (2,-2) $ bufferOnBoard buffer (boardOf white))
-						(scaleXY (2,-2) $ bufferOnBoard buffer0 (boardOf white))
-						(scaleXY (2,-2) $ bufferOnBoard bufferP (boardOf white))
-						))
-						
+    let loop False _ = do
+                endWriteStream cb
+                exitChalkBoard cb
+        loop True bufferP = do
+                (worked, buffer) <- nextPPMFrame videoPipe
+                when (worked) $ drawChalkBuffer cb (boardToBuffer (0,0) (480,360) $ move (0,360) $ 
+					(morph 	(scaleXY (1,-1) $ bufferOnBoard buffer (boardOf white))
+						(scaleXY (1,-1) $ bufferOnBoard buffer0 (boardOf white))
+						(scaleXY (1,-1) $ bufferOnBoard bufferP (boardOf white))
+						))					
 {-
-    	  drawChalkBuffer cb (boardToBuffer (0,0) (480*2,360*2) 
+                drawChalkBuffer cb (boardToBuffer (0,0) (480*2,360*2) 
 					$ move (0,360*2) 
 					$ (morph <$>) 
 					(scaleXY (2,-2) $ bufferOnBoard buffer (boardOf white)))
 -}
---  	  threadDelay (1000 * 1000)
---	  _ <- getLine
-          loop (n+1) buffer
+--              threadDelay (1000 * 1000)
+--              _ <- getLine
+                loop worked buffer
 	
-    loop 0 buffer0
+    loop worked buffer0
 
 --    exitChalkBoard cb
+
+
 
 msg = "uniform sampler2D tex0;\n" ++
 
