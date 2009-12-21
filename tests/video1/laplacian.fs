@@ -178,12 +178,15 @@ void main(void)
 
 
   if(true) {
-    if (v >= 0.0) {
+    if (v >= 0.0
+	|| (gl_TexCoord[0].s < 0.05  || gl_TexCoord[0].s > 0.7
+		|| gl_TexCoord[0].t < 0.4  || gl_TexCoord[0].t > 0.9)) { 
 	gl_FragColor.rgb = texture2D(sampler0,gl_TexCoord[0].st).rgb;	
         gl_FragColor.a = 1.0;
     } else {
-	gl_FragColor.rgb = vec3(1.0,0.5,0.1);	
-        gl_FragColor.a = 0.2;
+	gl_FragColor.gb = texture2D(sampler0,gl_TexCoord[0].st).gb;
+	gl_FragColor.r   = 1.1 * texture2D(sampler0,gl_TexCoord[0].st).r;
+        gl_FragColor.a = 1.0;
     }
   } else {
 /*
