@@ -21,27 +21,31 @@ openVideoInPipe ffmpegCmd = do
     return (InPipe hout)
 
 
-nextPPMFrame :: InPipe -> IO (Bool, Buffer RGB)
+nextPPMFrame :: InPipe -> IO (Maybe (Buffer RGB))
 nextPPMFrame (InPipe hIn) = do
-    ty <- hGetLine hIn
-    _ <- case ty of
-        "P6" -> return True
-        _ -> error $ "bad PPM format: " ++ ty
-    szs <- hGetLine hIn
-    let [width,height] = (map read (words szs) :: [Int])
-    --print width
-    --print height   
-    mx <- hGetLine hIn
-    let mxs = (map read (words mx) :: [Int]) -- TODO: Get the max easier somehow?
-    --print (head mxs)
-
-    bs <- BSI.create (width * height * 3) (fn hIn width height (head mxs))
     eof <- hIsEOF hIn
-    return (not eof, newBufferRGB bs (width,height))
-    
-    where fn handle w h _ ptr = do
-            _ <- hGetBuf handle ptr (w*h*3)
-            return ()
+    if (eof)
+        then return Nothing
+        else do
+            ty <- hGetLine hIn
+            _ <- case ty of
+                "P6" -> return True
+                _ -> error $ "bad PPM format: " ++ ty
+            szs <- hGetLine hIn
+            let [width,height] = (map read (words szs) :: [Int])
+            --print width
+            --print height   
+            mx <- hGetLine hIn
+            let mxs = (map read (words mx) :: [Int]) -- TODO: Get the max easier somehow?
+            --print (head mxs)
+        
+            bs <- BSI.create (width * height * 3) (fn hIn width height (head mxs))
+            
+            return (Just (newBufferRGB bs (width,height)))
+            
+            where fn handle w h _ ptr = do
+                    _ <- hGetBuf handle ptr (w*h*3)
+                    return ()
 
 
 
