@@ -3,15 +3,12 @@ module Graphics.ChalkBoard.Video where
 
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.Buffer
-import Graphics.ChalkBoard.IStorable
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BSI
 
 import System.Process
 import System.IO
 import Foreign.Ptr ( Ptr )
 import Data.Word ( Word8 )
-import Control.Concurrent.MVar ( MVar, newEmptyMVar, takeMVar, putMVar )
 
 
 newtype InPipe = InPipe Handle
@@ -25,30 +22,25 @@ openVideoInPipe ffmpegCmd = do
 
 
 nextPPMFrame :: InPipe -> IO (Bool, Buffer RGB)
-nextPPMFrame (InPipe h) = do
-    ty <- hGetLine h
-    bin <- case ty of
+nextPPMFrame (InPipe hIn) = do
+    ty <- hGetLine hIn
+    _ <- case ty of
         "P6" -> return True
         _ -> error $ "bad PPM format: " ++ ty
-    szs <- hGetLine h
+    szs <- hGetLine hIn
     let [width,height] = (map read (words szs) :: [Int])
     --print width
     --print height   
-    mx <- hGetLine h
-    let mxs = (map read (words mx) :: [Int]) -- TODO: Check that maxs = 255?
+    mx <- hGetLine hIn
+    let mxs = (map read (words mx) :: [Int]) -- TODO: Get the max easier somehow?
     --print (head mxs)
 
-    checkEOF <- newEmptyMVar    
-    bs <- BSI.create (width * height * 3) (fn h width height (head mxs) checkEOF)
-    eof <- takeMVar checkEOF
-
-    return (eof, newBufferRGB bs (width,height)) -- TODO: Determine if the pipe has been closed and return True/False based on that
+    bs <- BSI.create (width * height * 3) (fn hIn width height (head mxs))
+    eof <- hIsEOF hIn
+    return (not eof, newBufferRGB bs (width,height))
     
-    where fn hIn w h mx eof ptr = do
-            bytesRead <- hGetBuf hIn ptr (w*h*3) -- TODO: Use bytes read to determine if the pipe is closed
-            if (bytesRead == w*h*3)
-                then putMVar eof True
-                else putMVar eof False
+    where fn handle w h _ ptr = do
+            _ <- hGetBuf handle ptr (w*h*3)
             return ()
 
 
@@ -73,7 +65,7 @@ closeVideoOutPipe (OutPipe hout) = do
 
 
 ffmpegOutCmd :: String -> String
-ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i - -f h264 -b 500k " ++ filename
+ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i - -f h264 " ++ filename
 
 ffmpegInCmd :: String -> String
 ffmpegInCmd filename = "ffmpeg -i " ++ filename ++ " -f image2pipe -vcodec ppm -"

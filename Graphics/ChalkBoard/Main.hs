@@ -33,7 +33,6 @@ import Graphics.ChalkBoard.Video ( ffmpegOutCmd )
 import Codec.Image.DevIL
 
 import Data.Word
-import Data.IORef
 import Control.Concurrent.MVar
 import Control.Concurrent
 import Control.Monad ( when )

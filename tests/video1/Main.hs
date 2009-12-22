@@ -39,7 +39,7 @@ videoMain cb = do
                 exitChalkBoard cb
         loop True bufferP = do
                 (worked, buffer) <- nextPPMFrame videoPipe
-                when (worked) $ drawChalkBuffer cb (boardToBuffer (0,0) (480,360) $ move (0,360) $ 
+                drawChalkBuffer cb (boardToBuffer (0,0) (480,360) $ move (0,360) $ 
 					(morph 	(scaleXY (1,-1) $ bufferOnBoard buffer (boardOf white))
 						(scaleXY (1,-1) $ bufferOnBoard buffer0 (boardOf white))
 						(scaleXY (1,-1) $ bufferOnBoard bufferP (boardOf white))

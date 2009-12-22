@@ -10,7 +10,6 @@ module Graphics.ChalkBoard.OpenGL.CBBE where
 
 -- ChalkBoard or Non-Standard Packages
 import Graphics.ChalkBoard.CBIR as CBIR
-import Graphics.ChalkBoard.IStorable as IS
 import Graphics.ChalkBoard.Types as T (RGB(..),RGBA(..))
 import Graphics.ChalkBoard.OpenGL.Env
 import Graphics.ChalkBoard.Options
