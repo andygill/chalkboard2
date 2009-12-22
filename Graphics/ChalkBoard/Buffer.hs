@@ -13,6 +13,7 @@ module Graphics.ChalkBoard.Buffer
 	, readBuffer
 	, newBufferRGB
 	, newBufferRGBA
+	, newBufferUI
 	, boardToBuffer
 	) where
 

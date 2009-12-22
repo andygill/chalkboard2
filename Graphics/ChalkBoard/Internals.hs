@@ -54,6 +54,8 @@ data UniformArgument = UniformArgument Argument
 
 data UniformTexture  = BoardRGBArgument (Board RGB)
 		     | BoardBoolArgument (Board Bool)
+		     | BoardUIArgument (Board UI)
+		
 	deriving Show
 
 --		     | forall a . (GSArg a) => ScalarArg a
@@ -66,6 +68,8 @@ data Argument
 	| Vec2 (Float,Float)
 	| Arr [Float]
 	| ArrVec2 [(Float,Float)]
+	| Vec3 (Float,Float,Float)
+	| Vec4 (Float,Float,Float,Float)
 	deriving Show
 
 class UniformBoard a where 
@@ -76,6 +80,10 @@ instance UniformBoard RGB where
 
 instance UniformBoard Bool where
   board = BoardBoolArgument
+
+instance UniformBoard Float where
+  board = BoardUIArgument
+
 
 uniform  :: Argument -> UniformArgument
 uniform = UniformArgument

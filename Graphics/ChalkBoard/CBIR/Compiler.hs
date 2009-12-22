@@ -24,6 +24,8 @@ import Data.Array.IO
 import Control.Monad
 import Graphics.ChalkBoard.IStorable as IS
 import Data.ByteString(ByteString)
+import qualified Data.ByteString as BS
+
 
 import Unsafe.Coerce
 import Debug.Trace
@@ -367,16 +369,18 @@ compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 compileBoardRGB bc (BoardGSI fn bargs vargs) = do
 	let boards_RGB  = [ (nm,brd) | (nm,BoardRGBArgument brd) <- bargs ]
 	let boards_Bool = [ (nm,brd) | (nm,BoardBoolArgument brd) <- bargs ]
-
+	let boards_UI   = [ (nm,brd) | (nm,BoardUIArgument brd) <- bargs ]
+ 
 	num_for_boards_RGB <- sequence [ newNumber | _ <- boards_RGB ]
 	num_for_boards_Bool <- sequence [ newNumber | _ <- boards_Bool ]
+	num_for_boards_UI <- sequence [ newNumber | _ <- boards_UI ]
 	let create_Boards
 	 	  = [ Allocate 
 		        num		   -- tag for this ChalkBoardBufferObject
         		(bcSize bc)		   -- we know size
         		RGB24Depth           -- depth of buffer
 			(BackgroundRGB24Depth (RGB 0 0 0))	-- black is the background, now! (== False)
-		    | num <- num_for_boards_RGB ++ num_for_boards_Bool
+		    | num <- num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI
 		    ]
 	fill_Boards_RGB
 	 	<- sequence [ compileBoard compileBoardRGB (bc { bcDest = brdId }) brd
@@ -386,10 +390,14 @@ compileBoardRGB bc (BoardGSI fn bargs vargs) = do
 	 	<- sequence [ compileBoard (compileBoardBool [DrawWithColor (RGBA 1 1 1 1) False]) (bc { bcDest = brdId }) brd
 			    | ((_,brd),brdId) <- zip boards_Bool num_for_boards_Bool
 			    ]
+	fill_Boards_UI
+	 	<- sequence [ compileBoard compileBoardUI (bc { bcDest = brdId }) brd
+			    | ((_,brd),brdId) <- zip boards_UI num_for_boards_UI
+			    ]
 
 	let delete_Boards
 		  = [ Delete num 
-	            | num <- num_for_boards_RGB ++ num_for_boards_Bool
+	            | num <- num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI
 	            ]
 
 	newFrag <- newNumber
@@ -399,10 +407,11 @@ compileBoardRGB bc (BoardGSI fn bargs vargs) = do
 		++ create_Boards
 		++ concat fill_Boards_RGB
 		++ concat fill_Boards_Bool
+		++ concat fill_Boards_UI
 		++ [ SplatWithFunction newFrag 
 				[ (nm,brdId) 
-				| (nm,brdId) <- zip (map fst boards_RGB ++ map fst boards_Bool)
-						    (num_for_boards_RGB ++ num_for_boards_Bool)
+				| (nm,brdId) <- zip (map fst boards_RGB ++ map fst boards_Bool  ++ map fst boards_UI)
+						    (num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI)
 				]
 				vargs
 				(bcDest bc) 
@@ -413,6 +422,34 @@ compileBoardRGB bc (BoardGSI fn bargs vargs) = do
 	
 compileBoardRGB _ brd = error $ show ("compileBoardRGB",brd)
 
+
+compileBoardUI bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
+	-- assume def is transparent!
+	-- assume the size of the buffer is okay. How do we do this?
+	let (x,y) = bcSize bc
+	-- TODO!
+	-- really, this is about 0 and 1, not x and y.
+	let mv = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,
+			fromIntegral (1 + y1-y0) / fromIntegral 1)
+	back_code <- compileBoard compileBoardUI bc back
+	(code,buffId) <- compileInsideBufferUI (x0,y0) (x1,y1) buff
+	let tr = bcTrans (updateTrans mv bc)
+--	print ((x,y),(x1-x0,y1-y0))
+	return [ Nested "buffer inside board (UI)" $
+			back_code ++ code ++
+			[ SplatPolygon buffId (bcDest bc) 
+		    		[ PointMap (x,y) (mapPoint tr (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+			]
+	       ]
+compileBoardUI bc (BI.PrimConst _) = 
+--	case (evalE $ runO0 o) of
+--	   Just (E (O_RGB (RGB r g b))) -> do
+		return [ Nested ("Const (a :: UI)") $
+	          	  [ colorBoard (RGB 0 0 0) (bcDest bc) ]
+	       	       ]	
+--	   _ -> error "pure a :: Board RGB, can not compute a??"compileBoardUI _ brd = error $ show ("compileBoardUI",brd)
 
 compileInsideBufferRGBA 
 		 :: (Int,Int)
@@ -439,7 +476,15 @@ compileInsideBufferRGBA low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 compileInsideBufferRGBA low high (ImageRGBA bs) = do
 	compileByteStringImage low high bs RGBADepth
 
-
+compileInsideBufferUI 
+		 :: (Int,Int)
+		 -> (Int,Int)
+		 -> InsideBuffer a
+		 -> IO ([CBIR.Inst BufferId],BufferId)
+compileInsideBufferUI low high (ImageUI bs) = do
+	compileByteStringImage low high bs' RGB24Depth
+   where bs' = BS.concatMap (\ w -> BS.pack [w,0,0]) bs 
+compileInsideBufferUI lo hi inside = error $ show ("compileInsideBufferUI",lo,hi,inside)
 
 compileInsideBufferRGB 
 		 :: (Int,Int)

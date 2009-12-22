@@ -595,7 +595,7 @@ allocateArrBuffer env board (w,h) depth bs = do
 	   if len == w * h * depthToBytes depth
 		then withForeignPtr fptr $ \ p -> do
 	           		allocateRawImgBuffer env board (w,h) depth (plusPtr (castPtr p) off)
-	        else error $ "allocateArrBuffer problem " ++ show (len,w*h)
+	        else error $ "allocateArrBuffer problem " ++ show (len,w*h,depthToBytes depth)
 
 
 
@@ -670,7 +670,7 @@ splatPolygon env bS bD ps = do
 
     -- Check to make sure both the source and destination boards exist
     when (notMember bD texMap) $ do
-            print "Error: The destination board to splat to doesn't exist."
+            print "Error: The destination board to splat to doesn't exist. (splat polygon)"
             exitWith (ExitFailure 1)
     when (notMember bS texMap) $ do
             print "Error: The source board to splat doesn't exist."
@@ -826,7 +826,7 @@ splatColor env (T.RGBA r g b a) bD _useBlend ps = do
 
     -- Check to make sure the destination board exists
     when (notMember bD texMap) $ do
-            print "Error: The destination board to splat to doesn't exist."
+            print "Error: The destination board to splat to doesn't exist. (splat color)"
             exitWith (ExitFailure 1)
     
     -- Look up all of the values that will be needed
@@ -1187,6 +1187,12 @@ splatWithFunction env fnId args  uargs bDest ptMaps = do
 	   Nothing -> error $ "can not find function # " ++ show fnId
 	   Just ffi -> do
 		currentProgram $= Just (ffProg ffi)
+
+		let badLocation loc = False -- show loc == "UniformLocation (-1)"
+
+		xx <- get (activeUniforms $ ffProg ffi)
+		print xx
+
 		sequence 
 		   [ do texInfo <- case lookup bSrc texMap  of
 		     		   Nothing -> error $ " oops: can not find src buffer "
@@ -1195,26 +1201,37 @@ splatWithFunction env fnId args  uargs bDest ptMaps = do
 			glActiveTexture (gl_TEXTURE0 + i)
 			glBindTexture gl_TEXTURE_2D texIdS
 			location <- get (uniformLocation (ffProg ffi) s)
+			print (location,s)
+			if (badLocation location) then  error $ "opps: bad location for :" ++ show s
+				else uniform location $= (Index1 (fromIntegral i :: GLint))
              		reportErrors
-          		uniform location $= (Index1 (fromIntegral i :: GLint))
 		   | ((s,bSrc),i) <- zip args [1..]
 		   ]
-
-
 
 
 		sequence 
 		   [ do	location <- get (uniformLocation (ffProg ffi) s)
              		reportErrors
+			if (badLocation location) 
+					then  error $ "opps: bad location for :" ++ show s
+				else return ()
+			print (location,s)
 			case arg of
-			   CBI.ArrVec2 vecs -> 
+			   CBI.Vec2 (x,y) -> do
+				uniform location $= (Vertex2 (floatToGLclampf x) (floatToGLclampf y))
+			   CBI.Vec3 (x,y,z) -> do
+				uniform location $= (Vertex3 (floatToGLclampf x) (floatToGLclampf y) (floatToGLclampf z))
+			   CBI.Vec4 (x,y,z,t) -> do
+				uniform location $= (Vertex4 (floatToGLclampf x) (floatToGLclampf y) (floatToGLclampf z) (floatToGLclampf t))
+			   CBI.ArrVec2 vecs -> do
 				withArray [ Vertex2 (realToFrac x) (realToFrac y) :: Vertex2 GLfloat
 				          | (x,y) <- vecs 
 				          ] $ \ ptr -> uniformv location (fromIntegral $ length vecs) ptr
 			   _ -> error $ "Opps: " ++ show (s,arg)
+			reportErrors
 		   | (s,CBI.UniformArgument arg) <- uargs
 		   ]
-			
+
 {-
 		srcTexInfo1 <- case lookup bSrc1 texMap  of
 		   		Nothing -> error $ " oops: can not find src buffer "
@@ -1269,7 +1286,7 @@ splatPolygon2 env bS bD ps = do
 
     -- Check to make sure both the source and destination boards exist
     when (notMember bD texMap) $ do
-            print "Error: The destination board to splat to doesn't exist."
+            print "Error: The destination board to splat to doesn't exist. (splatPolygon2)"
             exitWith (ExitFailure 1)
     when (notMember bS texMap) $ do
             print "Error: The source board to splat doesn't exist."

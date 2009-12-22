@@ -96,6 +96,17 @@ functionLine line width steps = pointsToLine samples width
 -- | arrowhead is a triangle, pointing straight up, height 1, width 1, with the (0,0) at the center of the base.
 --arrowhead :: Point -> Radian -> R -> Board Bool
 --arrowhead p rad sz = move p $ rotate rad $ scale sz $ (\ (x,y) -> y >= 0 && y <= 1 && abs x * 2 <= 1 - y) <$> coord		
-		 
 
+class LerpBoard a where
+ lerpBoard :: Board UI -> Board a -> Board a -> Board a
+
+class ChooseBoard a where
+ chooseBoard :: Board Bool -> Board a -> Board a -> Board a
+
+-- anti-aliasing support
+class SuperSample a where
+  superSample :: Int -> Board a -> Board a
+
+--class MulBoard a where
+--  mulBoard :: Float -> Board a -> Board a
 

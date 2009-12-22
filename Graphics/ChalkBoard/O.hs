@@ -68,6 +68,8 @@ instance Obs RGB where
 instance Obs RGBA where
 	o c = primO (O_RGBA c) c
 
+instance Obs Float where
+	o c = primO (Lit c) c
 
 -- GADT attack
 --lamO :: (O a -> O b) -> O (a -> b)
