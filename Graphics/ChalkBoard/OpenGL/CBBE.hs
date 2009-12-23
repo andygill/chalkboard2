@@ -1149,8 +1149,6 @@ allocFragmentShader env f txt args = do
         compileShader shader
         reportErrors
         ok <- get $ compileStatus shader
-        infoLog <- get $ shaderInfoLog shader
-        putStrLn $ "Compile log: " ++ show infoLog
 	when (not ok) $ do 
              error "Compilation failed"
 
@@ -1160,7 +1158,7 @@ allocFragmentShader env f txt args = do
         reportErrors
         ok <- get (linkStatus brickProg)
         infoLog <- get (programInfoLog brickProg)
-        mapM_ putStrLn ["Program info log:", infoLog, ""]
+--        mapM_ putStrLn ["Program info log:", infoLog, ""]
         when (not ok) $ do
            deleteObjectNames [brickProg]
            ioError (userError "linking failed")
@@ -1190,9 +1188,10 @@ splatWithFunction env fnId args  uargs bDest ptMaps = do
 
 		let badLocation loc = False -- show loc == "UniformLocation (-1)"
 
+{-
 		xx <- get (activeUniforms $ ffProg ffi)
 		print xx
-
+-}
 		sequence 
 		   [ do texInfo <- case lookup bSrc texMap  of
 		     		   Nothing -> error $ " oops: can not find src buffer "
@@ -1201,7 +1200,6 @@ splatWithFunction env fnId args  uargs bDest ptMaps = do
 			glActiveTexture (gl_TEXTURE0 + i)
 			glBindTexture gl_TEXTURE_2D texIdS
 			location <- get (uniformLocation (ffProg ffi) s)
-			print (location,s)
 			if (badLocation location) then  error $ "opps: bad location for :" ++ show s
 				else uniform location $= (Index1 (fromIntegral i :: GLint))
              		reportErrors
@@ -1215,7 +1213,6 @@ splatWithFunction env fnId args  uargs bDest ptMaps = do
 			if (badLocation location) 
 					then  error $ "opps: bad location for :" ++ show s
 				else return ()
-			print (location,s)
 			case arg of
 			   CBI.Vec2 (x,y) -> do
 				uniform location $= (Vertex2 (floatToGLclampf x) (floatToGLclampf y))
