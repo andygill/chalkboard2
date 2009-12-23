@@ -1,6 +1,3 @@
-// mix{RGB}.fs
-//
-// Laplacian edge detection
 
 uniform sampler2D sampler0;	// RGB 
 uniform sampler2D sampler1;	// RGB
