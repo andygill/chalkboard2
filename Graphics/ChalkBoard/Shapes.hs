@@ -98,14 +98,37 @@ functionLine line width steps = pointsToLine samples width
 --arrowhead p rad sz = move p $ rotate rad $ scale sz $ (\ (x,y) -> y >= 0 && y <= 1 && abs x * 2 <= 1 - y) <$> coord		
 
 class LerpBoard a where
- lerpBoard :: Board UI -> Board a -> Board a -> Board a
+ lerpBoard ::Board a -> Board a -> Board UI -> Board a
 
+instance LerpBoard RGB where
+  lerpBoard b1 b2 bU = 
+	gslBoard fn
+		[ ("b1",board b1)
+		, ("b2",board b2)
+		, ("bU",board bU)
+		]
+		[]
+    where 
+      fn = unlines [
+ 	"uniform sampler2D b1;",
+	"uniform sampler2D b2;",
+	"uniform sampler2D bU;",
+	"void main (void) {",
+	" gl_FragColor.rgb = ",
+	"   mix(",
+	"    texture2D(b1,gl_TexCoord[0].st).rgb,",
+	"    texture2D(b2,gl_TexCoord[0].st).rgb,",
+	"    texture2D(bU,gl_TexCoord[0].st).r);",
+        " gl_FragColor.a = 1.0;",
+	"}" ]
+	
 class ChooseBoard a where
- chooseBoard :: Board Bool -> Board a -> Board a -> Board a
+ chooseBoard :: Board a -> Board a -> Board Bool -> Board a
 
 -- anti-aliasing support
 class SuperSample a where
   superSample :: Int -> Board a -> Board a
+
 
 --class MulBoard a where
 --  mulBoard :: Float -> Board a -> Board a
