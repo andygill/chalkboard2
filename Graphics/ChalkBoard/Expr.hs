@@ -15,6 +15,10 @@ import Data.Maybe
 import qualified Data.List as L
 import Control.Monad
 
+------------------------------------------------------------------------------
+-- Data Type
+------------------------------------------------------------------------------
+
 -- All the functions in our first order language.
 data Expr s 
 	= Choose s s s
@@ -38,22 +42,15 @@ data Expr s
 newtype E = E (Expr E)
 	deriving Show
 
-data ExprType = BOOL_Ty | RGB_Ty | RGBA_Ty | Pair_Ty ExprType ExprType	-- we seems to have this all over
+unE :: E -> Expr E
+unE (E e) = e
+
+------------------------------------------------------------------------------
+-- Unification and Type Checking
+------------------------------------------------------------------------------
+
+data ExprType = BOOL_Ty | RGB_Ty | RGBA_Ty | Pair_Ty ExprType ExprType
 	deriving (Show, Eq)
-
-exprTypeE :: E -> Maybe ExprType
-exprTypeE (E e) = exprType e
-
-exprType :: Expr E -> Maybe ExprType
-exprType (Choose _ a b)     = getFirst (First (exprTypeE a) `mappend` (First (exprTypeE b)))
-exprType (O_Bool {})        = return BOOL_Ty
-exprType (O_RGB {})         = return RGB_Ty
-exprType (O_RGBA {}) 	    = return RGBA_Ty
-exprType (Alpha {})	    = return RGBA_Ty
-exprType (UnAlpha {})	    = return RGB_Ty
-exprType (ScaleAlpha {})    = return RGBA_Ty
-exprType (Hook {})    	    = return RGB_Ty
-exprType _                  = Nothing
 
 exprUnifyE :: E -> ExprType -> [(Int,ExprType)]
 exprUnifyE (E e) = exprUnify e
@@ -61,23 +58,28 @@ exprUnifyE (E e) = exprUnify e
 -- exprUnify :: what the expected result type is, and does it unify
 exprUnify :: Expr E -> ExprType -> [(Int,ExprType)]
 exprUnify (Choose a b c) ty = L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c BOOL_Ty)
-exprUnify (O_Bool {}) BOOL_Ty = []
-exprUnify (O_RGB {}) RGB_Ty = []
-exprUnify (O_RGBA {}) RGBA_Ty = []
-exprUnify (Alpha _ e) RGBA_Ty = exprUnifyE e RGB_Ty
-exprUnify (UnAlpha e) RGB_Ty = exprUnifyE e RGBA_Ty
-exprUnify (ScaleAlpha _ e) RGBA_Ty = exprUnifyE e RGBA_Ty
-exprUnify (Hook _ e) RGB_Ty = exprUnifyE e (Pair_Ty RGB_Ty RGB_Ty)
-exprUnify (WithMask e1 e2) RGBA_Ty = L.nub (exprUnifyE e1 RGB_Ty ++ exprUnifyE e2 BOOL_Ty)
-exprUnify (Var i) ty = [(i,ty)]
-exprUnify other ty = error $ "exprUnify" ++ show (other,ty)
+exprUnify (O_Bool {}) 		BOOL_Ty 	= []
+exprUnify (O_RGB {}) 		RGB_Ty 		= []
+exprUnify (O_RGBA {}) 		RGBA_Ty 	= []
+exprUnify (Alpha _ e) 		RGBA_Ty 	= exprUnifyE e RGB_Ty
+exprUnify (UnAlpha e) 		RGB_Ty 		= exprUnifyE e RGBA_Ty
+exprUnify (ScaleAlpha _ e) 	RGBA_Ty 	= exprUnifyE e RGBA_Ty
+exprUnify (Hook _ e) 		RGB_Ty 		= exprUnifyE e (Pair_Ty RGB_Ty RGB_Ty)
+exprUnify (WithMask e1 e2) 	RGBA_Ty 	= L.nub (exprUnifyE e1 RGB_Ty ++ exprUnifyE e2 BOOL_Ty)
+exprUnify (Var i) 		ty 		= [(i,ty)]
+exprUnify other ty = error $ "exprUnify failure (internal errror) " ++ show (other,ty)
 
+------------------------------------------------------------------------------
+-- Evaluation
+------------------------------------------------------------------------------
+
+-- TODO: consider using the shallow embedding for this.
 -- evaluate to a normal form (constant folding, really)
 evalExprE :: Expr E -> Maybe (Expr E)
 -- already values
 evalExprE e@(Var {}) 		= return e
 evalExprE e@(O_Bool {}) 	= return e
-evalExprE e@(O_RGB {}) 	= return e
+evalExprE e@(O_RGB {}) 		= return e
 evalExprE e@(O_RGBA {}) 	= return e
 -- try some evaluation, please.
 evalExprE (Choose a b c) = 
@@ -91,18 +93,18 @@ evalExprE (Alpha a e) =
 	    other -> Nothing
 evalExprE other = Nothing
 
-unE :: E -> Expr E
-unE (E e) = e
-
 evalE :: E -> Maybe E
 evalE (E e) = liftM E (evalExprE e)
+
+------------------------------------------------------------------------------
+-- Reification Support
+------------------------------------------------------------------------------
 
 -- The generic plubing for our Expr datatype.				-- 
 
 instance MuRef E where
   type DeRef E = Expr
   mapDeRef f (E e) = T.traverse f e
-
 
 instance T.Traversable Expr where
 	traverse f (Choose a b c) 	= Choose <$> f a <*> f b <*> f c

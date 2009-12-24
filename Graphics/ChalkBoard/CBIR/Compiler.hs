@@ -195,8 +195,8 @@ compileBoardRGBA bc (PrimConst o) =
 	       	       ]	
 	   other -> error $ "pure a :: Board RGBA, can not compute a, found " ++ show other
 compileBoardRGBA bc (Fmap f other) = do
-	case typeOfFun f of
-	   FUN_TY (EXPR_TY BOOL_Ty) (EXPR_TY RGBA_Ty) -> do
+	case argTypeForOFun f RGBA_Ty of
+	   Just BOOL_Ty -> do
 		case (applyBool f True,applyBool f False) of
 		  (Just (O_RGBA tRGBA@(RGBA r g b 0)),Just (O_RGBA fRGBA@(RGBA _ _ _ 0))) -> do
 				-- silly case, both are transparent, so do ***NOTHING***
@@ -224,8 +224,8 @@ compileBoardRGBA bc (Fmap f other) = do
 			     ]
 		  other -> error $ "fmap (f :: Bool -> RGBA) brd, when f False is not transparent, is unsupported (a = " 
 					++ show other
-	   FUN_TY (EXPR_TY RGBA_Ty) (EXPR_TY RGBA_Ty) -> error $ "fmap (... :: RGBA -> RGBA) brd, unsupported fmap argument"
-	   FUN_TY a b -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show b ++ ") brd :: Board RGBA is not supported"
+	   Just RGBA_Ty -> error $ "fmap (... :: RGBA -> RGBA) brd, unsupported fmap argument"
+	   a -> error $ "fmap (... :: " ++ show a ++ " -> RGBA ) brd :: Board RGBA is not supported"
 compileBoardRGBA bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 	-- assume def is transparent!
 	-- assume the size of the buffer is okay. How do we do this?
@@ -264,7 +264,7 @@ compileBoardRGB bc (BI.PrimConst o) =
 	   _ -> error "pure a :: Board RGB, can not compute a??"
 compileBoardRGB bc (Fmap f other) = do
 	fMapFn <- patternOf $ f
-	case argTypeForFunX f RGB_Ty of
+	case argTypeForOFun f RGB_Ty of
 	   Just BOOL_Ty -> do
 		backBoard <- newNumber
 		frontBoard <- newNumber
@@ -496,7 +496,7 @@ compileInsideBufferRGB low high (ImageRGB bs) = do
 compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 	let size =  (1+x1-x0,1+y1-y0)
 	fMapFn <- patternOf $ f
-	case argTypeForFunX f RGB_Ty of
+	case argTypeForOFun f RGB_Ty of
 	   Just RGBA_Ty -> do
 		newBoard <- newNumber
 		(rest,buffId) <- compileInsideBufferRGBA low high buff
