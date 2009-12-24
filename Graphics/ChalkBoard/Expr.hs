@@ -32,6 +32,7 @@ data Expr s
 	| UnAlpha s
 	| Hook String s			-- magic hook, to allow tunneling
 	| Hook2 String s s
+        | WithMask s s			-- O RGB -> O Bool -> O (Maybe RGB)
 	deriving Show
 
 newtype E = E (Expr E)
@@ -67,9 +68,9 @@ exprUnify (Alpha _ e) RGBA_Ty = exprUnifyE e RGB_Ty
 exprUnify (UnAlpha e) RGB_Ty = exprUnifyE e RGBA_Ty
 exprUnify (ScaleAlpha _ e) RGBA_Ty = exprUnifyE e RGBA_Ty
 exprUnify (Hook _ e) RGB_Ty = exprUnifyE e (Pair_Ty RGB_Ty RGB_Ty)
+exprUnify (WithMask e1 e2) RGBA_Ty = L.nub (exprUnifyE e1 RGB_Ty ++ exprUnifyE e2 BOOL_Ty)
 exprUnify (Var i) ty = [(i,ty)]
 exprUnify other ty = error $ "exprUnify" ++ show (other,ty)
-
 
 -- evaluate to a normal form (constant folding, really)
 evalExprE :: Expr E -> Maybe (Expr E)
