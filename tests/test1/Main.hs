@@ -38,7 +38,7 @@ cbMain cb = do
 --	    test _       = \ xs -> return ()
 
 	
-	let test "test8" = \ _ -> return ()
+	let --test "test8" = \ _ -> return ()
 	    test _ = sequence_
 
 	-- load an image to use for rotations, etc.
@@ -71,21 +71,23 @@ cbMain cb = do
 				[0,0.1,-0.1,pi/10,pi,2*pi]
 				["0","0.1","neg0.1","pi_div10","pi","2pi"]
 		          ]
-	   	test "??" [ do drawChalkBoard cb ((move (x,y) (scale 0.5 shape))
+	   	test "move" 
+		          [ do drawChalkBoard cb ((move (x,y) (scale 0.5 shape))
 					 )
 		               writeChalkBoard cb ("test2-move-" ++ shape_name ++ "-" ++ nmY ++ nmX ++ ".png")
 	 	     	  | let amount = 0.25
 		          , (x,nmX) <- [(-amount,"left"),(0,"center"),(amount,"right")]
 	 	          , (y,nmY) <- [(amount,"top"),(0,"middle"),(-amount,"bottom")]
 		          ]
-		test "??" [ do  drawChalkBoard cb ((scaleXY (x,y) shape)
-					 )
+		test "scale" 
+		          [ do  drawChalkBoard cb (scaleXY (x,y) shape)
 		                writeChalkBoard cb ("test2-scaleXY-" ++ shape_name ++ "_" ++ nmX ++ "_" ++ nmY ++ "_.png")
 			  | let ranges =  [(1,"1"),(0.5,"0.5"),(0.1,"0.1"),(-0.1,"neg0.1")]
 			  , (x,nmX) <- ranges
 			  , (y,nmY) <- ranges
 			  ]
-		test "??" [ do  drawChalkBoard cb ((f (scale 0.5 shape))
+		test "chain" [ do  
+				drawChalkBoard cb ((f (scale 0.5 shape))
 					 )
 		                writeChalkBoard cb ("test2-chain-" ++ shape_name ++ "-" ++ chain ++ ".png")
 			  | let ranges =  [(1,"1"),(0.5,"0.5"),(0.1,"0.1"),(-0.1,"neg0.1")]
@@ -105,7 +107,7 @@ cbMain cb = do
             ]
 
 	-- load an image; display it.
-	test "??" [ do
+	test "test3" [ do
 		(x,y,imgBrd) <- readBoard ("images/" ++ nm)
 		let xy = max x y
 		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) imgBrd))
@@ -116,7 +118,8 @@ cbMain cb = do
 		   ] 
 	   ]
 
-	test "??" [ do let r = move (0.26,0.15)  (choose (withAlpha a red) (transparent white) <$> circle)
+	test "test4" [ do 
+		       let r = move (0.26,0.15)  (choose (withAlpha a red) (transparent white) <$> circle)
 	                   g = move (-0.26,0.15) (choose (withAlpha a green) (transparent white) <$> circle)
 	                   b = move (0,-0.3)      (choose (withAlpha a blue) (transparent white) <$> circle)
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> (r `over` b `over` g `over` boardOf (transparent white))))
@@ -127,7 +130,8 @@ cbMain cb = do
 	-- These should be a single color,
 	-- and not bleed through each other
 
-	test "??" [ do let r = move (0.26,0.15) circle
+	test "test5" [ do 
+		       let r = move (0.26,0.15) circle
 	                   g = move (-0.26,0.15) circle
 	                   b = move (0,-0.3)    circle
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> 
