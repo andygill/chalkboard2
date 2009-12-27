@@ -38,7 +38,7 @@ data Depth = BitDepth		-- 1 bit per pixel
            | G8BitDepth        -- 8 bits per pixel (grey)
            | RGB24Depth	        -- (R,G,B), 8 bits per pixel
            | RGBADepth		-- (R,G,B,A), 8 bits per pixel
-        deriving Show
+        deriving (Show, Eq)
 
 -- In a sense, the Depth is the type of our CBBO.
 
