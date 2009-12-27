@@ -35,16 +35,15 @@ data InsideBuffer a where
 	FlipTB		:: InsideBuffer a -> InsideBuffer a
 	
 data Board a where
-	PrimFun 	:: 		((R,R) -> O a)	-> Board a-- TODO: RM!
-	PrimConst 	::		(O a)	-> Board a
-	Trans 		:: Trans 	->	(Board a)	-> Board a
-	Crop 		   :: ((R,R),(R,R)) -> Board a	-> Board (Maybe a)
-	Fmap  	:: forall b . (O b -> O a) -> Board b	-> Board a
-	Zip	:: Board b -> Board c -> Board (b,c)
-	Polygon 	   ::	(Float -> [(R,R)])	-> 		Board Bool	-- later, have two types of Polygon
+	PrimConst 	:: (O a)					-> Board a
+	Trans 		:: Trans -> Board a				-> Board a
+	Crop 		:: ((R,R),(R,R)) -> Board a			-> Board (Maybe a)
+	Fmap :: forall b . (O b -> O a) -> Board b			-> Board a
+	Zip		:: Board b -> Board c 				-> Board (b,c)
+	Polygon 	:: (Float -> [(R,R)]) 				-> Board Bool	-- later, have two types of Polygon
 	-- only used in code generator, when types do not matter.
-	Over  		:: 	(a -> a -> a) -> Board a -> Board a -> 	Board a
-	BufferOnBoard	:: Buffer a -> Board a -> Board a
+	Over  		:: 	(a -> a -> a) -> Board a -> Board a 	-> Board a
+	BufferOnBoard	:: Buffer a -> Board a 				-> Board a
 	-- FFI into the Graphics shader langauge.
 	BoardGSI 	:: String -> [(String,UniformTexture)] -> [(String,UniformArgument)] -> Board a	
 	
@@ -101,7 +100,7 @@ uniform = UniformArgument
 -}
 
 instance Show (Board a) where
-	show (PrimFun {}) = "PrimFun"
+--	show (PrimFun {}) = "PrimFun"
 	show (PrimConst {}) = "PrimConst"
 	show (Trans _ brd)  = "Trans (..) (" ++ show brd ++ ")"
 	show (Polygon {})   = "Polygon"
@@ -111,8 +110,8 @@ instance Show (Board a) where
 	show (Over _ brd1 brd2)   = "Over (..) (" ++ show brd1 ++ " " ++ show brd2 ++ ")"
 	show (BufferOnBoard buff brd)  = "BufferOnBoard (" ++ show buff ++ ") (" ++ show brd ++ ")"
 	show (BoardGSI nm arg1 arg2) = "BoardGSI ffi " 
-				++ show (Prelude.map fst arg1) 
-				++ show (Prelude.map fst arg2) 
+				++ show (Prelude.map Prelude.fst arg1) 
+				++ show (Prelude.map Prelude.fst arg2) 
 
 instance Show (Buffer a) where
 	show (Buffer x y a) = "Buffer " ++ show (x,y) ++ " " ++ show a

@@ -410,7 +410,7 @@ compileBoardRGB bc (BoardGSI fn bargs vargs) = do
 		++ concat fill_Boards_UI
 		++ [ SplatWithFunction newFrag 
 				[ (nm,brdId) 
-				| (nm,brdId) <- zip (map fst boards_RGB ++ map fst boards_Bool  ++ map fst boards_UI)
+				| (nm,brdId) <- zip (map Prelude.fst boards_RGB ++ map Prelude.fst boards_Bool  ++ map Prelude.fst boards_UI)
 						    (num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI)
 				]
 				vargs

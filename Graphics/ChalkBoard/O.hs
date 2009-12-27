@@ -22,6 +22,9 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, hook
 	, hook2
 	, withMask
+	, Graphics.ChalkBoard.O.fst
+	, Graphics.ChalkBoard.O.snd
+	, withDefault
 	) where
 	
 import Graphics.ChalkBoard.Types as Ty
@@ -138,5 +141,14 @@ purple = o $ RGB 1.0 0.0 1.0
 yellow :: O RGB
 yellow = o $ RGB 1.0 1.0 0.0
 
-withMask :: O RGB -> O Bool -> O (Maybe RGB)
+withMask :: O a -> O Bool -> O (Maybe a)
 withMask (O a1 e1) (O a2 e2) = O (error $ "withMask") (E $ WithMask e1 e2)
+
+withDefault :: O a -> O (Maybe a) -> O a
+withDefault (O a1 e1) (O a2 e2) = O (error $ "withDefault") (E $ WithDefault e1 e2)
+
+fst :: O (a,b) -> O a
+fst (O (a,_) e) = O a (E $ O_Fst e)
+
+snd :: O (a,b) -> O b
+snd (O (_,b) e) = O b (E $ O_Snd e)

@@ -1,4 +1,6 @@
-{-# LANGUAGE TypeFamilies, ExistentialQuantification, GADTs, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies, ExistentialQuantification, GADTs, 
+    FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, 
+    UndecidableInstances #-}
 
 module Graphics.ChalkBoard.Board 
 	( -- * The 'Board' 
@@ -103,7 +105,6 @@ lookup :: Board a -> Float -> (R,R) -> a
 lookup brd r (x,y) = unO $ lookupO brd r (x,y)
 
 lookupO :: Board a -> Float -> (R,R) -> O a
-lookupO (PrimFun f) r (x,y) = f (x,y)
 lookupO (Trans t brd) r (x,y) = lookupO brd r (transPoint t (x,y))
 lookupO (Fmap f brd) r (x,y) = f $ lookupO brd r (x,y)
 lookupO (Polygon points) r (x,y) = 
@@ -126,7 +127,8 @@ instance Over a => Over (Board a) where
 mask :: ((R,R),(R,R)) -> Board a -> Board (Maybe a)
 mask = Crop
 
--- | read a file containing a common image format (jpg, gif, etc.), and create a 'Board RGBA', and the X and Y size of the image.
+-- | read a file containing a common image format (jpg, gif, etc.), 
+-- and create a 'Board RGBA', and the X and Y size of the image.
 readBoard :: String -> IO (Int,Int,Board RGBA)
 readBoard filename = do
   buff <- readBuffer filename
