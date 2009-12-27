@@ -645,3 +645,134 @@ newNumber :: IO Int
 newNumber = do
 	u <- newUnique
 	return $ hashUnique u + 1000
+	
+	
+	
+------------------------------------------------------------------------------------------
+-- Another attempt to unify the compiler.
+
+-- 	Data		Alpha?	BACK?			Notes
+
+data Target 
+ = Target_RGBA     --	Y	Merge
+ | Target_RGB      --	N	Overwrite 		A = 1
+ | Target_Bool RGB --	N	Merge			Arg is what do we draw for *True*
+ | Target_Maybe_RGB --	Y	Merge 			Nothing => transparent <ANY>
+	deriving Show
+
+data WithBack = Merge | Overwrite deriving (Eq, Show)
+
+-- What does drawing this target *mean*? 
+-- Do you merge with the background, or overwrite it?
+
+targetWithBack :: Target -> WithBack
+targetWithBack Target_RGBA 		= Merge
+targetWithBack Target_RGB  		= Overwrite
+targetWithBack (Target_Bool {}) 	= Merge
+targetWithBack (Target_Maybe_RGB)	= Merge
+
+targetRep :: Target -> Depth
+targetRep Target_RGBA 			= RGBADepth
+targetRep Target_RGB  			= RGB24Depth
+targetRep (Target_Bool {}) 		= RGB24Depth
+targetRep (Target_Maybe_RGB)		= RGBADepth
+
+compileBoard2 
+	:: BoardContext
+	-> Target
+	-> Board a
+	-> IO [CBIR.Inst Int]
+
+-- compileBoard _ _ brd | trace (show ("compileBoard",brd)) False = undefined
+compileBoard2 bc t (Trans mv brd) 		= compileBoard2 (updateTrans mv bc) t brd
+compileBoard2 bc t (Fmap g (Fmap h brd)) 	= compileBoard2 bc t (Fmap (g . h) brd)
+compileBoard2 bc t (Fmap g (Trans mv brd)) 	= compileBoard2 bc t (Trans mv (Fmap g brd))
+compileBoard2 bc t (Over fn above below) 	= 
+	case targetWithBack t of
+	   Merge    		 		-> compileBoardOver bc t above below
+	   Overwrite 				-> compileBoard2 bc t above
+compileBoard2 bc t (Polygon nodes) 		= compileBoardPolygon bc t nodes
+compileBoard2 bc t (PrimConst o) 		= compileBoardConst bc t (evalE $ runO0 o)
+compileBoard2 bc t other          		= error $ show ("compileBoard2",bc,t,other)
+
+
+
+-- Drawing something *over* something.
+compileBoardOver bc t above below = do
+	-- not quite right; assumes that the backing board is white.
+	before <- compileBoard2 bc t below
+	after  <- compileBoard2 bc t above
+	return   [ Nested ("over: " ++ show t)
+		   ( before ++
+		     [Nested "`over`" []] ++
+		     after 
+		   )
+		 ]
+
+-- Drawing something onto the screen
+compileBoardPolygon bc (Target_Bool (RGB r g b)) nodes = do
+	return $ [ Nested ("precision factor = " ++ show res)
+		     [ SplatColor (RGBA r g b 1) (bcDest bc) False (map (mapPoint (bcTrans bc)) (nodes res))
+		     ]
+		]
+  where
+	[(x0,y0),(x1,y1),(x2,y2)] = map (mapPoint [ Scale (a,b) | Scale (a,b) <- bcTrans bc]) [(0,0),(1,0),(0,1)]
+	res   = 1 + max (abs (fromIntegral x * (x0 - x1))) (abs (fromIntegral y * (y0 - y2)))
+	(x,y)  = bcSize bc
+
+-- draw a constant board.
+compileBoardConst bc t@(Target_Bool rgb) (Just (E (O_Bool True)))
+		| targetRep t == targetRep Target_RGB 
+			-- sanity check, then use the RGB drawing
+		= compileBoardConst bc (Target_RGB)  (Just (E (O_RGB rgb)))
+compileBoardConst bc t@(Target_Bool rgb) (Just (E (O_Bool False)))
+	   	-- background *is* false
+		= return []
+compileBoardConst bc t@(Target_RGB) (Just (E (O_RGB (RGB r g b))))
+		= return [
+		 	SplatColor (RGBA r g b 1)
+				(bcDest bc)
+				False
+				[(0,0),(1,0),(1,1),(0,1)]
+			]
+
+			-- TODO: we need a SplatColor that 
+			--	  * works over the whole board (we use [(0,0),..] for that now)
+			--	  * can Blend or Copy
+compileBoardConst bc t@(Target_RGBA) (Just (E (O_RGBA rgba)))
+		= do
+		newBoard <- newNumber
+		return [ Nested ("Const (a :: RGBA)") $
+			  [ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(1,1)		   -- tiny board
+        			RGBADepth          -- depth of buffer	
+				(BackgroundRGBADepth rgba)
+			  , copyBoard newBoard (bcDest bc) 
+			  ]
+			]
+compileBoardConst bc t constant = error $ show ("compileBoardConst",bc,t,constant)
+
+
+{-
+	
+
+		return [ Nested ("Const (True :: Bool)") $
+		    (drawWiths dw (bcDest bc) 
+		    	       (mapPoint []) -- now sure abot this??
+			       [(0,0),(0,1),(1,1),(1,0)])
+	       	       ]
+
+compileBoardBool dw bc (PrimConst o) = 
+	case (evalE $ runO0 o) of
+	   Just (E (O_Bool True)) -> do
+		return [ Nested ("Const (True :: Bool)") $
+		    (drawWiths dw (bcDest bc) 
+		    	       (mapPoint []) -- now sure abot this??
+			       [(0,0),(0,1),(1,1),(1,0)])
+	       	       ]
+	   Just (E (O_Bool False)) ->	-- background *is* false
+		return []
+	   other -> error $ "pure a :: Board Bool, can not compute a, found " ++ show other
+-}
+
