@@ -47,7 +47,7 @@ videoMain cb = do
 
     (Just buffer0) <- nextPPMFrame videoPipe
 
-    startDefaultWriteStream cb "test.avi"
+    startDefaultWriteStream cb "test.mp4"
 
     let loopEnd = do
                 endWriteStream cb
