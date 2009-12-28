@@ -32,14 +32,14 @@ colors = zip
 
 cbMain cb = do
 	-- hack to let us control what is tested
---	let test :: String -> [IO ()] -> IO ()
---	    test "test6" = sequence_
---	    test "circle" = sequence_
---	    test _       = \ xs -> return ()
-
+{-
+	let test :: String -> [IO ()] -> IO ()
+	    test "test5" = sequence_
+	    test "test6" = sequence_
+	    test _       = \ xs -> return ()
+-}
 	
-	let --test "test8" = \ _ -> return ()
-	    test _ = sequence_
+	let test _ = sequence_
 
 	-- load an image to use for rotations, etc.
 	(x,y,imgBrd) <- readBoard ("images/cb-text.png")
@@ -124,26 +124,29 @@ cbMain cb = do
 	                   b = move (0,-0.3)      (choose (withAlpha a blue) (transparent white) <$> circle)
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> (r `over` b `over` g `over` boardOf (transparent white))))
 		       writeChalkBoard cb $ "test4-" ++ show a ++  ".png"
-		 | a <- [0,0.5,0.7,0.9,1]
+		 | a <- [0,0.1,0.3,0.5,0.7,0.9,1]
 		 ]
 
 	-- These should be a single color,
 	-- and not bleed through each other
 
-	test "test5" [ do 
+	test "test5" [ 
+		sequence_ [ do 
 		       let r = move (0.26,0.15) circle
 	                   g = move (-0.26,0.15) circle
 	                   b = move (0,-0.3)    circle
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> 
 							(choose (withAlpha a green) (transparent white) <$>
 							    (r `over` b `over` g))))
-		       writeChalkBoard cb $ "test5-" ++ show a ++  ".png"
-		 | a <- [0,0.5,0.7,0.9,1]
+		       writeChalkBoard cb $ "test5-" ++ show a ++  ".png" ]
+		 | a <- [0,0.1,0.3,0.5,0.7,0.9,1]
 		 ]
 
 -- This should show a single shape of overlap between the two snowmen.
 
-	test "test6" [ do 
+	let overX a b = a `over` b
+	test "test6" [ 
+		sequence_ [ do
 		       let rs0 = [ move (i * 0.26,j * 0.26) circle
 			        | i <- [-1,1], j <- [-1,1]
 			        ]
@@ -151,11 +154,11 @@ cbMain cb = do
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> 
 							((choose (withAlpha a green) 
 								(transparent white) <$>
-							    ((rs !! 0) `over` (rs !! 1))) `over`
+							    ((rs !! 0) `over` (rs !! 1))) `overX`
 							 (choose (withAlpha a red) 
 								(transparent white) <$>
 							    ((rs !! 2) `over` (rs !! 3))))))
-		       writeChalkBoard cb $ "test6-" ++ show a ++  ".png"
+		       writeChalkBoard cb $ "test6-" ++ show a ++  ".png" ]
 		 | a <- [0,0.5,0.7,0.9,1]
 		 ]
 
