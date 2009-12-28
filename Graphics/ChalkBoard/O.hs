@@ -19,11 +19,9 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, cyan
 	, purple
 	, yellow
-	, hook
-	, hook2
 	, withMask
-	, Graphics.ChalkBoard.O.fst
-	, Graphics.ChalkBoard.O.snd
+	, Graphics.ChalkBoard.O.fstO
+	, Graphics.ChalkBoard.O.sndO
 	, withDefault
 	) where
 	
@@ -114,16 +112,6 @@ unAlpha (O a e) = O (C.unAlpha a) (E $ Expr.UnAlpha e)
 transparent :: O RGB -> O RGBA
 transparent (O a e) = O (C.alpha a) (E $ Expr.Alpha 0 e)
 
--- Hook for something interesting, like a pointwise function.
--- Will always disappear before API release.
-hook :: String -> O RGB -> O RGB
-hook str (O a e) = O (error $ "hook: " ++ show str) (E $ Hook str e)
-
--- Hook for something interesting, like a pointwise function.
--- Will always disappear before API release.
-hook2 :: String -> O (RGB,RGB) -> O RGB
-hook2 str (O _ e) = O (error $ "hook: " ++ show str) (E $ Hook str e)
-
 red    :: O RGB
 red    = o $ RGB 1.0 0.0 0.0
 green  :: O RGB
@@ -147,8 +135,8 @@ withMask (O a1 e1) (O a2 e2) = O (error $ "withMask") (E $ WithMask e1 e2)
 withDefault :: O a -> O (Maybe a) -> O a
 withDefault (O a1 e1) (O a2 e2) = O (error $ "withDefault") (E $ WithDefault e1 e2)
 
-fst :: O (a,b) -> O a
-fst (O (a,_) e) = O a (E $ O_Fst e)
+fstO :: O (a,b) -> O a
+fstO (O ~(a,_) e) = O a (E $ oFst e)
 
-snd :: O (a,b) -> O b
-snd (O (_,b) e) = O b (E $ O_Snd e)
+sndO :: O (a,b) -> O b
+sndO (O ~(_,b) e) = O b (E $ oSnd e)

@@ -44,9 +44,8 @@ compile (x,y) bufferId brd =
 
 compileB :: (Int,Int) -> BufferId -> Buffer RGB -> IO [CBIR.Inst Int]
 compileB (x,y) bufferId buff = do
-	compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) (scaleXY (1/fromIntegral x,1/fromIntegral y) (BufferOnBoard buff (boardOf white)))
---	compileInsideBufferRGB (initBoardContext (x,y) bufferId) low high raw
-
+	compileBoard2 (initBoardContext (x,y) bufferId) Target_RGB 
+		(scaleXY (1/fromIntegral x,1/fromIntegral y) (BufferOnBoard buff (boardOf white)))
 
 
 
@@ -198,6 +197,7 @@ compileBoardRGBA bc (PrimConst o) =
 			  ]
 	       	       ]	
 	   other -> error $ "pure a :: Board RGBA, can not compute a, found " ++ show other
+{-
 compileBoardRGBA bc (Fmap f other) = do
 	case argTypeForOFun f RGBA_Ty of
 	   Just BOOL_Ty -> do
@@ -230,6 +230,7 @@ compileBoardRGBA bc (Fmap f other) = do
 					++ show other
 	   Just RGBA_Ty -> error $ "fmap (... :: RGBA -> RGBA) brd, unsupported fmap argument"
 	   a -> error $ "fmap (... :: " ++ show a ++ " -> RGBA ) brd :: Board RGBA is not supported"
+-}
 compileBoardRGBA bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 	-- assume def is transparent!
 	-- assume the size of the buffer is okay. How do we do this?
@@ -266,6 +267,7 @@ compileBoardRGB bc (BI.PrimConst o) =
 	          	  [ colorBoard (RGB r g b) (bcDest bc) ]
 	       	       ]	
 	   _ -> error "pure a :: Board RGB, can not compute a??"
+{-
 compileBoardRGB bc (Fmap f other) = do
 	fMapFn <- patternOf $ f
 	case argTypeForOFun f RGB_Ty of
@@ -350,6 +352,7 @@ compileBoardRGB bc (Fmap f other) = do
 -}
 
 	   a -> error $ "fmap (... :: " ++ show a ++ " -> " ++ show RGB_Ty ++ ") brd :: Board RGB is not supported"
+-}
 compileBoardRGB bc (BufferOnBoard (Buffer (x0,y0) (x1,y1) buff) back) = do
 	-- assume def is transparent!
 	-- assume the size of the buffer is okay. How do we do this?
@@ -497,6 +500,7 @@ compileInsideBufferRGB
 		 -> IO ([CBIR.Inst BufferId],BufferId)
 compileInsideBufferRGB low high (ImageRGB bs) = do
 	compileByteStringImage low high bs RGB24Depth
+{-
 compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 	let size =  (1+x1-x0,1+y1-y0)
 	fMapFn <- patternOf $ f
@@ -515,6 +519,7 @@ compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 			, Delete buffId
 		        ]],newBoard)
 	   ans -> error $ "fmap (... :: " ++ show ans ++ " -> " ++ show RGB_Ty ++ ") brd :: Buffer RGB is not supported"
+-}
 compileInsideBufferRGB low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 	newBoard <- newNumber
 	let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)
@@ -612,7 +617,7 @@ perhapsOverlapBoardBool _              = True
 
 -- choice
 patternOf :: (O a -> O b) -> IO (Graph Expr)
-patternOf f = reifyO $ f (O (error "undefined shallow value") (E $ Var Here))
+patternOf f = reifyO $ f (O (error "undefined shallow value") (E $ Var []))
 
 
 runToFind :: Expr E -> Graph Expr -> Expr E
@@ -626,7 +631,7 @@ runToFind arg (Graph nodes root) = eval (find root)
 		  O_Bool True -> eval (find a)	-- false
 		  O_Bool False -> eval (find b)	-- false
 		  e -> error $ "expected a Bool, found something else " ++ show e
-	eval (Var Here) = arg
+	eval (Var []) = arg
 	eval (O_RGB c) = O_RGB c
 
 	eval (UnAlpha c) = case eval (find c) of
@@ -642,7 +647,7 @@ applyBool :: (O bool -> O a) -> Bool -> Maybe (Expr E)
 applyBool f b = liftM unE (evalE (runO1 f (E $ O_Bool b)))
 
 applyVar :: (O a -> O b) -> Expr E
-applyVar f = unE (runO1 f (E $ Var Here))
+applyVar f = unE (runO1 f (E $ Var []))
 
 
 newNumber :: IO Int
@@ -662,6 +667,7 @@ data Target
  | Target_RGB      --	N	Overwrite 		A = 1
  | Target_Bool RGB --	N	Merge			Arg is what do we draw for *True*
  | Target_Maybe_RGB --	Y	Merge 			Nothing => transparent <ANY>
+ | Target_UI
 	deriving Show
 
 data WithBack = Merge | Overwrite deriving (Eq, Show)
@@ -674,12 +680,14 @@ targetWithBack Target_RGBA 		= Merge
 targetWithBack Target_RGB  		= Overwrite
 targetWithBack (Target_Bool {}) 	= Merge
 targetWithBack (Target_Maybe_RGB)	= Merge
+targetWithBack (Target_UI)		= Overwrite
 
 targetRep :: Target -> Depth
 targetRep Target_RGBA 			= RGBADepth
 targetRep Target_RGB  			= RGB24Depth
 targetRep (Target_Bool {}) 		= RGB24Depth
 targetRep (Target_Maybe_RGB)		= RGBADepth
+targetRep (Target_Maybe_RGB)		= RGB24Depth
 
 -- TODO: rename as targetToType 
 targetType :: Target -> ExprType
@@ -687,7 +695,6 @@ targetType Target_RGBA 			= RGBA_Ty
 targetType Target_RGB  			= RGB_Ty 
 targetType (Target_Bool {}) 		= BOOL_Ty
 targetType (Target_Maybe_RGB)		= Maybe_Ty RGB_Ty
-
 
 -- not used yet!
 targetFromType :: ExprType -> Target
@@ -711,7 +718,7 @@ compileBoard2 bc t (Over fn above below) 	=
 	   Overwrite 				-> compileBoard2 bc t above
 compileBoard2 bc t (Polygon nodes) 		= compileBoardPolygon bc t nodes
 compileBoard2 bc t (PrimConst o) 		= compileBoardConst bc t (evalE $ runO0 o)
-compileBoard2 bc t (Fmap f other) 		= compileBoardFmap bc t (runO1 f (E $ Var Here)) other (argTypeForOFun f ty) ty
+compileBoard2 bc t (Fmap f other) 		= compileBoardFmap bc t (runO1 f (E $ Var [])) other (argTypeForOFun f ty) ty
 	where ty = targetType t
 compileBoard2 bc t (BufferOnBoard buffer brd) 	= compileBufferOnBoard bc t buffer brd
 	where ty = targetType t
@@ -788,9 +795,9 @@ assignFrag other expr = error $ show ("assignFrag",other,expr)
 
 
 -- TODO: The good thing about a boolean argument is that it can only have two possible values.
-compileBoardFmap :: BoardContext -> Target -> E -> Board a -> Maybe ExprType -> ExprType -> IO [Inst Int]
-compileBoardFmap bc t (E f) other (Just argType) resTy = do
-	(insts,idMap) <- compileFmapArgs bc other argType
+compileBoardFmap :: BoardContext -> Target -> E -> Board a -> [([Path],ExprType)] -> ExprType -> IO [Inst Int]
+compileBoardFmap bc t (E f) other argTypes resTy = do
+	(insts,idMap) <- compileFmapArgs bc other argTypes
 	let env = Map.fromList [ (path,"cb_sampler" ++ show n) | ((_,path),n) <- zip idMap [0..]]
 	let expr = compileFmapFun env f resTy	
  	let (x0,x1,y0,y1) = (0,1,0,1) 
@@ -837,20 +844,21 @@ compileBoardFmap bc t (E f) other (Just argType) resTy = do
 -- Abort!
 compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,t,other,argTy,resTy)
 
-compileFmapArgs :: BoardContext -> Board a -> ExprType -> IO ([Inst Int],[(BufferId,Path)])
-compileFmapArgs bc (Zip b1 b2) (Pair_Ty t1 t2) = do
-	(insts1,mp1) <- compileFmapArgs bc b1 t1 
-	(insts2,mp2) <- compileFmapArgs bc b1 t1 
+compileFmapArgs :: BoardContext -> Board a -> [([Path],ExprType)] -> IO ([Inst Int],[(BufferId,[Path])])
+--compileFmapArgs bc brd tyMap | trace (show ("compileFmapArgs",bc,brd,tyMap)) False = undefined
+compileFmapArgs bc (Zip b1 b2) ty | not (null ty) = do
+	(insts1,mp1) <- compileFmapArgs bc b1 [ (p,t) | (Expr.GoLeft:p,t) <- ty ]
+	(insts2,mp2) <- compileFmapArgs bc b2 [ (p,t) | (Expr.GoRight:p,t) <- ty ]
 	return $ (insts1 ++ insts2, 
-		  [ (bid,Expr.Left p) | (bid,p) <- mp1 ] ++
-		  [ (bid,Expr.Right p) | (bid,p) <- mp2 ]
+		  [ (bid,Expr.GoLeft:p) | (bid,p) <- mp1 ] ++
+		  [ (bid,Expr.GoRight:p) | (bid,p) <- mp2 ]
 		 )
-compileFmapArgs bc (Zip {}) ty = error $ "found zip of boards, without zip type" ++ show ty
-compileFmapArgs bc brd ty = do
+compileFmapArgs bc (Zip {}) ty = error $ "found zip of boards, without zip types" ++ show ty
+compileFmapArgs bc brd [([],ty)] = do
 	-- Otherwise, we allocate a board, construct it, and pass it back.
 	(rest,bid) <- allocAndCompileBoard bc ty brd
-	return (rest,[(bid,Here)])
-
+	return (rest,[(bid,[])])
+compileFmapArgs bc brd tyMap = error $ show ("compileFmapArgs",bc,brd,tyMap)
 
 allocAndCompileBoard
 	:: BoardContext		-- ignore the bcDest
@@ -893,7 +901,7 @@ allocAndCompileBoard bc BOOL_Ty brd = do
 allocAndCompileBoard bc ty brd = error $ show ("allocAndCompileBoard",bc,ty,brd)
 
 -- what a hack! Compiles our Expr language into GLSL.
-compileFmapFun :: Map Path String -> Expr E -> ExprType -> String
+compileFmapFun :: Map [Path] String -> Expr E -> ExprType -> String
 compileFmapFun env (Choose e1 e2 e3) ty =
 	      "mix(" ++ compileFmapFunE env e2 ty ++ "," ++
 			compileFmapFunE env e1 ty ++ "," ++
@@ -904,6 +912,7 @@ compileFmapFun env v@(Var path) ty =
 	  Nothing -> error $ "Can not find Var " ++ show v
   where coerce txt = case ty of
 		       BOOL_Ty -> "(" ++ txt ++ ").r > 0.5 ? 1.0 : 0.0"
+		       RGB_Ty  ->  "(" ++ txt ++ ").rgb"
 		       other   -> txt
 compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
 		"vec3(" ++ show r ++ "," ++
@@ -913,8 +922,12 @@ compileFmapFun env (Alpha v e) RGBA_Ty =
 	"cb_Alpha(" ++ show v ++ "," ++ compileFmapFunE env e RGB_Ty ++ ")"
 compileFmapFun env (UnAlpha e) RGB_Ty =
 	"cb_UnAlpha(" ++ compileFmapFunE env e RGBA_Ty ++ ")"
-	
+{-
+compileFmapFun env e@(O_Fst {}) ty = digForVar env e ty
+compileFmapFun env e@(O_Snd {}) ty = digForVa env e ty
+-}	
 compileFmapFun env e ty = error $ show ("compileFmapFun",env,e,ty)
+
 
 compileFmapFunE env (E e) ty = compileFmapFun env e ty
 
@@ -949,6 +962,43 @@ compileBuffer2
 
 compileBuffer2 Target_RGBA low high (ImageRGBA bs) = do
 	compileByteStringImage low high bs RGBADepth
+
+-- TODO: common up with other fmap function. Not that Buffer can *not* use zip.
+compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
+	let tarTy = targetType t
+	let expr  = runO1 f (E $ Var [])
+	let argTy =  case lookup [] (argTypeForOFun f tarTy) of
+		      Just t -> t
+		      Nothing -> error "can not find type of f in `fmap f (.. buffer ..)'"
+		
+
+	(insts,bId) <- compileBuffer2 (targetFromType argTy) low high buff
+	let env = Map.fromList [ ([],"cb_sampler0") ]
+	let code = compileFmapFunE env expr tarTy	
+	let fn = 
+		unlines [ "uniform sampler2D cb_sampler0;" ] ++
+		"vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\n" ++
+		"vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }\n" ++
+		"void main(void) {\n" ++
+		assignFrag tarTy code ++
+		"}\n"
+
+	newFrag <- newNumber
+	targetBuff <- newNumber
+	return ( insts ++
+		 [ allocateBuffer (1+x1-x0,1+y1-y0) targetBuff t
+		 , AllocFragmentShader newFrag fn []
+		 , SplatWithFunction newFrag 
+				[ ("cb_sampler0",bId)]
+				[]
+				targetBuff
+				[PointMap (x,y) (x,y) | (x,y) <- let (x0,x1,y0,y1) = (0,1,0,1) 
+								 in [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+		 ], targetBuff )
+
+
+
+	
 compileBuffer2 t low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 	newBoard <- newNumber	
 	let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)
@@ -992,9 +1042,24 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 	
 compileBuffer2 t low high buffer = error $ show ("compileBuffer2",t,(low,high),buffer)
 	
+-- Allocate a buffer; we do not care about color
+allocateBuffer (sx,sy) newBoard Target_RGB =
+		Allocate 
+			newBoard 	-- tag for this ChalkBoardBufferObject
+			(sx,sy)	   	-- we know size
+			RGB24Depth       -- depth of buffer
+			(BackgroundRGB24Depth (RGB 0 0 0))
+allocateBuffer (sx,sy) newBoard Target_RGBA =
+		Allocate 
+			newBoard 	-- tag for this ChalkBoardBufferObject
+			(sx,sy)	   	-- we know size
+			RGBADepth       -- depth of buffer
+			(BackgroundRGBADepth (RGBA 0 0 0 1))
+allocateBuffer (sx,sy) newBoard t = error $ show ("allocateBuffer",(sx,sy),newBoard,t)
+
 	
 
-
+-- TODO: use allocAnd... to build this.
 compileBoardGSI 
 	:: BoardContext 
 	-> Target 
@@ -1019,15 +1084,15 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 		    | num <- num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI
 		    ]
 	fill_Boards_RGB
-	 	<- sequence [ compileBoard compileBoardRGB (bc { bcDest = brdId }) brd
+	 	<- sequence [ compileBoard2  (bc { bcDest = brdId }) Target_RGB brd
 			    | ((_,brd),brdId) <- zip boards_RGB num_for_boards_RGB
 			    ]
 	fill_Boards_Bool
-	 	<- sequence [ compileBoard (compileBoardBool [DrawWithColor (RGBA 1 1 1 1) False]) (bc { bcDest = brdId }) brd
+	 	<- sequence [ compileBoard2 (bc { bcDest = brdId }) (Target_Bool (RGB 1 1 1)) brd
 			    | ((_,brd),brdId) <- zip boards_Bool num_for_boards_Bool
 			    ]
 	fill_Boards_UI
-	 	<- sequence [ compileBoard compileBoardUI (bc { bcDest = brdId }) brd
+	 	<- sequence [ compileBoard2 (bc { bcDest = brdId }) Target_UI brd
 			    | ((_,brd),brdId) <- zip boards_UI num_for_boards_UI
 			    ]
 

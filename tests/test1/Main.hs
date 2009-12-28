@@ -34,8 +34,8 @@ cbMain cb = do
 	-- hack to let us control what is tested
 {-
 	let test :: String -> [IO ()] -> IO ()
-	    test "test5" = sequence_
-	    test "test6" = sequence_
+	    test "test9" = sequence_
+--	    test _ = sequence_
 	    test _       = \ xs -> return ()
 -}
 	
@@ -190,7 +190,17 @@ cbMain cb = do
 		writeChalkBoard cb $ "test8-1.png"
 	   ]
 
-
+	test "test9" [ do
+		let brd1 = scale 0.5 $ rotate 0.1 $ (choose red green <$> square)
+		let brd2 = scale 0.9 $ choose yellow blue <$> square
+		let brd3 = scale n $ circle
+		let fn :: O ((RGB,RGB),Bool) -> O RGB
+		    fn o = choose (fstO (fstO o)) (sndO (fstO o)) (sndO o)
+		drawChalkBoard cb $ fn <$> ((brd1 `ozip` brd2) `ozip` brd3)
+		writeChalkBoard cb $ "test9-" ++ show n ++ ".png"
+	    | n <- [0.1,0.5,1.0,2.0]
+	    ]
+	
 	exitChalkBoard cb
 
 

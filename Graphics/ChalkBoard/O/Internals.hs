@@ -50,7 +50,7 @@ runO1 f v1 = case f (O (error "undefined shallow value") v1) of
 	    O _ e -> e
 
 -- Given a function, and the *result* type, give the argument type.
-argTypeForOFun :: (O a -> O b) -> ExprType -> Maybe ExprType
-argTypeForOFun f ty = L.lookup Here (exprUnifyE e ty)
+argTypeForOFun :: (O a -> O b) -> ExprType -> [([Path],ExprType)]
+argTypeForOFun f ty = (exprUnifyE e ty)
 	 where
-		(O _ e) = (f (O (error "typeOfO") (E $ Var Here)))
+		(O _ e) = (f (O (error "typeOfO (should not be looking here!)") (E $ Var [])))

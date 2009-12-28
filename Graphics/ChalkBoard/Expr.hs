@@ -22,32 +22,30 @@ import Control.Monad
 -- All the functions in our first order language.
 data Expr s 
 	-- The var
-	= Var Path	
+	= Var [Path]
 	-- constants
 	| O_Bool Bool
 	| O_RGB RGB
 	| O_RGBA RGBA -- (Ty.Alpha RGB)
 	| Lit R
 	-- deconstructors
-	| O_Fst s
-	| O_Snd s
+--	| O_Fst s
+--	| O_Snd s
 	-- constructors
-	| O_Pair s s 			-- (a,b)
+--	| O_Pair s s 			-- (a,b)
 	-- Functions
 	| OrBool			-- the || function
 	| Choose s s s			-- O a -> O a -> O Bool -> O a
 	| Alpha UI s			-- O_Alpha?
 	| ScaleAlpha UI s		-- RGBA -> RGBA
 	| UnAlpha s
-	| Hook String s			-- magic hook, to allow tunneling
-	| Hook2 String s s
         | WithMask s s			-- O a -> O Bool 	-> O (Maybe a)
 	| WithDefault s s		-- O a -> O (Maybe a) 	-> O a
 	deriving Show
 
-data Path = Here | Left Path | Right Path
+data Path  = GoLeft | GoRight 
 	deriving (Show,Eq,Ord)
-
+	
 newtype E = E (Expr E)
 	deriving Show
 
@@ -64,13 +62,14 @@ data ExprType
 	| RGBA_Ty 
 	| Pair_Ty ExprType ExprType
 	| Maybe_Ty ExprType
+	| Poly_Ty		-- because of fst, snd
     deriving (Show, Eq)
 
-exprUnifyE :: E -> ExprType -> [(Path,ExprType)]
+exprUnifyE :: E -> ExprType -> [([Path],ExprType)]
 exprUnifyE (E e) = exprUnify e
 
 -- exprUnify :: what the expected result type is, and does it unify
-exprUnify :: Expr E -> ExprType -> [(Path,ExprType)]
+exprUnify :: Expr E -> ExprType -> [([Path],ExprType)]
 exprUnify (Choose a b c) 	ty 		= L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c BOOL_Ty)
 exprUnify (O_Bool {}) 		BOOL_Ty 	= []
 exprUnify (O_RGB {}) 		RGB_Ty 		= []
@@ -78,11 +77,25 @@ exprUnify (O_RGBA {}) 		RGBA_Ty 	= []
 exprUnify (Alpha _ e) 		RGBA_Ty 	= exprUnifyE e RGB_Ty
 exprUnify (UnAlpha e) 		RGB_Ty 		= exprUnifyE e RGBA_Ty
 exprUnify (ScaleAlpha _ e) 	RGBA_Ty 	= exprUnifyE e RGBA_Ty
-exprUnify (Hook _ e) 		RGB_Ty 		= exprUnifyE e (Pair_Ty RGB_Ty RGB_Ty)
 exprUnify (WithMask e1 e2) 	(Maybe_Ty ty) 	= L.nub (exprUnifyE e1 ty ++ exprUnifyE e2 BOOL_Ty)
 exprUnify (WithDefault e1 e2) 	ty 		= L.nub (exprUnifyE e1 ty ++ exprUnifyE e2 (Maybe_Ty ty))
 exprUnify (Var i) 		ty 		= [(i,ty)]
+--exprUnify (O_Fst e) 		ty 		= exprUnifyE e (Pair_Ty ty Poly_Ty)
+--exprUnify (O_Snd e) 		ty 		= exprUnifyE e (Pair_Ty Poly_Ty ty)
 exprUnify other ty = error $ "exprUnify failure (internal errror) " ++ show (other,ty)
+
+------------------------------------------------------------------------------
+-- constructors
+------------------------------------------------------------------------------
+
+
+oFst :: E -> Expr E
+oFst (E (Var i)) = Var (i ++ [GoLeft])
+oFst other   = error $ "oFst failed" ++ show other
+
+oSnd :: E -> Expr E
+oSnd (E (Var i)) = Var (i ++ [GoRight])
+oSnd other   = error $ "oSnd failed" ++ show other
 
 ------------------------------------------------------------------------------
 -- Evaluation
@@ -131,16 +144,13 @@ instance T.Traversable Expr where
 	traverse f (O_RGBA v)		= pure $ O_RGBA v
 	traverse f (Lit r)		= pure $ Lit r
 
-	traverse f (O_Fst a) 		= O_Fst <$> f a
-	traverse f (O_Snd a) 		= O_Snd <$> f a
+--	traverse f (O_Fst a) 		= O_Fst <$> f a
+--	traverse f (O_Snd a) 		= O_Snd <$> f a
 
 	traverse f (Choose a b c) 	= Choose <$> f a <*> f b <*> f c
 	traverse f (Alpha c e) 		= Alpha c <$> f e
 	traverse f (ScaleAlpha c e) 	= ScaleAlpha c <$> f e
 	traverse f (UnAlpha e) 		= UnAlpha <$> f e
-
-	traverse f (Hook s v)           = pure (Hook s) <*> f v
-	traverse f (Hook2 s v1 v2)      = pure (Hook2 s) <*> f v1 <*> f v2
 
         traverse f (WithMask v1 v2)	= pure WithMask <*> f v1 <*> f v2
         traverse f (WithDefault v1 v2)	= pure WithDefault <*> f v1 <*> f v2
