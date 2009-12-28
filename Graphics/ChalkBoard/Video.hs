@@ -69,7 +69,7 @@ closeVideoOutPipe (OutPipe hout) = do
 
 
 ffmpegOutCmd :: String -> String
-ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i - -f h264 " ++ filename
+ffmpegOutCmd filename = "ffmpeg -f image2pipe -vcodec ppm -i - -vcodec libx264 -b 500k -vpre hq -vpre main " ++ filename
 
 ffmpegInCmd :: String -> String
 ffmpegInCmd filename = "ffmpeg -i " ++ filename ++ " -f image2pipe -vcodec ppm -"
