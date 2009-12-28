@@ -36,10 +36,10 @@ videoMain cb = do
 	loop n  = do
 	  let brd = id
 		$ foo (rotate (-n) img) (rotate n img) (scale n circle)
-	  drawRawChalkBoard cb (example str)
---    	  drawChalkBoard cb (brd)
+--	  drawRawChalkBoard cb (example str)
+    	  drawChalkBoard cb (brd)
 --  	  threadDelay (1000 * 1000)
-	  _ <- getLine
+--	  _ <- getLine
           loop (n - 0.01)
 	
     loop 1
