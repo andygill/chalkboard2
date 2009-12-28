@@ -22,7 +22,7 @@ import Control.Monad
 -- All the functions in our first order language.
 data Expr s 
 	-- The var
-	= Var Int	
+	= Var Path	
 	-- constants
 	| O_Bool Bool
 	| O_RGB RGB
@@ -45,6 +45,9 @@ data Expr s
 	| WithDefault s s		-- O a -> O (Maybe a) 	-> O a
 	deriving Show
 
+data Path = Here | Left Path | Right Path
+	deriving (Show,Eq,Ord)
+
 newtype E = E (Expr E)
 	deriving Show
 
@@ -63,11 +66,11 @@ data ExprType
 	| Maybe_Ty ExprType
     deriving (Show, Eq)
 
-exprUnifyE :: E -> ExprType -> [(Int,ExprType)]
+exprUnifyE :: E -> ExprType -> [(Path,ExprType)]
 exprUnifyE (E e) = exprUnify e
 
 -- exprUnify :: what the expected result type is, and does it unify
-exprUnify :: Expr E -> ExprType -> [(Int,ExprType)]
+exprUnify :: Expr E -> ExprType -> [(Path,ExprType)]
 exprUnify (Choose a b c) 	ty 		= L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c BOOL_Ty)
 exprUnify (O_Bool {}) 		BOOL_Ty 	= []
 exprUnify (O_RGB {}) 		RGB_Ty 		= []

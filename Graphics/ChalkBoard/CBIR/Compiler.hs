@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, FlexibleInstances, ExistentialQuantification, RankNTypes
+{-# LANGUAGE TypeFamilies, FlexibleInstances, ExistentialQuantification, RankNTypes, GADTs
   #-}
 module Graphics.ChalkBoard.CBIR.Compiler where
 
@@ -24,6 +24,9 @@ import Data.Array.IO
 import Control.Monad
 import Graphics.ChalkBoard.IStorable as IS
 import Data.ByteString(ByteString)
+import qualified Data.Map as Map
+import Data.Map (Map)
+
 import qualified Data.ByteString as BS
 
 
@@ -33,7 +36,8 @@ import Debug.Trace
 -- We always compile  a RGB board.
 compile :: (Int,Int) -> BufferId -> Board RGB -> IO [CBIR.Inst Int]
 compile (x,y) bufferId brd = 
-	compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) brd
+	compileBoard2 (initBoardContext (x,y) bufferId) Target_RGB brd
+--	compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) brd
 
 -- Unless we are compiling a Buffer :-)
 -- (Make this call compile)
@@ -608,7 +612,7 @@ perhapsOverlapBoardBool _              = True
 
 -- choice
 patternOf :: (O a -> O b) -> IO (Graph Expr)
-patternOf f = reifyO $ f (O (error "undefined shallow value") (E $ Var 1))
+patternOf f = reifyO $ f (O (error "undefined shallow value") (E $ Var Here))
 
 
 runToFind :: Expr E -> Graph Expr -> Expr E
@@ -622,7 +626,7 @@ runToFind arg (Graph nodes root) = eval (find root)
 		  O_Bool True -> eval (find a)	-- false
 		  O_Bool False -> eval (find b)	-- false
 		  e -> error $ "expected a Bool, found something else " ++ show e
-	eval (Var 1) = arg
+	eval (Var Here) = arg
 	eval (O_RGB c) = O_RGB c
 
 	eval (UnAlpha c) = case eval (find c) of
@@ -638,7 +642,7 @@ applyBool :: (O bool -> O a) -> Bool -> Maybe (Expr E)
 applyBool f b = liftM unE (evalE (runO1 f (E $ O_Bool b)))
 
 applyVar :: (O a -> O b) -> Expr E
-applyVar f = unE (runO1 f (E $ Var 0))
+applyVar f = unE (runO1 f (E $ Var Here))
 
 
 newNumber :: IO Int
@@ -677,6 +681,20 @@ targetRep Target_RGB  			= RGB24Depth
 targetRep (Target_Bool {}) 		= RGB24Depth
 targetRep (Target_Maybe_RGB)		= RGBADepth
 
+-- TODO: rename as targetToType 
+targetType :: Target -> ExprType
+targetType Target_RGBA 			= RGBA_Ty
+targetType Target_RGB  			= RGB_Ty 
+targetType (Target_Bool {}) 		= BOOL_Ty
+targetType (Target_Maybe_RGB)		= Maybe_Ty RGB_Ty
+
+
+-- not used yet!
+targetFromType :: ExprType -> Target
+targetFromType RGBA_Ty 			= Target_RGBA
+targetFromType RGB_Ty 			= Target_RGB
+
+
 compileBoard2 
 	:: BoardContext
 	-> Target
@@ -693,8 +711,11 @@ compileBoard2 bc t (Over fn above below) 	=
 	   Overwrite 				-> compileBoard2 bc t above
 compileBoard2 bc t (Polygon nodes) 		= compileBoardPolygon bc t nodes
 compileBoard2 bc t (PrimConst o) 		= compileBoardConst bc t (evalE $ runO0 o)
+compileBoard2 bc t (Fmap f other) 		= compileBoardFmap bc t (runO1 f (E $ Var Here)) other (argTypeForOFun f ty) ty
+	where ty = targetType t
+compileBoard2 bc t (BufferOnBoard buffer brd) 	= compileBufferOnBoard bc t buffer brd
+	where ty = targetType t
 compileBoard2 bc t other          		= error $ show ("compileBoard2",bc,t,other)
-
 
 
 -- Drawing something *over* something.
@@ -724,7 +745,7 @@ compileBoardPolygon bc (Target_Bool (RGB r g b)) nodes = do
 compileBoardConst bc t@(Target_Bool rgb) (Just (E (O_Bool True)))
 		| targetRep t == targetRep Target_RGB 
 			-- sanity check, then use the RGB drawing
-		= compileBoardConst bc (Target_RGB)  (Just (E (O_RGB rgb)))
+		= compileBoardConst bc (Target_RGB) (Just (E (O_RGB rgb)))
 compileBoardConst bc t@(Target_Bool rgb) (Just (E (O_Bool False)))
 	   	-- background *is* false
 		= return []
@@ -735,7 +756,6 @@ compileBoardConst bc t@(Target_RGB) (Just (E (O_RGB (RGB r g b))))
 				False
 				[(0,0),(1,0),(1,1),(0,1)]
 			]
-
 			-- TODO: we need a SplatColor that 
 			--	  * works over the whole board (we use [(0,0),..] for that now)
 			--	  * can Blend or Copy
@@ -754,25 +774,270 @@ compileBoardConst bc t@(Target_RGBA) (Just (E (O_RGBA rgba)))
 compileBoardConst bc t constant = error $ show ("compileBoardConst",bc,t,constant)
 
 
+data FmapArg where
+	FmapArg :: Board a -> ExprType -> Path -> FmapArg
+
+assignFrag RGBA_Ty expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	-- TODO: assumes merging???
+assignFrag RGB_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
+assignFrag BOOL_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
+assignFrag other expr = error $ show ("assignFrag",other,expr)
+--
+-- Fmap works by basically handling conversions between all the supported types
+-- then figuring out what the *code* is secondly.
+
+
+-- TODO: The good thing about a boolean argument is that it can only have two possible values.
+compileBoardFmap :: BoardContext -> Target -> E -> Board a -> Maybe ExprType -> ExprType -> IO [Inst Int]
+compileBoardFmap bc t (E f) other (Just argType) resTy = do
+	(insts,idMap) <- compileFmapArgs bc other argType
+	let env = Map.fromList [ (path,"cb_sampler" ++ show n) | ((_,path),n) <- zip idMap [0..]]
+	let expr = compileFmapFun env f resTy	
+ 	let (x0,x1,y0,y1) = (0,1,0,1) 
+	let fn = 
+		unlines [ "uniform sampler2D cb_sampler" ++ show n ++ ";" | (_,n) <- zip idMap [0..]] ++
+		"vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\n" ++
+		"vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }\n" ++
+		"void main(void) {\n" ++
+		assignFrag resTy expr ++
+		"}\n"
+--	putStrLn "----------"
+--	putStrLn fn
+--	putStrLn "----------"
+	newFrag <- newNumber
+	return $ insts ++
+		 [ AllocFragmentShader newFrag fn []
+		 , SplatWithFunction newFrag 
+				[ ("cb_sampler" ++ show n,bid) | ((bid,_),n) <- zip idMap [0..]]
+				[]
+				(bcDest bc) 
+				[PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+		 ]
 {-
+		++ create_Boards
+		++ concat fill_Boards_RGB
+		++ concat fill_Boards_Bool
+		++ concat fill_Boards_UI
+		++ [ SplatWithFunction newFrag 
+				[ (nm,brdId) 
+				| (nm,brdId) <- zip (map Prelude.fst boards_RGB ++ map Prelude.fst boards_Bool  ++ map Prelude.fst boards_UI)
+						    (num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI)
+				]
+				vargs
+				(bcDest bc) 
+				[PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+		   ]
+		++ delete_Boards
+-}
+
 	
 
-		return [ Nested ("Const (True :: Bool)") $
-		    (drawWiths dw (bcDest bc) 
-		    	       (mapPoint []) -- now sure abot this??
-			       [(0,0),(0,1),(1,1),(1,0)])
-	       	       ]
+-- Abort!
+compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,t,other,argTy,resTy)
 
-compileBoardBool dw bc (PrimConst o) = 
-	case (evalE $ runO0 o) of
-	   Just (E (O_Bool True)) -> do
-		return [ Nested ("Const (True :: Bool)") $
-		    (drawWiths dw (bcDest bc) 
-		    	       (mapPoint []) -- now sure abot this??
-			       [(0,0),(0,1),(1,1),(1,0)])
-	       	       ]
-	   Just (E (O_Bool False)) ->	-- background *is* false
-		return []
-	   other -> error $ "pure a :: Board Bool, can not compute a, found " ++ show other
+compileFmapArgs :: BoardContext -> Board a -> ExprType -> IO ([Inst Int],[(BufferId,Path)])
+compileFmapArgs bc (Zip b1 b2) (Pair_Ty t1 t2) = do
+	(insts1,mp1) <- compileFmapArgs bc b1 t1 
+	(insts2,mp2) <- compileFmapArgs bc b1 t1 
+	return $ (insts1 ++ insts2, 
+		  [ (bid,Expr.Left p) | (bid,p) <- mp1 ] ++
+		  [ (bid,Expr.Right p) | (bid,p) <- mp2 ]
+		 )
+compileFmapArgs bc (Zip {}) ty = error $ "found zip of boards, without zip type" ++ show ty
+compileFmapArgs bc brd ty = do
+	-- Otherwise, we allocate a board, construct it, and pass it back.
+	(rest,bid) <- allocAndCompileBoard bc ty brd
+	return (rest,[(bid,Here)])
+
+
+allocAndCompileBoard
+	:: BoardContext		-- ignore the bcDest
+	-> ExprType		-- should this be the target type????
+	-> Board a
+	-> IO ([CBIR.Inst Int],BufferId)
+allocAndCompileBoard bc RGB_Ty brd = do
+	newBoard <- newNumber
+	rest <- compileBoard2 (bc { bcDest = newBoard }) Target_RGB brd
+	return ( [ Nested ("alloc RGB_Ty") $
+			  [ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(bcSize bc)		   -- tiny board
+        			RGB24Depth          -- depth of buffer	
+				(BackgroundRGB24Depth (RGB 1 1 1))
+			  ] ++ rest
+		], newBoard )
+allocAndCompileBoard bc RGBA_Ty brd = do
+	newBoard <- newNumber
+	rest <- compileBoard2 (bc { bcDest = newBoard }) Target_RGBA brd
+	return ( [ Nested ("alloc RGBA_Ty") $
+			  [ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(bcSize bc)		   -- tiny board
+        			RGBADepth          -- depth of buffer	
+				(BackgroundRGBADepth (RGBA 0 0 0 1))
+			  ] ++ rest
+		], newBoard )
+allocAndCompileBoard bc BOOL_Ty brd = do
+	newBoard <- newNumber
+	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_Bool (RGB 1.0 1.0 1.0)) brd
+	return ( [ Nested ("alloc BOOL_Ty") $
+			  [ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(bcSize bc)		   -- tiny board
+        			RGB24Depth          -- depth of buffer	
+				(BackgroundRGB24Depth (RGB 0 0 0))
+			  ] ++ rest
+		], newBoard )
+allocAndCompileBoard bc ty brd = error $ show ("allocAndCompileBoard",bc,ty,brd)
+
+-- what a hack! Compiles our Expr language into GLSL.
+compileFmapFun :: Map Path String -> Expr E -> ExprType -> String
+compileFmapFun env (Choose e1 e2 e3) ty =
+	      "mix(" ++ compileFmapFunE env e2 ty ++ "," ++
+			compileFmapFunE env e1 ty ++ "," ++
+		        compileFmapFunE env e3 BOOL_Ty ++ ")";
+compileFmapFun env v@(Var path) ty =
+	case Map.lookup path env of
+	  Just varName -> coerce ("texture2D(" ++ varName ++ ",gl_TexCoord[0].st)")
+	  Nothing -> error $ "Can not find Var " ++ show v
+  where coerce txt = case ty of
+		       BOOL_Ty -> "(" ++ txt ++ ").r > 0.5 ? 1.0 : 0.0"
+		       other   -> txt
+compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
+		"vec3(" ++ show r ++ "," ++
+			   show g ++ "," ++
+			   show b ++ ")" 			   
+compileFmapFun env (Alpha v e) RGBA_Ty =
+	"cb_Alpha(" ++ show v ++ "," ++ compileFmapFunE env e RGB_Ty ++ ")"
+compileFmapFun env (UnAlpha e) RGB_Ty =
+	"cb_UnAlpha(" ++ compileFmapFunE env e RGBA_Ty ++ ")"
+	
+compileFmapFun env e ty = error $ show ("compileFmapFun",env,e,ty)
+
+compileFmapFunE env (E e) ty = compileFmapFun env e ty
+
+compileBufferOnBoard bc t (Buffer low@(x0,y0) high@(x1,y1) buffer) brd = do
+	insts1          <- compileBoard2 bc t brd
+	(insts2,buffId) <- compileBuffer2 t low high buffer
+	
+	let (x,y) = bcSize bc
+	-- TODO!
+	-- really, this is about 0 and 1, not x and y.
+	let mv = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,
+			fromIntegral (1 + y1-y0) / fromIntegral 1)
+	let tr = bcTrans (updateTrans mv bc)
+	
+	return $ 
+		[ Nested "buffer inside board (...)" $
+			insts1 ++ insts2 ++ 
+			[ SplatPolygon buffId (bcDest bc) 
+		    		[ PointMap (x,y) (mapPoint tr (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+			]
+	       ]
+
+
+compileBuffer2 
+	:: Target
+	-> (Int,Int)
+	-> (Int,Int)
+	-> InsideBuffer a
+	-> IO ([CBIR.Inst Int],BufferId)
+
+compileBuffer2 Target_RGBA low high (ImageRGBA bs) = do
+	compileByteStringImage low high bs RGBADepth
+compileBuffer2 t low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
+	newBoard <- newNumber	
+	let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)
+	let mv = Move (fromIntegral x0,fromIntegral y0)
+	let sc = Scale (1 / fromIntegral sx,1 / fromIntegral sy)
+	let bc = updateTrans mv $ updateTrans sc $ initBoardContext (sx,sy) 0
+	allocAndCompileBoard bc (targetType t) brd
+{-
+	-- we want to map (x0,y0) x (x1,y1) onto the Board (0,0) x (1,1)
+	rest <- compileBoard compileBoardRGBA bc brd
+	return ( [ Nested ("BoardInBuffer") $
+		   [ Allocate 
+			newBoard 	-- tag for this ChalkBoardBufferObject
+			(sx,sy)	   	-- we know size
+			RGBADepth       -- depth of buffer
+			(BackgroundRGBADepth (RGBA 1 1 1 1))
+		   ] ++ rest
+	         ], newBoard)
+-}
+
+{-	-- assume def is transparent!
+	-- assume the size of the buffer is okay. How do we do this?
+	let (x,y) = bcSize bc
+	-- TODO!
+	-- really, this is about 0 and 1, not x and y.
+	let mv = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,
+			fromIntegral (1 + y1-y0) / fromIntegral 1)
+	back_code <- compileBoard compileBoardRGBA bc back
+	(code,buffId) <- compileInsideBufferRGBA (x0,y0) (x1,y1) buff
+	let tr = bcTrans (updateTrans mv bc)
+--	print ((x,y),(x1-x0,y1-y0))
+	return [ Nested "buffer inside board (RGBA)" $
+			back_code ++ code ++
+			[Nested (show ((x,y),bcTrans (updateTrans mv bc))) []] ++
+			[ SplatPolygon buffId (bcDest bc) 
+		    		[ PointMap (x,y) (mapPoint tr (x,y))
+		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		]
+			]
+-}	
+	
+compileBuffer2 t low high buffer = error $ show ("compileBuffer2",t,(low,high),buffer)
+	
+	
+
+{-
+	
+compileBoardRGB bc (Fmap f other) = do
+	fMapFn <- patternOf $ f
+	case argTypeForOFun f RGB_Ty of
+	   Just BOOL_Ty -> do
+		backBoard <- newNumber
+		frontBoard <- newNumber
+--		print $ runToFind (O_Bool False) fMapFn
+		let (O_RGB fcol) = runToFind (O_Bool False) fMapFn
+		let (O_RGB tcol) = runToFind (O_Bool True) fMapFn
+		let (RGB r g b)    = tcol
+		let (RGB r' g' b') = fcol
+--		print (fcol,tcol)
+		let bc' = bc 
+		rest <- compileBoard (compileBoardBool [DrawWithColor (RGBA r g b 1) False]) bc' other
+		return [ Nested ("BOOL -> RGB") $
+			 [ Allocate 
+        			backBoard 	   -- tag for this ChalkBoardBufferObject
+        			(1,1)		   -- we know size
+        			RGB24Depth           -- depth of buffer
+				(BackgroundRGB24Depth (RGB r' g' b'))
+			, Allocate 
+				frontBoard
+        			(1,1)		   -- we know size
+        			RGB24Depth           -- depth of buffer
+				(BackgroundRGB24Depth (RGB r g b))
+			, copyBoard backBoard (bcDest bc)
+			] ++ rest ++ 
+			[ Delete backBoard, Delete frontBoard]]
+	   Just RGBA_Ty -> do
+		-- turn rgb*ALPHA* thing, and translate this into a rgb.
+		-- Assume unAlpha (for now)
+		newBoard <- newNumber
+		let bc' = bc
+			 { bcDest = newBoard
+  		         }
+		rest <- compileBoard compileBoardRGBA bc' other
+		return [ Nested ("RGBA -> RGB") $ 
+			[ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(bcSize bc)		   -- we know size
+        			RGBADepth           -- depth of buffer
+				(BackgroundRGBADepth (RGBA 1 1 1 1))	-- ???
+			] ++ rest ++
+			[  copyBoard newBoard (bcDest bc)
+			, Delete newBoard
+		        ]]
 -}
 
