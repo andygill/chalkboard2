@@ -47,11 +47,11 @@ videoMain cb = do
     
     
     -- Test Video Output
-    (w,h,img) <- readNormalizedBoard ("lambda2.png")
+    (w,h,img) <- readNormalizedBoard ("lambda.png")
     startDefaultWriteStream cb "testOut.mp4"
     
     let example x = unAlpha <$> (rotate (4*x) (scale (abs x) img)) `over` (boardOf (alpha (o (RGB x x (abs x)))))
-    sequence_ [ drawChalkBoard cb (example (sin x)) | x <- [0,0.01..2] ]
+    sequence_ [ drawChalkBoard cb (example (sin x)) | x <- [0,0.01..1] ]
     
     endWriteStream cb
     
@@ -103,34 +103,39 @@ videoMain cb = do
     closeVideoInPipe vp2
     
     
-    
+    --}
     -- Test Multiple Input Streams and GLSL
     videoPipe3 <- openVideoInPipe (ffmpegInCmd "bigfoot.mpeg")
     videoPipe4 <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm -"
     
+    startDefaultWriteStream cb "testGLSLOut.mp4"
+    
+    --(w,h,img) <- readNormalizedBoard ("lambda.png")
+    --let example x = unAlpha <$> (scale 1000 (choose (alpha blue) (alpha green) <$> circle)) --(rotate (4*x) (scale (abs x) img)) `over` (boardOf (tranparent white))
+    
     mix <- mkMix
     (Just bufferS) <- nextPPMFrame videoPipe3
-    
-    startDefaultWriteStream cb "testGLSLOut.mp4"
+    _ <- nextPPMFrame videoPipe4
 
-    let glslTest bufferP = do
-                maybeBuffer1 <- nextPPMFrame videoPipe3
-                case maybeBuffer1 of
-                        (Nothing)      -> return ()
-                        (Just buffer1) -> do
-                                maybeBuffer2 <- nextPPMFrame videoPipe4
-                                case maybeBuffer2 of
-                                        (Nothing)      -> return ()
-                                        (Just buffer2) -> do 
-                                                drawChalkBuffer cb (boardToBuffer (0,0) (480,360) $ move (0,360) $ 
-                                                        (mix (scaleXY (1,-1) $ bufferOnBoard buffer1 (boardOf white))
-                                                             (scaleXY (1,-1) $ bufferOnBoard bufferS (boardOf white))
-                                                             (scaleXY (1,-1) $ bufferOnBoard bufferP (boardOf white))
-                                                             (scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf white))
-                                                        ))
-                                                glslTest buffer1
+    let glslTest bufferP count = do
+            maybeBuffer1 <- nextPPMFrame videoPipe3
+            maybeBuffer2 <- nextPPMFrame videoPipe4
+            case maybeBuffer1 of
+                    (Nothing)      -> return ()
+                    (Just buffer1) -> do
+                            case maybeBuffer2 of
+                                    (Nothing)      -> return ()
+                                    (Just buffer2) -> do 
+                                            drawChalkBuffer cb (boardToBuffer (0,0) (480,360) $ move (0,360) $ 
+                                                    (mix (scaleXY (1,-1) $ bufferOnBoard buffer1 (boardOf white))
+                                                         (scaleXY (1,-1) $ bufferOnBoard bufferS (boardOf white))
+                                                         (scaleXY (1,-1) $ bufferOnBoard bufferP (boardOf white))
+                                                         (scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf white))
+                                                         --(example (sin count))
+                                                    ))
+                                            glslTest buffer1 (count+0.01)
     
-    glslTest bufferS
+    glslTest bufferS 0
     
     endWriteStream cb
     closeVideoInPipe videoPipe3
