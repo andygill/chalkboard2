@@ -32,7 +32,7 @@ import Foreign.C.Types ( CUChar )
 import Foreign.Marshal.Alloc ( malloc, free )
 import Foreign.Storable ( peek )
 import Foreign.Marshal.Array (withArray )
-import Data.Map ( Map, empty, insert, delete, lookup, notMember )
+import Data.Map ( Map, empty, insert, delete, lookup, notMember, member )
 import Data.Maybe ( fromMaybe )
 import Data.Array.Unboxed as U  
 import Data.Array.Storable ( withStorableArray, StorableArray )
@@ -918,7 +918,7 @@ saveImage env b savePath = do
     
     -- Check to make sure the board being saved exists
     when (notMember b texMap) $ do
-            print "Error: The board to be saved doesn't exist."
+            print ("Error: The board to be saved doesn't exist: " ++ show b)
             exitWith (ExitFailure 1)
     
     -- Check if an image with the same name already exists. If it does, delete it.
@@ -1009,25 +1009,33 @@ saveImage env b savePath = do
 deleteBuffer :: CBenv -> BufferId -> IO ()
 deleteBuffer env b = do
     texMap <- getTexMap env
+    fragMap <- get (fracFunctionInfo env)
     
     -- Check to make sure the board being deleted exists
-    when (notMember b texMap) $ do
-            print "Error: The board to be saved doesn't exist."
-            exitWith (ExitFailure 1)
-    
-    -- Look up the board we need to delete
-    let (Just texInfo) = lookup b texMap
-        texIdPtr = texPtr texInfo
-    
-    -- Delete the texture
-    glDeleteTextures 1 texIdPtr
-    free texIdPtr
-    
-    -- This deletes the mapping
-    setTexMap env (delete b texMap)
+    if member b texMap then do
 
+    	-- Look up the board we need to delete
+    	let (Just texInfo) = lookup b texMap
+            texIdPtr = texPtr texInfo
+    
+    	-- Delete the texture
+    	glDeleteTextures 1 texIdPtr
+    	free texIdPtr
+    
+    	-- This deletes the mapping
+    	setTexMap env (delete b texMap)
 
+      else if member b fragMap then do
+	return ()
+    	let (Just fragInfo) = lookup b fragMap
 
+	deleteObjectNames [ffProg fragInfo]
+
+	fracFunctionInfo env $~ delete b
+	
+      else do 
+        print ("Error: The board/function to be deleted doesn't exist: " ++ show b)
+        exitWith (ExitFailure 1)
 
 
 
@@ -1165,19 +1173,11 @@ allocFragmentShader env f txt args = do
            deleteObjectNames [brickProg]
            ioError (userError "linking failed")
 
-        fracFunctionInfo env $~ insert f (FragFunctionInfo args brickProg)
-{-
+	-- not not need the shader code *after* we have linked the program (I think!)
+	deleteObjectNames [shader]
 
-        let setUniform var val = do
-             location <- get (uniformLocation brickProg var)
-             reportErrors
-             uniform location $= val
-       setUniform "BrickColor" (Color3 1.0 0.3 (0.2 :: GLfloat))
-       setUniform "MortarColor" (Color3 0.85 0.86 (0.84 :: GLfloat))
-       setUniform "BrickSize" (Vertex2 0.30 (0.15 :: GLfloat))
-       setUniform "BrickPct" (Vertex2 0.90 (0.85 :: GLfloat))
-       setUniform "LightPosition" (Vertex3 0 0 (4 :: GLfloat))
--}	
+        fracFunctionInfo env $~ insert f (FragFunctionInfo args brickProg)
+	
         return ()
 
 splatWithFunction env fnId args  uargs bDest ptMaps = do

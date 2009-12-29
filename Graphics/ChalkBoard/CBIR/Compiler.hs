@@ -26,6 +26,7 @@ import Graphics.ChalkBoard.IStorable as IS
 import Data.ByteString(ByteString)
 import qualified Data.Map as Map
 import Data.Map (Map)
+import qualified Data.List as List
 
 import qualified Data.ByteString as BS
 
@@ -819,7 +820,9 @@ compileBoardFmap bc t (E f) other argTypes resTy = do
 				[]
 				(bcDest bc) 
 				[PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
-		 ]
+		 , Delete newFrag	-- really should cache these
+		 ] ++
+		 [ Delete bId | bId <- List.nub (map fst idMap) ]
 
 
 {-
@@ -844,6 +847,7 @@ compileBoardFmap bc t (E f) other argTypes resTy = do
 -- Abort!
 compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,t,other,argTy,resTy)
 
+-- It is the responsability of the caller to unallocate the returned bufferids.
 compileFmapArgs :: BoardContext -> Board a -> [([Path],ExprType)] -> IO ([Inst Int],[(BufferId,[Path])])
 --compileFmapArgs bc brd tyMap | trace (show ("compileFmapArgs",bc,brd,tyMap)) False = undefined
 compileFmapArgs bc (Zip b1 b2) ty | not (null ty) = do
@@ -949,6 +953,7 @@ compileBufferOnBoard bc t (Buffer low@(x0,y0) high@(x1,y1) buffer) brd = do
 		    		[ PointMap (x,y) (mapPoint tr (x,y))
 		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
 		    		]
+			, Delete buffId
 			]
 	       ]
 
@@ -996,6 +1001,9 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 				targetBuff
 				[PointMap (x,y) (x,y) | (x,y) <- let (x0,x1,y0,y1) = (0,1,0,1) 
 								 in [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+
+		 , Delete newFrag	-- really should cache these
+		 , Delete bId 
 		 ], targetBuff )
 
 
