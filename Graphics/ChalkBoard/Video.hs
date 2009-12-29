@@ -15,11 +15,11 @@ newtype InPipe = InPipe Handle
 newtype OutPipe = OutPipe Handle
 
 
+
 openVideoInPipe :: String -> IO (InPipe)
 openVideoInPipe ffmpegCmd = do
     (_, Just hout, _, _) <- createProcess (shell ffmpegCmd){ std_out = CreatePipe, close_fds = True }
     return (InPipe hout)
-
 
 nextPPMFrame :: InPipe -> IO (Maybe (Buffer RGB))
 nextPPMFrame (InPipe hIn) = do
@@ -47,13 +47,18 @@ nextPPMFrame (InPipe hIn) = do
                     _ <- hGetBuf handle ptr (w*h*3)
                     return ()
 
+closeVideoInPipe :: InPipe -> IO ()
+closeVideoInPipe (InPipe hin) = do
+    hClose hin
+
+
+
 
 
 openVideoOutPipe :: String -> IO (OutPipe)
 openVideoOutPipe ffmpegCmd = do
     (Just hin, _, _, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, close_fds = True }
     return (OutPipe hin)
-
 
 writeNextFrame :: OutPipe -> (Int, Int) -> Ptr Word8 -> IO ()
 writeNextFrame (OutPipe hout) (w,h) buffer = do
@@ -66,6 +71,9 @@ writeNextFrame (OutPipe hout) (w,h) buffer = do
 closeVideoOutPipe :: OutPipe -> IO ()
 closeVideoOutPipe (OutPipe hout) = do
     hClose hout
+
+
+
 
 
 ffmpegOutCmd :: String -> String
