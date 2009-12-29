@@ -12,7 +12,8 @@ import Data.IORef
 
 --import Graphics.Rendering.OpenGL as GL hiding (uniform)
 
-
+-- ffOut file = "ffmpeg -f image2pipe -vcodec ppm -i - -f h264 " ++ file
+ffOut file = "ffmpeg -f image2pipe -vcodec ppm -i - -vcodec libx264 -b 500k -vpre hq -vpre main  " ++ file
 
 main = startChalkBoard [BoardSize (480) (360)] videoMain
 
@@ -58,7 +59,8 @@ videoMain cb = do
     
     -- Test Video End to End
     videoPipe2 <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm -"
-    startMyWriteStream cb "ffmpeg -f image2pipe -vcodec ppm -i - -f h264 testBoth.mp4"
+
+    startMyWriteStream cb (ffOut "testBothOut.mp4")
     
     let endToEndTest = do
                 maybeBuffer <- nextPPMFrame videoPipe2
@@ -78,7 +80,7 @@ videoMain cb = do
     vp1 <- openVideoInPipe (ffmpegInCmd "bigfoot.mpeg")
     vp2 <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm -"
       
-    startMyWriteStream cb "ffmpeg -f image2pipe -vcodec ppm -i - -f h264 testMultipleIn.mp4"
+    startMyWriteStream cb (ffOut "testMultipleInOut.mp4")
     
     let multInTest = do
             maybeBuffer1 <- nextPPMFrame vp1
@@ -109,7 +111,7 @@ videoMain cb = do
     mix <- mkMix
     (Just bufferS) <- nextPPMFrame videoPipe3
     
-    startDefaultWriteStream cb "testGLSL.mp4"
+    startDefaultWriteStream cb "testGLSLOut.mp4"
 
     let glslTest bufferP = do
                 maybeBuffer1 <- nextPPMFrame videoPipe3
