@@ -962,6 +962,8 @@ compileBuffer2
 
 compileBuffer2 Target_RGBA low high (ImageRGBA bs) = do
 	compileByteStringImage low high bs RGBADepth
+compileBuffer2 Target_RGB low high (ImageRGB bs) = do
+	compileByteStringImage low high bs RGB24Depth
 
 -- TODO: common up with other fmap function. Not that Buffer can *not* use zip.
 compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
