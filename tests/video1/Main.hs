@@ -130,7 +130,7 @@ videoMain cb = do
                                                     (mix (scaleXY (1,-1) $ bufferOnBoard buffer1 (boardOf white))
                                                          (scaleXY (1,-1) $ bufferOnBoard bufferS (boardOf white))
                                                          (scaleXY (1,-1) $ bufferOnBoard bufferP (boardOf white))
-                                                         (scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf white))
+                                                         (scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf red))
                                                          --(example (sin count))
                                                     ))
                                             glslTest buffer1 (count+0.01)

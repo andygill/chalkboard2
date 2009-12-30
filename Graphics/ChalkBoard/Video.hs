@@ -11,6 +11,7 @@ import Foreign.Ptr ( Ptr )
 import Data.Word ( Word8 )
 
 
+
 newtype InPipe = InPipe Handle
 newtype OutPipe = OutPipe Handle
 
@@ -18,7 +19,9 @@ newtype OutPipe = OutPipe Handle
 
 openVideoInPipe :: String -> IO (InPipe)
 openVideoInPipe ffmpegCmd = do
-    (_, Just hout, _, _) <- createProcess (shell ffmpegCmd){ std_out = CreatePipe, close_fds = True }
+    (Just hin, Just hout, Just herr, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }
+    hClose hin
+    hClose herr
     return (InPipe hout)
 
 nextPPMFrame :: InPipe -> IO (Maybe (Buffer RGB))
@@ -57,7 +60,9 @@ closeVideoInPipe (InPipe hin) = do
 
 openVideoOutPipe :: String -> IO (OutPipe)
 openVideoOutPipe ffmpegCmd = do
-    (Just hin, _, _, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, close_fds = True }
+    (Just hin, Just hout, Just herr, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }
+    hClose hout
+    hClose herr
     return (OutPipe hin)
 
 writeNextFrame :: OutPipe -> (Int, Int) -> Ptr Word8 -> IO ()
