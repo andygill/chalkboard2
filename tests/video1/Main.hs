@@ -27,7 +27,7 @@ videoMain cb = do
             exitWith (ExitFailure 1)
     
     
-    {-
+    
     -- Test Video Input
     videoPipe <- openVideoInPipe (ffmpegInCmd "bigfoot.mpeg")
     
@@ -130,8 +130,7 @@ videoMain cb = do
                                                     (mix (scaleXY (1,-1) $ bufferOnBoard buffer1 (boardOf white))
                                                          (scaleXY (1,-1) $ bufferOnBoard bufferS (boardOf white))
                                                          (scaleXY (1,-1) $ bufferOnBoard bufferP (boardOf white))
-                                                         --(scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf red))
-                                                         (move (240,-180) $ example (sin count))
+                                                         ((move (240,-180) $ example (sin count)) `over` (scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf red)))
                                                     ))
                                             glslTest buffer1 (count+0.04)
     
