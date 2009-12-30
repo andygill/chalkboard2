@@ -27,7 +27,7 @@ videoMain cb = do
             exitWith (ExitFailure 1)
     
     
-    
+    {-
     -- Test Video Input
     videoPipe <- openVideoInPipe (ffmpegInCmd "bigfoot.mpeg")
     
@@ -110,8 +110,8 @@ videoMain cb = do
     
     startDefaultWriteStream cb "testGLSLOut.mp4"
     
-    --(w,h,img) <- readNormalizedBoard ("lambda.png")
-    --let example x = unAlpha <$> (scale 1000 (choose (alpha blue) (alpha green) <$> circle)) --(rotate (4*x) (scale (abs x) img)) `over` (boardOf (tranparent white))
+    (w,h,img) <- readNormalizedBoard ("lambda.png")
+    let example x = unAlpha <$> (scale 100 (rotate (4*x) (scale (abs x*3) img))) -- `over` (boardOf (alpha white))
     
     mix <- mkMix
     (Just bufferS) <- nextPPMFrame videoPipe3
@@ -130,10 +130,10 @@ videoMain cb = do
                                                     (mix (scaleXY (1,-1) $ bufferOnBoard buffer1 (boardOf white))
                                                          (scaleXY (1,-1) $ bufferOnBoard bufferS (boardOf white))
                                                          (scaleXY (1,-1) $ bufferOnBoard bufferP (boardOf white))
-                                                         (scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf red))
-                                                         --(example (sin count))
+                                                         --(scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf red))
+                                                         (move (240,-180) $ example (sin count))
                                                     ))
-                                            glslTest buffer1 (count+0.01)
+                                            glslTest buffer1 (count+0.04)
     
     glslTest bufferS 0
     

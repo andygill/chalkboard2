@@ -183,7 +183,7 @@ void main(void)
     float xmax = 0.65;
     float ymin = 0.4;
     float ymax = 0.85;
-    float alpha = 0.6;
+    //float alpha = 0.4;
   
     if (v >= 0.0 || 
               ( gl_TexCoord[0].s < xmin  || gl_TexCoord[0].s > xmax ||
@@ -194,6 +194,7 @@ void main(void)
     } else {
         //vec2 myTexCoord = vec2( ((xmax-xmin)-(gl_TexCoord[0].s-xmin))*(1.0/(xmax-xmin)-0.01) , (gl_TexCoord[0].t-ymin)*(1.0/(ymax-ymin)-0.01) );
         vec2 myTexCoord = vec2( (gl_TexCoord[0].s-xmin)*(1.0/(xmax-xmin)) , (gl_TexCoord[0].t-ymin)*(1.0/(ymax-ymin)) );
+        float alpha = texture2D(sampler3,myTexCoord).a;
 	gl_FragColor.rgb = vec3(alpha,alpha,alpha) * texture2D(sampler3,myTexCoord).rgb + vec3(1.0-alpha,1.0-alpha,1.0-alpha) * texture2D(sampler0,gl_TexCoord[0].st).rgb;
         gl_FragColor.a = 1.0;
     }
@@ -206,9 +207,9 @@ void main(void)
 	float len = length(texture2D(sampler0,gl_TexCoord[0].st).rgb) -
 	 	    length(texture2D(sampler2,gl_TexCoord[0].st).rgb);
 		if (len < -0.03) { 
-		gl_FragColor.rgb = texture2D(sampler0,gl_TexCoord[0].st).rgb;	
+		gl_FragColor.rgb = texture2D(sampler0,gl_TexCoord[0].st).rgb;
 	} else {
-		gl_FragColor.rgb = vec3(1,1,1);		
+		gl_FragColor.rgb = vec3(1,1,1);
 	}
         gl_FragColor.a = 1.0;
   }
