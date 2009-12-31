@@ -211,13 +211,23 @@ compileBoard2 bc t (Fmap g (Trans mv brd)) 	= compileBoard2 bc t (Trans mv (Fmap
 compileBoard2 bc t (Over fn above below) 	= compileBoardOver bc t above below (targetOver t)
 compileBoard2 bc t (Polygon nodes) 		= compileBoardPolygon bc t nodes
 compileBoard2 bc t (PrimConst o) 		= compileBoardConst bc t (evalE $ runO0 o)
-compileBoard2 bc t (Fmap f other) 		= compileBoardFmap bc t (runO1 f (E $ Var [])) other (argTypeForOFun f ty) ty
-	where ty = targetType t
+compileBoard2 bc t (Fmap f other)
+		-- special optimization: fmap (...) (xxx :: Board Bool) can often be optimized
+	|  goodToFmapBool argTy t tr fa
+			= compileBoardFmapBool bc t 
+				tr
+				fa
+				other (argTypeForOFun f ty) ty
+	| otherwise        = -- trace ("fmap reject " ++ show (argTy,t,tr,fa)) $ 
+			     compileBoardFmap bc t (runO1 f (E $ Var [])) other (argTypeForOFun f ty) ty
+	where ty    = targetType t
+	      argTy = argTypeForOFun f ty
+	      tr = evalE $ runO1 f (E $ O_Bool True)
+	      fa = evalE $ runO1 f (E $ O_Bool False)
 compileBoard2 bc t (BufferOnBoard buffer brd) 	= compileBufferOnBoard bc t buffer brd
 	where ty = targetType t
 compileBoard2 bc t (BoardGSI fn bargs vargs) 	= compileBoardGSI bc t fn bargs vargs
 compileBoard2 bc t other          		= error $ show ("compileBoard2",bc,t,other)
-
 
 -- Drawing something *over* something.
 compileBoardOver bc t above below (t1,Nothing) = compileBoard2 bc t above
@@ -354,6 +364,20 @@ compileBoardFmap bc t (E f) other argTypes resTy = do
 
 -- Abort!
 compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,t,other,argTy,resTy)
+
+-- use this to check if you can fmap over the Bool
+goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E (O_RGBA (RGBA _ _ _ 1)))) (Just (E (O_RGBA (RGBA _ _ _ 0)))) = True
+goodToFmapBool _ _ _ _ = False
+
+compileBoardFmapBool bc t@(Target_RGBA Blend) 
+		(Just (E (O_RGBA (RGBA r g b 1))))
+		(Just (E (O_RGBA (RGBA _ _ _ 0))))		-- the background *better* be transparent.
+		other argTypes resTy = do
+	compileBoard2 bc (Target_Bool (RGB r g b)) other
+compileBoardFmapBool bc t tr fa other argTypes resTy = do
+	error $ "Found fmap over (Board Bool) (perhaps non transparent background?) " ++ show (t,tr,fa)
+
+	
 
 -- It is the responsability of the caller to unallocate the returned bufferids.
 compileFmapArgs :: BoardContext -> Board a -> [([Path],ExprType)] -> IO ([Inst Int],[(BufferId,[Path])])
