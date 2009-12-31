@@ -13,7 +13,7 @@
 
 module Graphics.ChalkBoard.Shapes where
 
-import Graphics.ChalkBoard.Board
+import Graphics.ChalkBoard.Board hiding (zip)
 import Graphics.ChalkBoard.Shader
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.O
