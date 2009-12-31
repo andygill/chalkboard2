@@ -3,10 +3,9 @@ import Test.QuickCheck as QC
 data RGBA = RGBA Float Float Float Float
 	deriving (Show,Eq)
 
-eq c1@(RGBA r g b a) c2@(RGBA r' g' b' a') 
+eq c1@(RGBA r g b a) c2@(RGBA r' g' b' a') 		-- used for Maybe RGB
 		| a == 0 && a' == 0 = True
 		| otherwise	    = c1 == c2
-
 
 --     blendFuncSeparate $= ((SrcAlpha, OneMinusSrcAlpha), (One, OneMinusSrcAlpha)) -- Specify color and alpha blend separately
 --
@@ -31,14 +30,16 @@ instance Arbitrary RGBA where
  arbitrary = do r <- elements nums
 	        g <- elements nums
 	        b <- elements nums
-	        a <- elements [0,1] -- nums
+	        a <- elements nums -- [0,1] -- nums
 		return $ RGBA r g b a
 		
-test1 r1 r2 r3 = label (show (r1,r2,r3)) $ ((r1 `merge ` r2) `merge` r3) == (r1 `merge` (r2 `merge` r3))
+test1 r1 r2 r3 = label (show (r1,r2,r3)) 
+	     $ ((r1 `merge ` r2) `merge` r3) == (r1 `merge` (r2 `merge` r3))
   where
 	types = (r1 :: RGBA) 
 
-test2 r1 = label (show (r1,r1 `merge` (RGBA 0 0 0 0))) $ r1 `eq` (r1 `merge` (RGBA 0 0 0 0))
+test2 r1 = label (show (r1,r1 `merge` (RGBA 0 0 0 0))) 
+	 $ r1 `eq` (r1 `merge` (RGBA 0 0 0 0))
   where
 	types = (r1 :: RGBA) 
 
