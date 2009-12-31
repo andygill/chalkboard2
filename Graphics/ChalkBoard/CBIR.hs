@@ -72,7 +72,6 @@ instance Show Background where
 
 type UIPoint = (UI,UI)
 
-
 -- A mapping from a point on the source CBBO to a corresponding point on the canvas CBBO.
 data PointMap = PointMap UIPoint UIPoint
         deriving Show
@@ -82,6 +81,8 @@ data WithAlpha = WithSrcAlpha
                | WithDestAlpha
         deriving Show
 
+-- Move into CBIR
+data Write = Blend | Copy deriving (Eq, Show)
 
 -- AG: The depth is determined by the Background, we only need one!
 
@@ -174,14 +175,13 @@ AG: other considerations include
 
     | Exit
 
-
 	-- GLSL extensions to CBIR
 
     | AllocFragmentShader var String [String]	-- GLSL object, and names of args
 
     | ShadeFragmentWith var [(String,var)] [Inst var]	-- Use a specific object, in the context of the given framement function
 
-    | DeleteFragmentShader var
+    | DeleteFragmentShader var		-- TODO: write code for, and use
 
         deriving Show
 
