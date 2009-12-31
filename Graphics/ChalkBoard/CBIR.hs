@@ -106,6 +106,12 @@ AG: other considerations include
 
         (KM: I would say not when printed onto the screen, at least. Maybe internally for 'from' CBBOs doing splats, but the 'to' board probably won't want it to wrap, just be off the edge.)
 -}
+
+
+
+     | Splat var Write (Splat var)
+
+
        --- Everything can be written as triangles (for now)!
      | SplatTriangle
        var	--  to write from (may be a color, but will be allocated)
@@ -130,7 +136,7 @@ AG: other considerations include
        [(String,var)]		-- argument BufferId(s)
        [(String,UniformArgument)]		-- the extra uniform args
        var			-- target BufferId
-       [PointMap]
+       [PointMap]		-- should be UIPoint???
 {-
      | SplatWholeBoardColor
 	RGBA
@@ -185,6 +191,14 @@ AG: other considerations include
 
         deriving Show
 
+
+data Splat var
+	= SplatPolygon'
+	| SplatColor'
+	| SplatFunction'
+	| SplatBuffer'
+	deriving (Show)
+	
 
 copyBoard :: var -> var -> Inst var
 copyBoard src target = CopyBuffer WithSrcAlpha src target
@@ -278,6 +292,35 @@ KM: I would say the "draw this pixel if true" approach might be faster? Then cou
 	   | BackgroundArr (IStorableArray (Int,Int,Int))
 	-}
 
+instance Binary UniformArgument where
+  put (UniformArgument arg) 		= put (0 :: Word8) >> put arg 
+  put (UniformListArgument args) 	= put (1 :: Word8) >> put args 
+  
+  get = do tag <- getWord8
+	   case tag of
+		0 -> liftM UniformArgument get
+		1 -> liftM UniformListArgument get
+
+
+instance Binary Argument where
+  put (Int v) 		= put (0 :: Word8) >> put v
+  put (Float v) 	= put (1 :: Word8) >> put v
+  put (Vec2 v) 		= put (2 :: Word8) >> put v
+  put (Arr v) 		= put (3 :: Word8) >> put v
+  put (ArrVec2 v) 	= put (4 :: Word8) >> put v
+  put (Vec3 v) 		= put (5 :: Word8) >> put v
+  put (Vec4 v) 		= put (6 :: Word8) >> put v
+
+  get = do tag <- getWord8
+           case tag of
+		0 -> liftM Int get
+		1 -> liftM Float get
+		2 -> liftM Vec2 get
+		3 -> liftM Arr get
+		4 -> liftM ArrVec2 get
+		5 -> liftM Vec3 get
+		6 -> liftM Vec4 get
+		
 instance Binary Background where
   put (BackgroundBit b) 	 = put (0 :: Word8) >> put b
   put (BackgroundG8Bit g) 	 = put (1 :: Word8) >> put g
@@ -292,7 +335,7 @@ instance Binary Background where
                   3 -> liftM BackgroundRGBADepth get
                   4 -> liftM BackgroundByteString get
 
-instance Binary var => Binary (Inst var) where
+instance (Show var, Binary var) => Binary (Inst var) where
   put (Allocate v sz d b) 	= put (0 :: Word8) >> put v >> put sz >> put d >> put b
   put (SplatTriangle v1 v2 p1 p2 p3) 
 				= put (1 :: Word8) >> put v1 >> put v2 >> put p1 >> put p2 >> put p3
@@ -305,6 +348,11 @@ instance Binary var => Binary (Inst var) where
   put (Delete v)		= put (8 :: Word8) >> put v 
   put (Nested nm insts)		= put (9 :: Word8) >> put nm >> put insts
   put (Exit)			= put (10 :: Word8)
+  put (AllocFragmentShader v txt args)
+				= put (11 :: Word8) >> put v >> put txt >> put args
+  put (SplatWithFunction v1 vs us v2 points)
+				= put (12 :: Word8) >> put v1 >> put vs >> put us >> put v2 >> put points
+  put other			= error $ show ("put",other)
 
   get = do tag <- getWord8
 	   case tag of
@@ -319,4 +367,5 @@ instance Binary var => Binary (Inst var) where
 		8 -> liftM  Delete get
 		9 -> liftM2 Nested get get
 		10 -> return $ Exit
-		
+		11 -> liftM3 AllocFragmentShader get get get
+		12 -> liftM5 SplatWithFunction get get get get get
