@@ -158,7 +158,7 @@ newNumber = do
 -- 	Data		Alpha?	Notes
 
 data Target 
- = Target_RGBA Write
+ = Target_RGBA Write --		Write => the type of blending writing to a board does
  | Target_RGB      --	N	A = 1
  | Target_Bool RGB --	N	Arg is what do we draw for *True*
  | Target_Maybe_RGB --	Y	Nothing => transparent <ANY>
@@ -168,8 +168,7 @@ data Target
 	deriving Show
 
 
--- What does drawing this target *mean*? 
--- Do you merge with the background, or overwrite it?
+-- What 'over' do with the forground and background?
 
 targetOver :: Target -> (Target,Maybe Target)
 targetOver (Target_RGBA Copy)	= ( Target_RGBA Blend	, Just $ Target_RGBA Copy)
@@ -198,7 +197,6 @@ targetFromType :: ExprType -> Target
 targetFromType RGBA_Ty 			= Target_RGBA Copy	-- only because this is the only case
 								-- used, aka buffer fmap.
 targetFromType RGB_Ty 			= Target_RGB
-
 
 compileBoard2 
 	:: BoardContext
