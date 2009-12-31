@@ -201,6 +201,32 @@ cbMain cb = do
 	    | n <- [0.1,0.5,1.0,2.0]
 	    ]
 	
+	test "test10" $
+	        [ do
+                        drawChalkBoard cb $ unAlpha <$> (boardOf (withAlpha alpha1 red)) `over` (boardOf (withAlpha alpha2 blue))
+                        writeChalkBoard cb ("test10-2overs-" ++ show (alpha1,alpha2) ++ ".png")
+                  | alpha1 <- [0.0,0.5,1.0], alpha2 <- [0.0,0.5,1.0]
+                ] ++
+                [ do
+                        drawChalkBoard cb $ unAlpha <$> (boardOf (withAlpha alpha1 red)) `over` ((boardOf (withAlpha alpha2 blue)) `over` (boardOf (withAlpha alpha3 black)))
+                        writeChalkBoard cb ("test10-3oversRight-" ++ show (alpha1,alpha2,alpha3) ++ ".png")
+                  | alpha1 <- [0.0,0.5,1.0], alpha2 <- [0.0,0.5,1.0], alpha3 <- [0.0,0.5,1.0]
+                ] ++
+                [ do
+                        drawChalkBoard cb $ unAlpha <$> ((boardOf (withAlpha alpha1 red)) `over` (boardOf (withAlpha alpha2 white))) `over` (boardOf (withAlpha alpha3 blue))
+                        writeChalkBoard cb ("test10-3oversLeft-" ++ show (alpha1,alpha2,alpha3) ++ ".png")
+                  | alpha1 <- [0.0,0.5,1.0], alpha2 <- [0.0,0.5,1.0], alpha3 <- [0.0,0.5,1.0]
+                ] ++
+                [ do
+                        drawChalkBoard cb $ unAlpha <$> ((boardOf (withAlpha alpha1 white)) `over` (boardOf (withAlpha alpha2 red)))
+                                                        `over`
+                                                        ((boardOf (withAlpha alpha3 blue)) `over` (boardOf (withAlpha alpha4 yellow)))
+                        writeChalkBoard cb ("test10-4overs-" ++ show (alpha1,alpha2,alpha3,alpha4) ++ ".png")
+                  | alpha1 <- [0.0,0.5,1.0], alpha2 <- [0.0,0.5,1.0], alpha3 <- [0.0,0.5,1.0], alpha4 <- [0.0,0.5,1.0]
+                ]
+            
+	        
+	
 	exitChalkBoard cb
 
 
