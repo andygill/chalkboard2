@@ -136,8 +136,8 @@ cbMain cb = do
 	                   g = move (-0.26,0.15) circle
 	                   b = move (0,-0.3)    circle
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> 
-							(choose (withAlpha a green) (transparent white) <$>
-							    (r `over` b `over` g))))
+							((choose (withAlpha a green) (transparent white) <$>
+							    (r `over` b `over` g))) `over` boardOf (alpha white)))
 		       writeChalkBoard cb $ "test5-" ++ show a ++  ".png" ]
 		 | a <- [0,0.1,0.3,0.5,0.7,0.9,1]
 		 ]
