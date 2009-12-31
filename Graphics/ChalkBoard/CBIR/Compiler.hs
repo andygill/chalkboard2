@@ -511,6 +511,11 @@ compileBuffer2
 -- TODO: This should be a Copy or a Blend???
 compileBuffer2 (Target_RGBA Copy) low high (ImageRGBA bs) = do
 	compileByteStringImage low high bs RGBADepth
+-- TODO: Not sure about this. what does blend mean in this context,
+-- because this *always* allocs a new board.
+-- Perhaps we need a mark function, that  maps Blend to Copy, for compileBufferOnBoard?
+compileBuffer2 (Target_RGBA Blend) low high (ImageRGBA bs) = do
+	compileByteStringImage low high bs RGBADepth
 compileBuffer2 Target_RGB low high (ImageRGB bs) = do
 	compileByteStringImage low high bs RGB24Depth
 
