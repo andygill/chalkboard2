@@ -218,8 +218,8 @@ compileBoard2 bc t (Fmap f other)
 				tr
 				fa
 				other (argTypeForOFun f ty) ty
-	| otherwise        = -- trace ("fmap reject " ++ show (argTy,t,tr,fa)) $ 
-			     compileBoardFmap bc t (runO1 f (E $ Var [])) other (argTypeForOFun f ty) ty
+--	| argTy == [([],BOOL_Ty)] && trace ("fmap reject " ++ show (argTy,t,tr,fa)) False = undefined
+	| otherwise = compileBoardFmap bc t (runO1 f (E $ Var [])) other (argTypeForOFun f ty) ty
 	where ty    = targetType t
 	      argTy = argTypeForOFun f ty
 	      tr = evalE $ runO1 f (E $ O_Bool True)
@@ -367,6 +367,7 @@ compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,
 
 -- use this to check if you can fmap over the Bool
 goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E (O_RGBA (RGBA _ _ _ 1)))) (Just (E (O_RGBA (RGBA _ _ _ 0)))) = True
+goodToFmapBool [([],BOOL_Ty)] (Target_RGB) (Just (E (O_RGB {}))) (Just (E (O_RGB (RGB {})))) = True
 goodToFmapBool _ _ _ _ = False
 
 compileBoardFmapBool bc t@(Target_RGBA Blend) 
@@ -374,6 +375,16 @@ compileBoardFmapBool bc t@(Target_RGBA Blend)
 		(Just (E (O_RGBA (RGBA _ _ _ 0))))		-- the background *better* be transparent.
 		other argTypes resTy = do
 	compileBoard2 bc (Target_Bool (RGB r g b)) other
+compileBoardFmapBool bc t@(Target_RGB) 
+		(Just (E (O_RGB tCol)))
+		(Just (E (O_RGB fCol@(RGB r g b))))
+		other argTypes resTy = do
+			insts <- compileBoard2 bc (Target_Bool tCol) other
+			return $ [ SplatColor (RGBA r g b 1)
+					(bcDest bc)
+					False
+					[(0,0),(1,0),(1,1),(0,1)]
+				 ] ++ insts
 compileBoardFmapBool bc t tr fa other argTypes resTy = do
 	error $ "Found fmap over (Board Bool) (perhaps non transparent background?) " ++ show (t,tr,fa)
 
