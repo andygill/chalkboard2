@@ -7,6 +7,9 @@ module Graphics.ChalkBoard.Board
 	  Board
 	  -- * Ways of manipulating 'Board'.
 	, (<$>)
+	, zip
+	, zipWith
+	, zipWith3
 	, move
 	, rotate
 	, scaleXY
@@ -38,18 +41,26 @@ import Data.Array.MArray
 import Data.Array.Storable
 import Data.Word
 import Codec.Image.DevIL
+import Prelude hiding (zip, zipWith, zipWith3,lookup)
 
-
-import Prelude hiding (lookup)
 -- | 'fmap' like operator over a 'Board'.
 
 instance OFunctor Board where
   (<$>) f brd = Fmap f brd -- PrimConst (lamO $ f) <*> brd
-  ozip b1 b2 = Zip b1 b2
+
 
 -- | 'pure' like operator for 'Board'.	
 boardOf :: O a -> Board a
 boardOf = PrimConst
+
+zip :: Board a -> Board b -> Board (a,b)
+zip b1 b2 = Zip b1 b2
+
+zipWith :: (O a -> O b -> O c) -> Board a -> Board b -> Board c
+zipWith f b1 b2 = (\ o -> f (fstO o) (sndO o)) <$> (b1 `zip` b2)
+
+zipWith3 :: (O a -> O b -> O c -> O d) -> Board a -> Board b -> Board c -> Board d
+zipWith3 f b1 b2 b3 = (\ o -> f (fstO o) (fstO (sndO o)) (sndO (sndO o))) <$> (b1 `zip` (b2 `zip` b3))
 
 transPoint :: Trans -> (R,R) -> (R,R)
 transPoint (Move (xd,yd)) 	(x,y) = (x - xd,y - yd)
