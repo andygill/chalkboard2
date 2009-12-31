@@ -26,7 +26,7 @@ main = do
 --          cbMain cb
 
 colors :: [(O RGB,String)]
-colors = zip 
+colors = Prelude.zip 
 	[white,  black,  red,   green,  blue,  cyan,  purple,  yellow]
 	["white","black","red","green","blue","cyan","purple","yellow"]
 
@@ -67,7 +67,7 @@ cbMain cb = do
 	 		  [ do drawChalkBoard cb ((rotate r (scale 0.5 shape))
 					 )
 		               writeChalkBoard cb ("test2-rotate-" ++ shape_name ++ "-" ++ nm ++ ".png") 
-	             	  | (r,nm) <- zip
+	             	  | (r,nm) <- Prelude.zip
 				[0,0.1,-0.1,pi/10,pi,2*pi]
 				["0","0.1","neg0.1","pi_div10","pi","2pi"]
 		          ]
@@ -150,7 +150,7 @@ cbMain cb = do
 		       let rs0 = [ move (i * 0.26,j * 0.26) circle
 			        | i <- [-1,1], j <- [-1,1]
 			        ]
-		       let rs = [ scale i b | (i,b) <- zip [1,0.9..] rs0 ]
+		       let rs = [ scale i b | (i,b) <- Prelude.zip [1,0.9..] rs0 ]
 		       drawChalkBoard cb (scale 0.5 (unAlpha <$> 
 							((choose (withAlpha a green) 
 								(transparent white) <$>
@@ -196,7 +196,7 @@ cbMain cb = do
 		let brd3 = scale n $ circle
 		let fn :: O ((RGB,RGB),Bool) -> O RGB
 		    fn o = choose (fstO (fstO o)) (sndO (fstO o)) (sndO o)
-		drawChalkBoard cb $ fn <$> ((brd1 `ozip` brd2) `ozip` brd3)
+		drawChalkBoard cb $ fn <$> ((brd1 `CB.zip` brd2) `CB.zip` brd3)
 		writeChalkBoard cb $ "test9-" ++ show n ++ ".png"
 	    | n <- [0.1,0.5,1.0,2.0]
 	    ]
