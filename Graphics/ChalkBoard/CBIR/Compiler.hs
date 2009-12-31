@@ -310,7 +310,7 @@ assignFrag other expr = error $ show ("assignFrag",other,expr)
 
 prelude = unlines
 	[ "vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }"
-	, "vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * 1.0; }" 
+	, "vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }" 
 	]
 
 
@@ -533,8 +533,7 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 	let code = compileFmapFunE env expr tarTy	
 	let fn = 
 		unlines [ "uniform sampler2D cb_sampler0;" ] ++
-		"vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\n" ++
-		"vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }\n" ++
+		prelude ++
 		"void main(void) {\n" ++
 		assignFrag tarTy code ++
 		"}\n"
