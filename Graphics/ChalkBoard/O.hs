@@ -7,6 +7,7 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	  -- * The Observable language
 	, true, false
 	, choose
+	, mix
 	, alpha
 	, withAlpha
 	, unAlpha
@@ -81,6 +82,9 @@ instance Obs Float where
 -- | choose between two Observable alternatives, based on a Observable 'Bool'
 choose :: O o -> O o -> O Bool -> O o
 choose (O a ea) (O b eb) (O c ec)  = O (if c then a else b) (E $ Choose ea eb ec)
+
+mix :: (Lerp o) => O o -> O o -> O UI -> O o
+mix (O a ea) (O b eb) (O c ec)  = O (lerp c a b) (E $ Mix ea eb ec)
 
 -- square :: Board (O Bool)
 

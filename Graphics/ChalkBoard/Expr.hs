@@ -36,6 +36,7 @@ data Expr s
 	-- Functions
 	| OrBool			-- the || function
 	| Choose s s s			-- O a -> O a -> O Bool -> O a
+        | Mix s s s 			-- O a -> O a -> O UI -> O a
 	| Alpha UI s			-- O_Alpha?
 	| ScaleAlpha UI s		-- RGBA -> RGBA
 	| UnAlpha s
@@ -60,6 +61,7 @@ data ExprType
 	= BOOL_Ty 
 	| RGB_Ty 
 	| RGBA_Ty 
+	| UI_Ty
 	| Pair_Ty ExprType ExprType
 	| Maybe_Ty ExprType
 	| Poly_Ty		-- because of fst, snd
@@ -71,6 +73,7 @@ exprUnifyE (E e) = exprUnify e
 -- exprUnify :: what the expected result type is, and does it unify
 exprUnify :: Expr E -> ExprType -> [([Path],ExprType)]
 exprUnify (Choose a b c) 	ty 		= L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c BOOL_Ty)
+exprUnify (Mix a b c) 	ty 		= L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c UI_Ty)
 exprUnify (O_Bool {}) 		BOOL_Ty 	= []
 exprUnify (O_RGB {}) 		RGB_Ty 		= []
 exprUnify (O_RGBA {}) 		RGBA_Ty 	= []
@@ -109,6 +112,7 @@ evalExprE e@(Var {}) 		= return e
 evalExprE e@(O_Bool {}) 	= return e
 evalExprE e@(O_RGB {}) 		= return e
 evalExprE e@(O_RGBA {}) 	= return e
+evalExprE e@(Lit v)		= return e
 -- try some evaluation, please.
 evalExprE (Choose a b c) = 
 	case liftM unE $ evalE c of
@@ -148,6 +152,7 @@ instance T.Traversable Expr where
 --	traverse f (O_Snd a) 		= O_Snd <$> f a
 
 	traverse f (Choose a b c) 	= Choose <$> f a <*> f b <*> f c
+	traverse f (Mix a b c) 		= Mix <$> f a <*> f b <*> f c
 	traverse f (Alpha c e) 		= Alpha c <$> f e
 	traverse f (ScaleAlpha c e) 	= ScaleAlpha c <$> f e
 	traverse f (UnAlpha e) 		= UnAlpha <$> f e

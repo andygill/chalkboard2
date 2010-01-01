@@ -210,7 +210,9 @@ compileBoard2 bc t (Fmap g (Fmap h brd)) 	= compileBoard2 bc t (Fmap (g . h) brd
 compileBoard2 bc t (Fmap g (Trans mv brd)) 	= compileBoard2 bc t (Trans mv (Fmap g brd))
 compileBoard2 bc t (Over fn above below) 	= compileBoardOver bc t above below (targetOver t)
 compileBoard2 bc t (Polygon nodes) 		= compileBoardPolygon bc t nodes
-compileBoard2 bc t (PrimConst o) 		= compileBoardConst bc t (evalE $ runO0 o)
+compileBoard2 bc t (PrimConst o) 		= 
+--	trace (show ("const",runO0 o)) $ 
+	compileBoardConst bc t (evalE $ runO0 o)
 compileBoard2 bc t (Fmap f other)
 		-- special optimization: fmap (...) (xxx :: Board Bool) can often be optimized
 	|  goodToFmapBool argTy t tr fa
@@ -268,9 +270,13 @@ compileBoardConst bc t@(Target_RGB) (Just (E (O_RGB (RGB r g b))))
 				False
 				[(0,0),(1,0),(1,1),(0,1)]
 			]
-			-- TODO: we need a SplatColor that 
-			--	  * works over the whole board (we use [(0,0),..] for that now)
-			--	  * can Blend or Copy
+compileBoardConst bc t@(Target_UI) (Just (E (Lit r)))
+		= return [
+		 	SplatColor (RGBA r 0 0 1)
+				(bcDest bc)
+				False
+				[(0,0),(1,0),(1,1),(0,1)]
+			]
 compileBoardConst bc t@(Target_RGBA Copy) (Just (E (O_RGBA rgba)))
 		= do
 		newBoard <- newNumber
@@ -445,6 +451,17 @@ allocAndCompileBoard bc BOOL_Ty brd = do
 				(BackgroundRGB24Depth (RGB 0 0 0))
 			  ] ++ rest
 		], newBoard )
+allocAndCompileBoard bc UI_Ty brd = do
+	newBoard <- newNumber
+	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_UI) brd
+	return ( [ Nested ("alloc UI_Ty") $
+			  [ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(bcSize bc)		   -- tiny board
+        			RGB24Depth          -- depth of buffer	
+				(BackgroundRGB24Depth (RGB 0 0 0))
+			  ] ++ rest
+		], newBoard )
 allocAndCompileBoard bc ty brd = error $ show ("allocAndCompileBoard",bc,ty,brd)
 
 -- what a hack! Compiles our Expr language into GLSL.
@@ -453,12 +470,17 @@ compileFmapFun env (Choose e1 e2 e3) ty =
 	      "mix(" ++ compileFmapFunE env e2 ty ++ "," ++
 			compileFmapFunE env e1 ty ++ "," ++
 		        compileFmapFunE env e3 BOOL_Ty ++ ")";
+compileFmapFun env (Mix e1 e2 e3) ty =
+	      "mix(" ++ compileFmapFunE env e1 ty ++ "," ++
+			compileFmapFunE env e2 ty ++ "," ++
+		        compileFmapFunE env e3 UI_Ty ++ ")";
 compileFmapFun env v@(Var path) ty =
 	case Map.lookup path env of
 	  Just varName -> coerce ("texture2D(" ++ varName ++ ",gl_TexCoord[0].st)")
 	  Nothing -> error $ "Can not find Var " ++ show v
   where coerce txt = case ty of
 		       BOOL_Ty -> "(" ++ txt ++ ").r > 0.5 ? 1.0 : 0.0"
+		       UI_Ty   -> "(" ++ txt ++ ").r"
 		       RGB_Ty  ->  "(" ++ txt ++ ").rgb"
 		       other   -> txt
 compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
@@ -518,6 +540,9 @@ compileBuffer2 (Target_RGBA Blend) low high (ImageRGBA bs) = do
 	compileByteStringImage low high bs RGBADepth
 compileBuffer2 Target_RGB low high (ImageRGB bs) = do
 	compileByteStringImage low high bs RGB24Depth
+compileBuffer2 Target_UI low high (ImageUI bs) = do
+	compileByteStringImage low high bs' RGB24Depth
+  where bs' = BS.concatMap (\ w -> BS.pack [w,0,0]) bs
 
 -- TODO: common up with other fmap function. Not that Buffer can *not* use zip.
 compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
