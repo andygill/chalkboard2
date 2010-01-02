@@ -47,7 +47,7 @@ cbMain cb = do
 	let sc = 1 / xy
 	let xd = fromIntegral y / xy
 	let yd = fromIntegral x / xy
-	let img = unAlpha <$> move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
+	let img = unAlphaBoard (boardOf white) $ move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
 
 	-- first examples, pure colors.
 	test "test1" 
@@ -110,7 +110,7 @@ cbMain cb = do
 	test "test3" [ do
 		(x,y,imgBrd) <- readBoard ("images/" ++ nm)
 		let xy = max x y
-		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) imgBrd))
+		drawChalkBoard cb (unAlphaBoard (boardOf white) $ move (-0.5,-0.5) (scale (1/fromIntegral xy) imgBrd))
 		writeChalkBoard cb $ "test3-image-load-" ++ nm ++ ".png"
 	   | nm <- [ "cb-text.gif"
 		   , "cb-text.jpg"
@@ -119,10 +119,10 @@ cbMain cb = do
 	   ]
 
 	test "test4" [ do 
-		       let r = move (0.26,0.15)  (choose (withAlpha a red) (transparent white) <$> circle)
-	                   g = move (-0.26,0.15) (choose (withAlpha a green) (transparent white) <$> circle)
-	                   b = move (0,-0.3)      (choose (withAlpha a blue) (transparent white) <$> circle)
-		       drawChalkBoard cb (scale 0.5 (unAlpha <$> (r `over` b `over` g `over` boardOf (transparent white))))
+		       let r = move (0.26,0.15)  (choose (withAlpha a red) (transparent) <$> circle)
+	                   g = move (-0.26,0.15) (choose (withAlpha a green) (transparent) <$> circle)
+	                   b = move (0,-0.3)      (choose (withAlpha a blue) (transparent) <$> circle)
+		       drawChalkBoard cb (scale 0.5 (unAlphaBoard (boardOf white) $ (r `over` b `over` g)))
 		       writeChalkBoard cb $ "test4-" ++ show a ++  ".png"
 		 | a <- [0,0.1,0.3,0.5,0.7,0.9,1]
 		 ]
@@ -135,9 +135,9 @@ cbMain cb = do
 		       let r = move (0.26,0.15) circle
 	                   g = move (-0.26,0.15) circle
 	                   b = move (0,-0.3)    circle
-		       drawChalkBoard cb (scale 0.5 (unAlpha <$> 
-							((choose (withAlpha a green) (transparent white) <$>
-							    (r `over` b `over` g))) `over` boardOf (alpha white)))
+		       drawChalkBoard cb (scale 0.5 (unAlphaBoard (boardOf white) $ 
+							((choose (withAlpha a green) (transparent) <$>
+							    (r `over` b `over` g)))))
 		       writeChalkBoard cb $ "test5-" ++ show a ++  ".png" ]
 		 | a <- [0,0.1,0.3,0.5,0.7,0.9,1]
 		 ]
@@ -151,44 +151,48 @@ cbMain cb = do
 			        | i <- [-1,1], j <- [-1,1]
 			        ]
 		       let rs = [ scale i b | (i,b) <- Prelude.zip [1,0.9..] rs0 ]
-		       drawChalkBoard cb (scale 0.5 (unAlpha <$> 
+		       drawChalkBoard cb (scale 0.5 (unAlphaBoard (boardOf white) $ 
 							((choose (withAlpha a green) 
-								(transparent white) <$>
+								(transparent) <$>
 							    ((rs !! 0) `over` (rs !! 1))) `overX`
 							 (choose (withAlpha a red) 
-								(transparent white) <$>
+								(transparent) <$>
 							    ((rs !! 2) `over` (rs !! 3))))))
 		       writeChalkBoard cb $ "test6-" ++ show a ++  ".png" ]
 		 | a <- [0,0.5,0.7,0.9,1]
 		 ]
 
+{-
 	test "test7" [ do
 		buff <- readBuffer ("images/" ++ nm)
 		let ((0,0),(x,y)) = bufferBounds buff
 		let xy = max (x+1) (y+1)
 		-- draw buffer board
-		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) (bufferOnBoard buff $ boardOf (alpha green))))
+		drawChalkBoard cb (unAlphaBoard (boardOf white) $ move (-0.5,-0.5) (scale (1/fromIntegral xy) (bufferOnBoard buff $ boardOf (alpha green))))
 		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ "-as-Board.png"
-		drawChalkBuffer cb (unAlpha <$> buff)
+		drawChalkBuffer cb (unAlphaBoard (boardOf white) $ buff)
 		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ "-as-Buffer.png"
 	   | nm <- [ "cb-text.gif"
 		   , "cb-text.jpg"
 		   , "cb-text.png"
 		   ] 
 	   ]
+-}
 
+{-
 	test "test8" [ do
 		buff <- readBuffer ("images/cb-text.png")
 		let ((0,0),(x,y)) = bufferBounds buff
 		let xy = max (x+1) (y+1)
 		let brd = bufferOnBoard buff $ boardOf (alpha red)
-		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) brd))
+		drawChalkBoard cb (unAlphaBoard (boardOf white) $ move (-0.5,-0.5) (scale (1/fromIntegral xy) brd))
 		writeChalkBoard cb $ "test8-0.png"
 		let buff2 = boardToBuffer (0,0) (150,70) brd
 		let brd2 = bufferOnBoard buff2 $ boardOf (alpha green)
-		drawChalkBoard cb (unAlpha <$> move (-0.5,-0.5) (scale (1/fromIntegral xy) brd2))
+		drawChalkBoard cb (unAlphaBoard (boardOf white) $ move (-0.5,-0.5) (scale (1/fromIntegral xy) brd2))
 		writeChalkBoard cb $ "test8-1.png"
 	   ]
+-}
 
 	test "test9" [ do
 		let brd1 = scale 0.5 $ rotate 0.1 $ (choose red green <$> square)
@@ -203,22 +207,22 @@ cbMain cb = do
 	
 	test "test10" $
 	        [ do
-                        drawChalkBoard cb $ unAlpha <$> (boardOf (withAlpha alpha1 red)) `over` (boardOf (withAlpha alpha2 blue))
+                        drawChalkBoard cb $ unAlphaBoard (boardOf white) $ (boardOf (withAlpha alpha1 red)) `over` (boardOf (withAlpha alpha2 blue))
                         writeChalkBoard cb ("test10-2overs-" ++ show (alpha1,alpha2) ++ ".png")
                   | alpha1 <- [0.0,0.5,1.0], alpha2 <- [0.0,0.5,1.0]
                 ] ++
                 [ do
-                        drawChalkBoard cb $ unAlpha <$> (boardOf (withAlpha alpha1 red)) `over` ((boardOf (withAlpha alpha2 blue)) `over` (boardOf (withAlpha alpha3 black)))
+                        drawChalkBoard cb $ unAlphaBoard (boardOf white) $ (boardOf (withAlpha alpha1 red)) `over` ((boardOf (withAlpha alpha2 blue)) `over` (boardOf (withAlpha alpha3 black)))
                         writeChalkBoard cb ("test10-3oversRight-" ++ show (alpha1,alpha2,alpha3) ++ ".png")
                   | alpha1 <- [0.0,0.5,1.0], alpha2 <- [0.0,0.5,1.0], alpha3 <- [0.0,0.5,1.0]
                 ] ++
                 [ do
-                        drawChalkBoard cb $ unAlpha <$> ((boardOf (withAlpha alpha1 red)) `over` (boardOf (withAlpha alpha2 white))) `over` (boardOf (withAlpha alpha3 blue))
+                        drawChalkBoard cb $ unAlphaBoard (boardOf white) $ ((boardOf (withAlpha alpha1 red)) `over` (boardOf (withAlpha alpha2 white))) `over` (boardOf (withAlpha alpha3 blue))
                         writeChalkBoard cb ("test10-3oversLeft-" ++ show (alpha1,alpha2,alpha3) ++ ".png")
                   | alpha1 <- [0.0,0.5,1.0], alpha2 <- [0.0,0.5,1.0], alpha3 <- [0.0,0.5,1.0]
                 ] ++
                 [ do
-                        drawChalkBoard cb $ unAlpha <$> ((boardOf (withAlpha alpha1 white)) `over` (boardOf (withAlpha alpha2 red)))
+                        drawChalkBoard cb $ unAlphaBoard (boardOf white) $ ((boardOf (withAlpha alpha1 white)) `over` (boardOf (withAlpha alpha2 red)))
                                                         `over`
                                                         ((boardOf (withAlpha alpha3 blue)) `over` (boardOf (withAlpha alpha4 yellow)))
                         writeChalkBoard cb ("test10-4overs-" ++ show (alpha1,alpha2,alpha3,alpha4) ++ ".png")

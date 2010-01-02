@@ -29,7 +29,7 @@ data InsideBuffer a where
 	Image		:: ReadOnlyCByteArray -> InsideBuffer a	-- RGB or RGBA
 	ImageG		:: ByteString -> InsideBuffer UI
 	ImageRGB	:: ByteString -> InsideBuffer RGB
-	ImageRGBA	:: ByteString -> InsideBuffer RGBA
+	ImageRGBA	:: ByteString -> InsideBuffer (RGBA -> RGBA)	-- later, Maybe RGB
 	ImageUI		:: ByteString -> InsideBuffer UI
 	FlipLR		:: InsideBuffer a -> InsideBuffer a
 	FlipTB		:: InsideBuffer a -> InsideBuffer a
@@ -46,7 +46,8 @@ data Board a where
 	BufferOnBoard	:: Buffer a -> Board a 				-> Board a
 	-- FFI into the Graphics shader langauge.
 	BoardGSI 	:: String -> [(String,UniformTexture)] -> [(String,UniformArgument)] -> Board a	
-	
+	BoardUnAlpha	:: Board RGB -> Board (RGBA -> RGBA) 		-> Board RGB
+
 data UniformArgument = UniformArgument Argument
 		     | UniformListArgument [Argument]
 	deriving Show
@@ -109,6 +110,7 @@ instance Show (Board a) where
 	show (Zip brd1 brd2)   = "Zip (" ++ show brd1 ++ ") (" ++ show brd2 ++ ")"
 	show (Over _ brd1 brd2)   = "Over (..) (" ++ show brd1 ++ " " ++ show brd2 ++ ")"
 	show (BufferOnBoard buff brd)  = "BufferOnBoard (" ++ show buff ++ ") (" ++ show brd ++ ")"
+	show (BoardUnAlpha b1 b2)  = "BoardUnAlpha (" ++ show b1 ++ ") (" ++ show b2 ++ ")"
 	show (BoardGSI nm arg1 arg2) = "BoardGSI ffi " 
 				++ show (Prelude.map Prelude.fst arg1) 
 				++ show (Prelude.map Prelude.fst arg2) 

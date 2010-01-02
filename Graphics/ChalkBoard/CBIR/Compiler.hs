@@ -114,29 +114,6 @@ perhapsOverlapBoardBool _              = True
 patternOf :: (O a -> O b) -> IO (Graph Expr)
 patternOf f = reifyO $ f (O (error "undefined shallow value") (E $ Var []))
 
-
-runToFind :: Expr E -> Graph Expr -> Expr E
-runToFind arg (Graph nodes root) = eval (find root)
-   where
-	find i = case Prelude.lookup i nodes of
-		    Just v -> v
-		    Nothing -> error $ "can not find " ++ show i
-	eval (Choose a b c) =
-		case eval (find c) of
-		  O_Bool True -> eval (find a)	-- false
-		  O_Bool False -> eval (find b)	-- false
-		  e -> error $ "expected a Bool, found something else " ++ show e
-	eval (Var []) = arg
-	eval (O_RGB c) = O_RGB c
-
-	eval (UnAlpha c) = case eval (find c) of
-			    Expr.Alpha i (E c') -> c'
-		  	    v -> UnAlpha (E v)
-	eval (Expr.Alpha i c) = case eval (find c) of
-			    UnAlpha (E c') | i == 1 -> c'
-		  	    v -> Expr.Alpha i (E v)
-	eval e = error $ "opps (eval) " ++ show e
-
 -- Notice the lower case 'bool', because we are untyped in the compiler.
 applyBool :: (O bool -> O a) -> Bool -> Maybe (Expr E)
 applyBool f b = liftM unE (evalE (runO1 f (E $ O_Bool b)))
@@ -229,6 +206,21 @@ compileBoard2 bc t (Fmap f other)
 compileBoard2 bc t (BufferOnBoard buffer brd) 	= compileBufferOnBoard bc t buffer brd
 	where ty = targetType t
 compileBoard2 bc t (BoardGSI fn bargs vargs) 	= compileBoardGSI bc t fn bargs vargs
+compileBoard2 bc t@(Target_RGB) (BoardUnAlpha back fn) = do
+	inst1 <- compileBoard2 bc t back
+	newBoard <- newNumber
+	inst2 <- compileBoard2 (bc { bcDest = newBoard }) (Target_RGBA Blend) fn
+	return $ [ Nested ("BoardUnAlpha") $
+		    [ Allocate 
+		       	newBoard 
+        		(bcSize bc)
+       			RGBADepth          -- depth of buffer	
+			(BackgroundRGBADepth (RGBA 0 0 0 0))
+		    ] ++ inst1
+		      ++ [ copyBoard (bcDest bc) newBoard ]
+		      ++ inst2
+		      ++ [ copyBoard newBoard (bcDest bc) ]
+	         ]
 compileBoard2 bc t other          		= error $ show ("compileBoard2",bc,t,other)
 
 -- Drawing something *over* something.
@@ -429,6 +421,8 @@ allocAndCompileBoard bc RGB_Ty brd = do
 				(BackgroundRGB24Depth (RGB 1 1 1))
 			  ] ++ rest
 		], newBoard )
+-- TODO: we need to somehome pass in the backing color here.
+
 allocAndCompileBoard bc RGBA_Ty brd = do
 	newBoard <- newNumber
 	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_RGBA Copy) brd
@@ -482,6 +476,7 @@ compileFmapFun env v@(Var path) ty =
 		       BOOL_Ty -> "(" ++ txt ++ ").r > 0.5 ? 1.0 : 0.0"
 		       UI_Ty   -> "(" ++ txt ++ ").r"
 		       RGB_Ty  ->  "(" ++ txt ++ ").rgb"
+--		       RGBA_Ty -> error "can not directly access RGBA"
 		       other   -> txt
 compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
 		"vec3(" ++ show r ++ "," ++
@@ -489,9 +484,11 @@ compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
 			   show b ++ ")" 			   
 compileFmapFun env (Alpha v e) RGBA_Ty =
 	"cb_Alpha(" ++ show v ++ "," ++ compileFmapFunE env e RGB_Ty ++ ")"
-compileFmapFun env (UnAlpha e) RGB_Ty =
-	"cb_UnAlpha(" ++ compileFmapFunE env e RGBA_Ty ++ ")"
+-- UnAlpha is the only way of getting to a RGBA->RGBA.
 {-
+
+compileFmapFun env (UnAlpha e1 e2) RGB_Ty =
+	"cb_UnAlpha(" ++ compileFmapFunE env e RGBA_Ty ++"," ++ compileFmapFunE env e RGBA_Ty ++ ")"
 compileFmapFun env e@(O_Fst {}) ty = digForVar env e ty
 compileFmapFun env e@(O_Snd {}) ty = digForVa env e ty
 -}	
@@ -702,4 +699,24 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 		   ]
 		++ delete_Boards
 
+
+
+
+{-
+
+ Challenge
+
+
+
+   compile    Board (RGBA -> RGBA)
+
+ it requires
+
+    RGBAtoRGBA
+
+and 
+
+    RGB <- seed.
+
+-}
 

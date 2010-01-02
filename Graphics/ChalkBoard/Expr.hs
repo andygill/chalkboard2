@@ -38,8 +38,8 @@ data Expr s
 	| Choose s s s			-- O a -> O a -> O Bool -> O a
         | Mix s s s 			-- O a -> O a -> O UI -> O a
 	| Alpha UI s			-- O_Alpha?
-	| ScaleAlpha UI s		-- RGBA -> RGBA
-	| UnAlpha s
+	| ScaleAlpha UI s		-- RGBA -> RGBA	-- TODO - is the dead code
+	| UnAlpha s s			-- RGB -> (RGBA -> RGBA) -> RGB
         | WithMask s s			-- O a -> O Bool 	-> O (Maybe a)
 	| WithDefault s s		-- O a -> O (Maybe a) 	-> O a
 	deriving Show
@@ -60,7 +60,7 @@ unE (E e) = e
 data ExprType 
 	= BOOL_Ty 
 	| RGB_Ty 
-	| RGBA_Ty 
+	| RGBA_Ty 	-- Change to RGBA_to_RGBA_Ty
 	| UI_Ty
 	| Pair_Ty ExprType ExprType
 	| Maybe_Ty ExprType
@@ -73,12 +73,12 @@ exprUnifyE (E e) = exprUnify e
 -- exprUnify :: what the expected result type is, and does it unify
 exprUnify :: Expr E -> ExprType -> [([Path],ExprType)]
 exprUnify (Choose a b c) 	ty 		= L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c BOOL_Ty)
-exprUnify (Mix a b c) 	ty 		= L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c UI_Ty)
+exprUnify (Mix a b c) 	ty 			= L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c UI_Ty)
 exprUnify (O_Bool {}) 		BOOL_Ty 	= []
 exprUnify (O_RGB {}) 		RGB_Ty 		= []
 exprUnify (O_RGBA {}) 		RGBA_Ty 	= []
 exprUnify (Alpha _ e) 		RGBA_Ty 	= exprUnifyE e RGB_Ty
-exprUnify (UnAlpha e) 		RGB_Ty 		= exprUnifyE e RGBA_Ty
+exprUnify (UnAlpha e1 e2) 	RGB_Ty 		= L.nub (exprUnifyE e1 RGB_Ty ++ exprUnifyE e2 RGBA_Ty)
 exprUnify (ScaleAlpha _ e) 	RGBA_Ty 	= exprUnifyE e RGBA_Ty
 exprUnify (WithMask e1 e2) 	(Maybe_Ty ty) 	= L.nub (exprUnifyE e1 ty ++ exprUnifyE e2 BOOL_Ty)
 exprUnify (WithDefault e1 e2) 	ty 		= L.nub (exprUnifyE e1 ty ++ exprUnifyE e2 (Maybe_Ty ty))
@@ -119,10 +119,9 @@ evalExprE (Choose a b c) =
 	  Just (O_Bool True)  -> liftM unE $ evalE a
 	  Just (O_Bool False) -> liftM unE $ evalE b
 	  other -> Nothing
-evalExprE (Alpha a e) = 
+evalExprE (Alpha n e) =
 	case liftM unE $ evalE e of
-	    Just (O_RGB c) -> return $ O_RGBA (C.withAlpha c a)
-	    other -> Nothing
+	  Just (O_RGB (RGB r g b)) -> return (O_RGBA (RGBA r g b n))
 evalExprE other = Nothing
 
 evalE :: E -> Maybe E
@@ -155,7 +154,7 @@ instance T.Traversable Expr where
 	traverse f (Mix a b c) 		= Mix <$> f a <*> f b <*> f c
 	traverse f (Alpha c e) 		= Alpha c <$> f e
 	traverse f (ScaleAlpha c e) 	= ScaleAlpha c <$> f e
-	traverse f (UnAlpha e) 		= UnAlpha <$> f e
+	traverse f (UnAlpha e1 e2) 	= UnAlpha <$> f e1 <*> f e2
 
         traverse f (WithMask v1 v2)	= pure WithMask <*> f v1 <*> f v2
         traverse f (WithDefault v1 v2)	= pure WithDefault <*> f v1 <*> f v2

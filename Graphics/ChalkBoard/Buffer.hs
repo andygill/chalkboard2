@@ -44,7 +44,7 @@ newBufferOf :: (Int,Int) -> (Int,Int) -> O a -> Buffer a
 newBufferOf low hi a = Buffer low hi (BoardInBuffer (PrimConst a))
 
 -- | read a file containing a common image format (jpg, gif, etc.), and create a 'Board RGBA', and the X and Y size of the image.
-readBuffer :: String -> IO (Buffer RGBA)
+readBuffer :: String -> IO (Buffer (RGBA -> RGBA))
 readBuffer filename = do
   arr <- readImage filename 
   let (low@(0,0,0), high@(h,w,3)) = U.bounds arr
@@ -54,7 +54,7 @@ readBuffer filename = do
 newBufferRGB :: ByteString -> (Int,Int) -> Buffer RGB
 newBufferRGB bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageRGB bs
 
-newBufferRGBA :: ByteString -> (Int,Int) -> Buffer RGBA
+newBufferRGBA :: ByteString -> (Int,Int) -> Buffer (RGBA -> RGBA)
 newBufferRGBA bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageRGBA bs
 
 -- | building a 2d byte buffer

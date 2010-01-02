@@ -10,7 +10,7 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, mix
 	, alpha
 	, withAlpha
-	, unAlpha
+--	, unAlpha	 -- for now, until we figure out how to compile it
 	, transparent
 	, red
 	, green
@@ -68,8 +68,8 @@ instance Obs Bool where
 instance Obs RGB where
 	o c = primO (O_RGB c) c
 
-instance Obs RGBA where
-	o c = primO (O_RGBA c) c
+--instance Obs RGBA where
+--	o c = primO (O_RGBA c) c
 
 instance Obs Float where
 	o c = primO (Lit c) c
@@ -101,20 +101,20 @@ false = primO (O_Bool False) False
 ------------------------------------------------------------------------------------------------
 
 -- | Observable function to add an alpha channel.
-alpha :: O RGB -> O RGBA
+alpha :: O RGB -> O (RGBA -> RGBA)
 alpha (O a e) = O (C.alpha a) (E $ Expr.Alpha 1 e)
 
 -- | Observable function to add a preset alpha channel.
-withAlpha :: UI -> O RGB -> O RGBA
+withAlpha :: UI -> O RGB -> O (RGBA -> RGBA)
 withAlpha n (O a e) = O (C.alpha a) (E $ Expr.Alpha n e)
 
 -- | Observable function to remove the alpha channel.
-unAlpha :: O (RGBA) -> O RGB
-unAlpha (O a e) = O (C.unAlpha a) (E $ Expr.UnAlpha e)
+--unAlpha :: O RGB -> O (RGBA -> RGBA) -> O RGB
+--unAlpha (O a1 e1) (O a2 e2) = O (C.unAlpha a1 a2) (E $ Expr.UnAlpha e1 e2)
 
 -- | Observable function to add a transparent alpha channel.
-transparent :: O RGB -> O RGBA
-transparent (O a e) = O (C.alpha a) (E $ Expr.Alpha 0 e)
+transparent :: O (RGBA -> RGBA)
+transparent = O id (E $ Expr.Alpha 0 (E $ O_RGB (RGB 0 0 0)))
 
 red    :: O RGB
 red    = o $ RGB 1.0 0.0 0.0

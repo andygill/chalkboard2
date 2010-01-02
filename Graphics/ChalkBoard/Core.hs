@@ -47,16 +47,16 @@ choose _t f  False = f
 ------------------------------------------------------------------------------------------
 -- Colors with alpha
 
-alpha :: RGB -> RGBA
-alpha (RGB r g b) = RGBA r g b 1
+alpha :: RGB -> (RGBA -> RGBA)
+alpha (RGB r g b) _ = RGBA r g b 1
 
-withAlpha :: RGB -> UI -> RGBA
-withAlpha c a = RGBA r g b a
-  where (RGB r g b) = c -- scale a c 
-			-- turn off scaling
+withAlpha :: RGB -> UI -> (RGBA -> RGBA)
+withAlpha (RGB r g b) a rgba = (RGBA r g b a) `over` rgba
 
-unAlpha :: RGBA -> RGB
-unAlpha (RGBA r g b _) = RGB r g b
+unAlpha :: RGB -> (RGBA -> RGBA) -> RGB
+unAlpha (RGB r g b) f = RGB (r' * a') (g' * a') (b' * a')
+  where
+	(RGBA r' g' b' a') = f (RGBA r g b 1)
 
-transparent :: RGBA 
-transparent = RGBA 0 0 0 0
+transparent :: RGBA -> RGBA
+transparent = id

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 -- |
 -- Module: Graphics.ChalkBoard.Types
 -- Copyright: (c) 2009 Andy Gill
@@ -68,6 +68,9 @@ class Over c where
 
 instance Over Bool where
   over = (||)
+
+instance Over (a -> a) where
+  over = (.)
 
 instance Over (Maybe a) where
   (Just a) `over` _    = Just a
@@ -181,16 +184,15 @@ instance Binary RGB where
 -- These values are *not* prenormalized
 data RGBA = RGBA !UI !UI !UI !UI deriving Show
 
-
  -- Todo: rethink what this means
 
 instance Over RGBA where
   over (RGBA r g b a) (RGBA r' g' b' a') =
-	RGBA (f r r')
+	RGBA (f r r')			-- (SrcAlpha, OneMinusSrcAlpha)
 	     (f g g')
-	     (f b b')
-	     (a * a')
-    where f x y = a * y + (1 - a) * x
+	     (f b b')	
+	     (a + a' * (1 - a))		-- (One, OneMinusSrcAlpha)
+    where f x y  = a * y + (1 - a) * x
 
 {-
    -- An associative algorithm for handling the alpha channel

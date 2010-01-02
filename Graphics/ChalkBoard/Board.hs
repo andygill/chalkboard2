@@ -23,6 +23,7 @@ module Graphics.ChalkBoard.Board
 	, readBoard
 	, bufferOnBoard
 	, readNormalizedBoard
+	, unAlphaBoard
 	) where
 
 
@@ -140,13 +141,13 @@ mask = Crop
 
 -- | read a file containing a common image format (jpg, gif, etc.), 
 -- and create a 'Board RGBA', and the X and Y size of the image.
-readBoard :: String -> IO (Int,Int,Board RGBA)
+readBoard :: String -> IO (Int,Int,Board (RGBA -> RGBA))
 readBoard filename = do
   buff <- readBuffer filename
   let (x,y) = bufferSize buff
-  return $ (x,y,BufferOnBoard buff (boardOf (O.transparent O.white)))
+  return $ (x,y,BufferOnBoard buff (boardOf (O.transparent)))
   
-readNormalizedBoard :: String -> IO (Int,Int,Board RGBA)
+readNormalizedBoard :: String -> IO (Int,Int,Board (RGBA -> RGBA))
 readNormalizedBoard filename = do
     (x,y,imgBrd) <- readBoard (filename)
     let xy = fromIntegral $ max x y
@@ -161,3 +162,6 @@ readNormalizedBoard filename = do
 bufferOnBoard :: Buffer a -> Board a -> Board a
 bufferOnBoard buff brd = BufferOnBoard buff brd
 
+-- call this appAlpha
+unAlphaBoard :: Board RGB -> Board (RGBA -> RGBA) -> Board RGB
+unAlphaBoard = BoardUnAlpha
