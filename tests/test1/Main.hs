@@ -229,8 +229,13 @@ cbMain cb = do
                   | alpha1 <- [0.0,0.5,1.0], alpha2 <- [0.0,0.5,1.0], alpha3 <- [0.0,0.5,1.0], alpha4 <- [0.0,0.5,1.0]
                 ]
             
-	        
-	
+	test "test11" [ do 
+		       let r = move (0.26,0.15)  (withMask red <$> circle)
+	                   g = move (-0.26,0.15) (withMask green <$> circle)
+	                   b = move (0,-0.3)     (withMask blue <$> circle)
+		       drawChalkBoard cb (scale 0.5 (withDefault yellow <$> (r `over` b `over` g)))
+		       writeChalkBoard cb $ "test11.png"
+		 ]
 	exitChalkBoard cb
 
 

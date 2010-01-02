@@ -191,6 +191,7 @@ compileBoard2 bc t (PrimConst o) 		=
 --	trace (show ("const",runO0 o)) $ 
 	compileBoardConst bc t (evalE $ runO0 o)
 compileBoard2 bc t (Fmap f other)
+	| trace (show (bc,t,(runO1 f (E $ Var [])),ty)) False = undefined
 		-- special optimization: fmap (...) (xxx :: Board Bool) can often be optimized
 	|  goodToFmapBool argTy t tr fa
 			= compileBoardFmapBool bc t 
@@ -298,6 +299,7 @@ data FmapArg where
 	FmapArg :: Board a -> ExprType -> Path -> FmapArg
 
 assignFrag RGBA_Ty expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	-- TODO: assumes merging???
+assignFrag (Maybe_Ty RGB_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	-- TODO: assumes merging???
 assignFrag RGB_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
 assignFrag BOOL_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
 assignFrag other expr = error $ show ("assignFrag",other,expr)
@@ -309,6 +311,8 @@ assignFrag other expr = error $ show ("assignFrag",other,expr)
 prelude = unlines
 	[ "vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }"
 	, "vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }" 
+	, "vec4 cb_WithMask(vec3 c,float x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x); }" 
+	, "vec3 cb_WithDefault(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }"
 	]
 
 
@@ -425,13 +429,24 @@ allocAndCompileBoard bc RGB_Ty brd = do
 
 allocAndCompileBoard bc RGBA_Ty brd = do
 	newBoard <- newNumber
-	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_RGBA Copy) brd
+	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_RGBA Copy) brd	-- TODO: could this be Blend???
 	return ( [ Nested ("alloc RGBA_Ty") $
 			  [ Allocate 
 		        	newBoard 	   -- tag for this ChalkBoardBufferObject
         			(bcSize bc)		   -- tiny board
         			RGBADepth          -- depth of buffer	
 				(BackgroundRGBADepth (RGBA 0 0 0 1))
+			  ] ++ rest
+		], newBoard )
+allocAndCompileBoard bc (Maybe_Ty RGB_Ty) brd = do
+	newBoard <- newNumber
+	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_Maybe_RGB) brd
+	return ( [ Nested ("alloc RGBA_Ty") $
+			  [ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(bcSize bc)		   -- tiny board
+        			RGBADepth          -- depth of buffer	
+				(BackgroundRGBADepth (RGBA 0 0 0 0)) -- default Nothing
 			  ] ++ rest
 		], newBoard )
 allocAndCompileBoard bc BOOL_Ty brd = do
@@ -484,6 +499,10 @@ compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
 			   show b ++ ")" 			   
 compileFmapFun env (Alpha v e) RGBA_Ty =
 	"cb_Alpha(" ++ show v ++ "," ++ compileFmapFunE env e RGB_Ty ++ ")"
+compileFmapFun env (WithMask e1 e2) (Maybe_Ty RGB_Ty) =
+	"cb_WithMask(" ++ compileFmapFunE env e1 RGB_Ty  ++ "," ++ compileFmapFunE env e2 BOOL_Ty ++ ")"
+compileFmapFun env (WithDefault e1 e2) RGB_Ty =
+	"cb_WithDefault(" ++ compileFmapFunE env e1 RGB_Ty  ++ "," ++ compileFmapFunE env e2 (Maybe_Ty RGB_Ty) ++ ")"
 -- UnAlpha is the only way of getting to a RGBA->RGBA.
 {-
 

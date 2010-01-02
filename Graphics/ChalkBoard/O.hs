@@ -86,8 +86,6 @@ choose (O a ea) (O b eb) (O c ec)  = O (if c then a else b) (E $ Choose ea eb ec
 mix :: (Lerp o) => O o -> O o -> O UI -> O o
 mix (O a ea) (O b eb) (O c ec)  = O (lerp c a b) (E $ Mix ea eb ec)
 
--- square :: Board (O Bool)
-
 -- | Observable 'True'.
 true :: O Bool
 true  = primO (O_Bool True) True
@@ -133,11 +131,13 @@ purple = o $ RGB 1.0 0.0 1.0
 yellow :: O RGB
 yellow = o $ RGB 1.0 1.0 0.0
 
-withMask :: O a -> O Bool -> O (Maybe a)
-withMask (O a1 e1) (O a2 e2) = O (error $ "withMask") (E $ WithMask e1 e2)
+-- TODO: generalize to UI as well as RGB
 
-withDefault :: O a -> O (Maybe a) -> O a
-withDefault (O a1 e1) (O a2 e2) = O (error $ "withDefault") (E $ WithDefault e1 e2)
+withMask :: O RGB -> O Bool -> O (Maybe RGB)
+withMask (O a ea) (O b eb) = O (C.withMask a b) (E $ WithMask ea eb)
+
+withDefault :: O RGB -> O (Maybe RGB) -> O RGB
+withDefault (O a ea) (O b eb) = O (C.withDefault a b) (E $ WithDefault ea eb)
 
 fstO :: O (a,b) -> O a
 fstO (O ~(a,_) e) = O a (E $ oFst e)

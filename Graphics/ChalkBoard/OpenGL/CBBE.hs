@@ -1160,6 +1160,8 @@ allocFragmentShader env f txt args = do
         reportErrors
 	when (not ok) $ do 
 	     putStrLn $ txt
+	     infoLog <- get (shaderInfoLog shader)
+	     putStrLn infoLog
              error ("Compilation failed " ++ show (f,txt))
 
         [brickProg] <- genObjectNames 1
