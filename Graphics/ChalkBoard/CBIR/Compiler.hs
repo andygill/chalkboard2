@@ -111,15 +111,15 @@ perhapsOverlapBoardBool _              = True
 
 
 -- choice
-patternOf :: (O a -> O b) -> IO (Graph Expr)
-patternOf f = reifyO $ f (O (error "undefined shallow value") (E $ Var []))
+--patternOf :: (O a -> O b) -> IO (Graph Expr)
+--patternOf f = reifyO $ f (O (error "undefined shallow value") (E $ Var []))
 
 -- Notice the lower case 'bool', because we are untyped in the compiler.
-applyBool :: (O bool -> O a) -> Bool -> Maybe (Expr E)
-applyBool f b = liftM unE (evalE (runO1 f (E $ O_Bool b)))
+--applyBool :: (O bool -> O a) -> Bool -> Maybe (Expr E)
+--applyBool f b = liftM unE (evalE (runO1 f (E $ O_Bool b)))
 
-applyVar :: (O a -> O b) -> Expr E
-applyVar f = unE (runO1 f (E $ Var []))
+--applyVar :: (O a -> O b) -> Expr E
+--applyVar f = unE (runO1 f (E $ Var []))
 
 
 newNumber :: IO Int
@@ -195,19 +195,29 @@ compileBoard2 bc t (PrimConst o) 		=
 --	trace (show ("const",runO0 o)) $ 
 	compileBoardConst bc t (evalE $ runO0 o)
 compileBoard2 bc t (Fmap f other)
-	| trace (show (bc,t,(runO1 f (E $ Var [])),ty)) False = undefined
+--	| trace (show (bc,t,(runO1 f (E $ Var [])),ty)) False = undefined
 		-- special optimization: fmap (...) (xxx :: Board Bool) can often be optimized
+{- TODO
 	|  goodToFmapBool argTy t tr fa
 			= compileBoardFmapBool bc t 
 				tr
 				fa
 				other (argTypeForOFun f ty) ty
+-}
 --	| argTy == [([],BOOL_Ty)] && trace ("fmap reject " ++ show (argTy,t,tr,fa)) False = undefined
-	| otherwise = compileBoardFmap bc t (runO1 f (E $ Var [])) other (argTypeForOFun f ty) ty
+	| otherwise = compileBoardFmap bc t (runO1 f (E brdTy $ Var [])) other argTy ty
 	where ty    = targetType t
-	      argTy = argTypeForOFun f ty
-	      tr = evalE $ runO1 f (E $ O_Bool True)
-	      fa = evalE $ runO1 f (E $ O_Bool False)
+	      brdTy = boardType other
+	      argTy = ff brdTy
+	      ff (Pair_Ty t1 t2) = 
+			[ (GoLeft  : p,t)  | (p,t) <- ff t1 ] ++
+			[ (GoRight : p,t)  | (p,t) <- ff t2 ] 
+	      ff other = [([],other)]
+			
+	      tr = evalE $ runO1 f (E BOOL_Ty $ O_Bool True)
+	      fa = evalE $ runO1 f (E BOOL_Ty $ O_Bool False)
+		
+		
 compileBoard2 bc t (BufferOnBoard buffer brd) 	= compileBufferOnBoard bc t buffer brd
 	where ty = targetType t
 compileBoard2 bc t (BoardGSI fn bargs vargs) 	= compileBoardGSI bc t fn bargs vargs
@@ -253,28 +263,28 @@ compileBoardPolygon bc (Target_Bool (RGB r g b)) nodes = do
 	(x,y)  = bcSize bc
 
 -- draw a constant board.
-compileBoardConst bc t@(Target_Bool rgb) (Just (E (O_Bool True)))
+compileBoardConst bc t@(Target_Bool rgb) (Just (E _ (O_Bool True)))
 		| targetRep t == targetRep Target_RGB 
 			-- sanity check, then use the RGB drawing
-		= compileBoardConst bc (Target_RGB) (Just (E (O_RGB rgb)))
-compileBoardConst bc t@(Target_Bool rgb) (Just (E (O_Bool False)))
+		= compileBoardConst bc (Target_RGB) (Just (E RGB_Ty (O_RGB rgb)))
+compileBoardConst bc t@(Target_Bool rgb) (Just (E _ (O_Bool False)))
 	   	-- background *is* false
 		= return []
-compileBoardConst bc t@(Target_RGB) (Just (E (O_RGB (RGB r g b))))
+compileBoardConst bc t@(Target_RGB) (Just (E _ (O_RGB (RGB r g b))))
 		= return [
 		 	SplatColor (RGBA r g b 1)
 				(bcDest bc)
 				False
 				[(0,0),(1,0),(1,1),(0,1)]
 			]
-compileBoardConst bc t@(Target_UI) (Just (E (Lit r)))
+compileBoardConst bc t@(Target_UI) (Just (E _ (Lit r)))
 		= return [
 		 	SplatColor (RGBA r 0 0 1)
 				(bcDest bc)
 				False
 				[(0,0),(1,0),(1,1),(0,1)]
 			]
-compileBoardConst bc t@(Target_RGBA Copy) (Just (E (O_RGBA rgba)))
+compileBoardConst bc t@(Target_RGBA Copy) (Just (E _ (O_RGBA rgba)))
 		= do
 		newBoard <- newNumber
 		return [ Nested ("Const (a :: RGBA)") $
@@ -286,7 +296,7 @@ compileBoardConst bc t@(Target_RGBA Copy) (Just (E (O_RGBA rgba)))
 			  , copyBoard newBoard (bcDest bc) 
 			  ]
 			]
-compileBoardConst bc t@(Target_RGBA Blend) (Just (E (O_RGBA rgba)))
+compileBoardConst bc t@(Target_RGBA Blend) (Just (E _ (O_RGBA rgba)))
 		= do
 		newBoard <- newNumber
 		return [ Nested ("Const (a :: RGBA)") $
@@ -325,7 +335,7 @@ prelude = unlines
 
 -- TODO: The good thing about a boolean argument is that it can only have two possible values.
 compileBoardFmap :: BoardContext -> Target -> E -> Board a -> [([Path],ExprType)] -> ExprType -> IO [Inst Int]
-compileBoardFmap bc t (E f) other argTypes resTy = do
+compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 	(insts,idMap) <- compileFmapArgs bc other argTypes
 	let env = Map.fromList [ (path,"cb_sampler" ++ show n) | ((_,path),n) <- zip idMap [0..]]
 	let expr = compileFmapFun env f resTy	
@@ -377,18 +387,18 @@ compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,
 
 -- TODO: Add Target_Maybe_RGB here
 -- use this to check if you can fmap over the Bool
-goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E (O_RGBA (RGBA _ _ _ 1)))) (Just (E (O_RGBA (RGBA _ _ _ 0)))) = True -- to: RM
-goodToFmapBool [([],BOOL_Ty)] (Target_RGB) (Just (E (O_RGB {}))) (Just (E (O_RGB (RGB {})))) = True
+goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E _ (O_RGBA (RGBA _ _ _ 1)))) (Just (E _ (O_RGBA (RGBA _ _ _ 0)))) = True -- to: RM
+goodToFmapBool [([],BOOL_Ty)] (Target_RGB) (Just (E _ (O_RGB {}))) (Just (E _ (O_RGB (RGB {})))) = True
 goodToFmapBool _ _ _ _ = False
 
 compileBoardFmapBool bc t@(Target_RGBA Blend) 
-		(Just (E (O_RGBA (RGBA r g b 1))))
-		(Just (E (O_RGBA (RGBA _ _ _ 0))))		-- the background *better* be transparent.
+		(Just (E _ (O_RGBA (RGBA r g b 1))))
+		(Just (E _ (O_RGBA (RGBA _ _ _ 0))))		-- the background *better* be transparent.
 		other argTypes resTy = do
 	compileBoard2 bc (Target_Bool (RGB r g b)) other
 compileBoardFmapBool bc t@(Target_RGB) 
-		(Just (E (O_RGB tCol)))
-		(Just (E (O_RGB fCol@(RGB r g b))))
+		(Just (E _ (O_RGB tCol)))
+		(Just (E _ (O_RGB fCol@(RGB r g b))))
 		other argTypes resTy = do
 			insts <- compileBoard2 bc (Target_Bool tCol) other
 			return $ [ SplatColor (RGBA r g b 1)
@@ -539,7 +549,7 @@ compileFmapFun env e@(O_Snd {}) ty = digForVa env e ty
 compileFmapFun env e ty = error $ show ("compileFmapFun",env,e,ty)
 
 
-compileFmapFunE env (E e) ty = compileFmapFun env e ty
+compileFmapFunE env (E ty' e) ty = compileFmapFun env e ty
 
 compileBufferOnBoard bc t (Buffer low@(x0,y0) high@(x1,y1) buffer) brd = do
 	insts1          <- compileBoard2 bc t brd
@@ -589,7 +599,7 @@ compileBuffer2 Target_UI low high (ImageUI bs) = do
 -- TODO: common up with other fmap function. Not that Buffer can *not* use zip.
 compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
 	let tarTy = targetType t
-	let expr  = runO1 f (E $ Var [])
+	let expr  = runO1 f (E tarTy $ Var [])
 	let argTy =  case lookup [] (argTypeForOFun f tarTy) of
 		      Just t -> t
 		      Nothing -> error "can not find type of f in `fmap f (.. buffer ..)'"

@@ -64,16 +64,16 @@ unO (O o _) = o
 
 -- Are you allowed to say "Pure Bool"?
 instance Obs Bool where
-	o a = primO (O_Bool a) a
+	o a = primO (E BOOL_Ty $ O_Bool a) a
 
 instance Obs RGB where
-	o c = primO (O_RGB c) c
+	o c = primO (E RGB_Ty $ O_RGB c) c
 
 --instance Obs RGBA where
 --	o c = primO (O_RGBA c) c
 
-instance Obs Float where
-	o c = primO (Lit c) c
+instance Obs UI where
+	o c = primO (E UI_Ty $ Lit c) c
 
 -- GADT attack
 --lamO :: (O a -> O b) -> O (a -> b)
@@ -82,10 +82,10 @@ instance Obs Float where
 
 -- | choose between two Observable alternatives, based on a Observable 'Bool'
 choose :: O o -> O o -> O Bool -> O o
-choose (O a ea) (O b eb) (O c ec)  = O (if c then a else b) (E $ Choose ea eb ec)
+choose (O a ea) (O b eb) (O c ec)  = O (if c then a else b) (E (unifyTy (typeE ea) (typeE eb)) $ Choose ea eb ec)
 
 mix :: (Lerp o) => O o -> O o -> O UI -> O o
-mix (O a ea) (O b eb) (O c ec)  = O (lerp c a b) (E $ Mix ea eb ec)
+mix (O a ea) (O b eb) (O c ec)  = O (lerp c a b) (E (unifyTy (typeE ea) (typeE eb)) $ Mix ea eb ec)
 
 ------------------------------------------------------------------------------------------------
 -- Functions from Core, lifted into the O type.
@@ -93,11 +93,11 @@ mix (O a ea) (O b eb) (O c ec)  = O (lerp c a b) (E $ Mix ea eb ec)
 
 -- | Observable function to add an alpha channel.
 alpha :: O RGB -> O (RGBA -> RGBA)
-alpha (O a e) = O (C.alpha a) (E $ Expr.Alpha 1 e)
+alpha (O a e) = O (C.alpha a) (E RGBA_Ty $ Expr.Alpha 1 e)
 
 -- | Observable function to add a preset alpha channel.
 withAlpha :: UI -> O RGB -> O (RGBA -> RGBA)
-withAlpha n (O a e) = O (C.alpha a) (E $ Expr.Alpha n e)
+withAlpha n (O a e) = O (C.alpha a) (E RGBA_Ty $ Expr.Alpha n e)
 
 -- | Observable function to remove the alpha channel.
 --unAlpha :: O RGB -> O (RGBA -> RGBA) -> O RGB
@@ -105,7 +105,7 @@ withAlpha n (O a e) = O (C.alpha a) (E $ Expr.Alpha n e)
 
 -- | Observable function to add a transparent alpha channel.
 transparent :: O (RGBA -> RGBA)
-transparent = O id (E $ Expr.Alpha 0 (E $ O_RGB (RGB 0 0 0)))
+transparent = O id (E RGBA_Ty $ Expr.Alpha 0 (E RGBA_Ty $ O_RGB (RGB 0 0 0)))
 
 red    :: O RGB
 red    = o $ RGB 1.0 0.0 0.0
@@ -136,16 +136,18 @@ instance Maskable RGB
 instance Maskable UI
 
 withMask :: Maskable a => O a -> O Bool -> O (Maybe a)
-withMask (O a ea) (O b eb) = O (C.withMask a b) (E $ WithMask ea eb)
+withMask (O a ea) (O b eb) = O (C.withMask a b) (E (Maybe_Ty (typeE ea)) $ WithMask ea eb)
 
 withDefault :: O a -> O (Maybe a) -> O a
-withDefault (O a ea) (O b eb) = O (C.withDefault a b) (E $ WithDefault ea eb)
+withDefault (O a ea) (O b eb) = O (C.withDefault a b) (E (unifyTy (typeE ea) (unMaybe (typeE eb))) $ WithDefault ea eb)
+  where unMaybe (Maybe_Ty ty) = ty
+	unMaybe _ = error "failed type extraction, expecting Maybe"
 
 fstO :: O (a,b) -> O a
-fstO (O ~(a,_) e) = O a (E $ oFst e)
+fstO (O ~(a,_) e) = O a (oFst e)
 
 sndO :: O (a,b) -> O b
-sndO (O ~(_,b) e) = O b (E $ oSnd e)
+sndO (O ~(_,b) e) = O b (oSnd e)
 
 instance Boolean (O Bool) where
 	true = o True

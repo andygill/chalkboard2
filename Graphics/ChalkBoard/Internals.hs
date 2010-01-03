@@ -10,10 +10,13 @@ module Graphics.ChalkBoard.Internals
 	, Argument(..)
 	, board
 	, uniform
+	, boardType
 	) where
 		
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.O
+import Graphics.ChalkBoard.O.Internals
+import Graphics.ChalkBoard.Expr
 import Graphics.ChalkBoard.IStorable as IS
 import Data.ByteString
 import Graphics.Rendering.OpenGL.GL.Shaders (Uniform)
@@ -130,4 +133,13 @@ data Trans = Move (R,R)
 	   | Scale (R,R)
 	   | Rotate Radian
 	deriving Show
-	
+
+-- TODO: add ty to Board (and Buffer), to make this cheap
+boardType :: Board a -> ExprType	
+boardType (PrimConst o)   = typeO o
+boardType (Polygon {})    = BOOL_Ty
+boardType (Trans _ brd)   = boardType brd
+boardType (Over _ lhs _)  = boardType lhs
+boardType (Zip a b)       = Pair_Ty (boardType a) (boardType b)
+boardType (Fmap f brd)    = typeO1 f (boardType brd)
+boardType other = error $ "boardType of " ++ show other

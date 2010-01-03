@@ -47,11 +47,14 @@ data Expr s
 data Path  = GoLeft | GoRight 
 	deriving (Show,Eq,Ord)
 	
-newtype E = E (Expr E)
+data E = E ExprType (Expr E)		-- TODO: changing type of E
 	deriving Show
 
 unE :: E -> Expr E
-unE (E e) = e
+unE (E _ e) = e
+
+typeE :: E -> ExprType
+typeE (E t _) = t
 
 ------------------------------------------------------------------------------
 -- Unification and Type Checking
@@ -63,12 +66,14 @@ data ExprType
 	| RGBA_Ty 	-- Change to RGBA_to_RGBA_Ty
 	| UI_Ty
 	| Pair_Ty ExprType ExprType
+	| Left_Ty ExprType			-- ( ty, \alpha )
+	| Right_Ty ExprType			-- ( \alpha, ty )
 	| Maybe_Ty ExprType
 	| Poly_Ty		-- because of fst, snd
     deriving (Show, Eq)
 
 exprUnifyE :: E -> ExprType -> [([Path],ExprType)]
-exprUnifyE (E e) = exprUnify e
+exprUnifyE (E _ e) = exprUnify e
 
 -- exprUnify :: what the expected result type is, and does it unify
 exprUnify :: Expr E -> ExprType -> [([Path],ExprType)]
@@ -89,17 +94,21 @@ exprUnify (Var i) 		ty 		= [(i,ty)]
 --exprUnify (O_Snd e) 		ty 		= exprUnifyE e (Pair_Ty Poly_Ty ty)
 exprUnify other ty = error $ "exprUnify failure (internal errror) " ++ show (other,ty)
 
+unifyTy :: ExprType -> ExprType -> ExprType
+unifyTy t1 t2 
+  | t1 == t2 = t1
+  | otherwise = error $ "unifyTy failed" ++ show (t1,t2)
+	
 ------------------------------------------------------------------------------
 -- constructors
 ------------------------------------------------------------------------------
 
-
-oFst :: E -> Expr E
-oFst (E (Var i)) = Var (i ++ [GoLeft])
+oFst :: E -> E
+oFst (E (Pair_Ty ty _) (Var i)) = E ty (Var (i ++ [GoLeft]))
 oFst other   = error $ "oFst failed" ++ show other
 
-oSnd :: E -> Expr E
-oSnd (E (Var i)) = Var (i ++ [GoRight])
+oSnd :: E -> E
+oSnd (E (Pair_Ty _ ty) (Var i)) = E ty (Var (i ++ [GoRight])) 
 oSnd other   = error $ "oSnd failed" ++ show other
 
 ------------------------------------------------------------------------------
@@ -127,7 +136,7 @@ evalExprE (Alpha n e) =
 evalExprE other = Nothing
 
 evalE :: E -> Maybe E
-evalE (E e) = liftM E (evalExprE e)
+evalE (E t e) = liftM (E t) (evalExprE e)
 
 ------------------------------------------------------------------------------
 -- Reification Support
@@ -135,9 +144,11 @@ evalE (E e) = liftM E (evalExprE e)
 
 -- The generic plubing for our Expr datatype.				-- 
 
+
+-- TODO: allow Graph Expr to include the type
 instance MuRef E where
   type DeRef E = Expr
-  mapDeRef f (E e) = T.traverse f e
+  mapDeRef f (E _ e) = T.traverse f e
 
 
 

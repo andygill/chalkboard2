@@ -6,6 +6,8 @@ module Graphics.ChalkBoard.O.Internals
 	, runO1
 	, showO
 	, reifyO
+	, typeO
+	, typeO1
 	, argTypeForOFun
 	) where
 	
@@ -30,9 +32,8 @@ data O o where
 
 -- Assuming that o is *not* a function, otherwise
 -- <*> will fail with a pattern match failure.
-primO :: Expr E -> o -> O o
-primO e o = O o (E $ e)
-
+primO :: E -> o -> O o
+primO e o = O o e
 
 instance Show o => Show (O o) where
   show (O o _) = show o
@@ -51,12 +52,19 @@ runO1 :: (O a -> O b) -> E -> E
 runO1 f v1 = case f (O (error "undefined shallow value") v1) of
 	    O _ e -> e
 
--- Given a function, and the *result* type, give the argument type.
-argTypeForOFun :: (O a -> O b) -> ExprType -> [([Path],ExprType)]
-argTypeForOFun f ty = (exprUnifyE e ty)
-	 where
-		(O _ e) = (f (O (error "typeOfO (should not be looking here!)") (E $ Var [])))
+typeO :: O a -> ExprType
+typeO (O _ e) = typeE e
 
+typeO1 :: (O a -> O b) -> ExprType -> ExprType
+typeO1 f ty1 = ty2
+  where (O _ (E ty2 _)) = f (O (error "typeO1 (should not be looking here!)") (E ty1 $ Var []))
+
+-- Given a function, and the *argument* (a) type, give types of the paths inside the argument.
+
+argTypeForOFun :: (O a -> O b) -> ExprType -> [([Path],ExprType)]
+argTypeForOFun f ty = error "(exprUnifyE e ty)"
+	 where
+		(O _ e) = (f (O (error "typeOfO (should not be looking here!)") (E (error "type unknown") $ Var [])))
 
 instance Eq (O UI) where
 	(O a _) == (O b _) = a == b
@@ -70,11 +78,11 @@ instance Num (O UI) where
   abs :: a -> a
   signum :: a -> a
 -}
-  fromInteger i = O v (E $ Lit v)
+  fromInteger i = O v (E UI_Ty $ Lit v)
 	   where v = fromInteger i
 	
 instance Fractional (O UI) where
-	fromRational r = O v (E $ Lit v)
+	fromRational r = O v (E UI_Ty $ Lit v)
 	   where v = fromInteger (numerator r) / fromInteger (denominator r)
 {-
 	(/) :: a -> a -> a	
