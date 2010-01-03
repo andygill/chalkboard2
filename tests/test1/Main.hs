@@ -162,7 +162,8 @@ cbMain cb = do
 		 | a <- [0,0.5,0.7,0.9,1]
 		 ]
 
-{-
+
+
 	test "test7" [ do
 		buff <- readBuffer ("images/" ++ nm)
 		let ((0,0),(x,y)) = bufferBounds buff
@@ -170,16 +171,15 @@ cbMain cb = do
 		-- draw buffer board
 		drawChalkBoard cb (unAlphaBoard (boardOf white) $ move (-0.5,-0.5) (scale (1/fromIntegral xy) (bufferOnBoard buff $ boardOf (alpha green))))
 		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ "-as-Board.png"
-		drawChalkBuffer cb (unAlphaBoard (boardOf white) $ buff)
-		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ "-as-Buffer.png"
+--		drawChalkBuffer cb (unAlphaBoard (boardOf white) $ buff)
+--		writeChalkBoard cb $ "test7-image-load-" ++ nm ++ "-as-Buffer.png"
 	   | nm <- [ "cb-text.gif"
 		   , "cb-text.jpg"
 		   , "cb-text.png"
 		   ] 
 	   ]
--}
 
-{-
+
 	test "test8" [ do
 		buff <- readBuffer ("images/cb-text.png")
 		let ((0,0),(x,y)) = bufferBounds buff
@@ -192,7 +192,6 @@ cbMain cb = do
 		drawChalkBoard cb (unAlphaBoard (boardOf white) $ move (-0.5,-0.5) (scale (1/fromIntegral xy) brd2))
 		writeChalkBoard cb $ "test8-1.png"
 	   ]
--}
 
 	test "test9" [ do
 		let brd1 = scale 0.5 $ rotate 0.1 $ (choose red green <$> square)
@@ -204,8 +203,8 @@ cbMain cb = do
 		writeChalkBoard cb $ "test9-" ++ show n ++ ".png"
 	    | n <- [0.1,0.5,1.0,2.0]
 	    ]
-	
-	test "test10" $ [ sequence $ 
+
+	test "test10" $ [ sequence_ $ 
 	        [ do
                         drawChalkBoard cb $ unAlphaBoard (boardOf back) $ (boardOf (withAlpha alpha1 red)) `over` (boardOf (withAlpha alpha2 blue))
                         writeChalkBoard cb ("test10-2overs-" ++ show (alpha1,alpha2) ++ "-on-" ++ backTxt ++ ".png")
@@ -237,6 +236,20 @@ cbMain cb = do
 		       drawChalkBoard cb (scale 0.5 (withDefault yellow <$> (r `over` b `over` g)))
 		       writeChalkBoard cb $ "test11.png"
 		 ]
+
+	let xx :: O (Maybe UI) -> O RGB
+	    xx = undefined 
+		-- withDefault 0.0 
+
+	test "test12" [ do 
+		       let r, g, b :: Board (Maybe UI)
+			   r = move (0.26,0.15)  (withMask 0.3 <$> circle)
+	                   g = move (-0.26,0.15) (withMask 0.7 <$> circle)
+	                   b = move (0,-0.3)     (withMask 0.9 <$> circle)
+		       drawChalkBoard cb (scale 0.5 (mix white black <$> (withDefault 0.0 <$> (r `over` b `over` g))))
+		       writeChalkBoard cb $ "test12.png"
+		]
+		
 	exitChalkBoard cb
 
 
