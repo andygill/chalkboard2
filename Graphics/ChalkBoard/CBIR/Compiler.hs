@@ -45,7 +45,7 @@ compile (x,y) bufferId brd =
 compileB :: (Int,Int) -> BufferId -> Buffer RGB -> IO [CBIR.Inst Int]
 compileB (x,y) bufferId buff = do
 	compileBoard2 (initBoardContext (x,y) bufferId) Target_RGB 
-		(scaleXY (1/fromIntegral x,1/fromIntegral y) (BufferOnBoard buff (boardOf white)))
+		(scaleXY (1/fromIntegral x,1/fromIntegral y) (Board RGB_Ty (BufferOnBoard buff (boardOf white))))
 
 
 
@@ -105,9 +105,9 @@ compileByteStringImage low@(x0,y0) high@(x1,y1) bs depth = do
 
 -- Do you have overlapping shapes? Default to True, to be safe if do not know.	
 perhapsOverlapBoardBool :: Board a -> Bool
-perhapsOverlapBoardBool (Trans mv brd) = perhapsOverlapBoardBool brd
-perhapsOverlapBoardBool (Polygon _)    = False	-- single polygon; no overlap
-perhapsOverlapBoardBool _              = True
+perhapsOverlapBoardBool (Board _ (Trans mv brd)) = perhapsOverlapBoardBool brd
+perhapsOverlapBoardBool (Board _ (Polygon _))    = False	-- single polygon; no overlap
+perhapsOverlapBoardBool _              		 = True
 
 
 -- choice
@@ -186,15 +186,17 @@ compileBoard2
 	-> IO [CBIR.Inst Int]
 
 -- compileBoard _ _ brd | trace (show ("compileBoard",brd)) False = undefined
-compileBoard2 bc t (Trans mv brd) 		= compileBoard2 (updateTrans mv bc) t brd
-compileBoard2 bc t (Fmap g (Fmap h brd)) 	= compileBoard2 bc t (Fmap (g . h) brd)
-compileBoard2 bc t (Fmap g (Trans mv brd)) 	= compileBoard2 bc t (Trans mv (Fmap g brd))
-compileBoard2 bc t (Over fn above below) 	= compileBoardOver bc t above below (targetOver t)
-compileBoard2 bc t (Polygon nodes) 		= compileBoardPolygon bc t nodes
-compileBoard2 bc t (PrimConst o) 		= 
+compileBoard2 bc t (Board ty (Trans mv brd)) 		= compileBoard2 (updateTrans mv bc) t brd
+compileBoard2 bc t (Board ty (Fmap g (Board _ (Fmap h brd)))) 	
+							= compileBoard2 bc t (Board ty (Fmap (g . h) brd))
+compileBoard2 bc t (Board ty (Fmap g (Board ty' (Trans mv brd)))) 	
+							= compileBoard2 bc t (Board ty (Trans mv (Board ty (Fmap g brd))))
+compileBoard2 bc t (Board ty (Over fn above below)) 	= compileBoardOver bc t above below (targetOver t)
+compileBoard2 bc t (Board ty (Polygon nodes)) 		= compileBoardPolygon bc t nodes
+compileBoard2 bc t (Board ty (PrimConst o)) 		= 
 --	trace (show ("const",runO0 o)) $ 
 	compileBoardConst bc t (evalE $ runO0 o)
-compileBoard2 bc t (Fmap f other)
+compileBoard2 bc t (Board ty (Fmap f other))
 --	| trace (show (bc,t,(runO1 f (E $ Var [])),ty)) False = undefined
 		-- special optimization: fmap (...) (xxx :: Board Bool) can often be optimized
 {- TODO
@@ -205,9 +207,9 @@ compileBoard2 bc t (Fmap f other)
 				other (argTypeForOFun f ty) ty
 -}
 --	| argTy == [([],BOOL_Ty)] && trace ("fmap reject " ++ show (argTy,t,tr,fa)) False = undefined
-	| otherwise = compileBoardFmap bc t (runO1 f (E brdTy $ Var [])) other argTy ty
-	where ty    = targetType t
-	      brdTy = boardType other
+	| otherwise = compileBoardFmap bc t (runO1 f (E brdTy $ Var [])) other argTy tyX
+	where tyX    = targetType t
+	      brdTy = typeOfBoard other
 	      argTy = ff brdTy
 	      ff (Pair_Ty t1 t2) = 
 			[ (GoLeft  : p,t)  | (p,t) <- ff t1 ] ++
@@ -218,10 +220,10 @@ compileBoard2 bc t (Fmap f other)
 	      fa = evalE $ runO1 f (E BOOL_Ty $ O_Bool False)
 		
 		
-compileBoard2 bc t (BufferOnBoard buffer brd) 	= compileBufferOnBoard bc t buffer brd
+compileBoard2 bc t (Board ty (BufferOnBoard buffer brd)) 	= compileBufferOnBoard bc t buffer brd
 	where ty = targetType t
-compileBoard2 bc t (BoardGSI fn bargs vargs) 	= compileBoardGSI bc t fn bargs vargs
-compileBoard2 bc t@(Target_RGB) (BoardUnAlpha back fn) = do
+compileBoard2 bc t (Board ty (BoardGSI fn bargs vargs)) 	= compileBoardGSI bc t fn bargs vargs
+compileBoard2 bc t@(Target_RGB) (Board ty (BoardUnAlpha back fn)) = do
 	inst1 <- compileBoard2 bc t back
 	newBoard <- newNumber
 	inst2 <- compileBoard2 (bc { bcDest = newBoard }) (Target_RGBA Blend) fn
@@ -414,14 +416,14 @@ compileBoardFmapBool bc t tr fa other argTypes resTy = do
 -- It is the responsability of the caller to unallocate the returned bufferids.
 compileFmapArgs :: BoardContext -> Board a -> [([Path],ExprType)] -> IO ([Inst Int],[(BufferId,[Path])])
 --compileFmapArgs bc brd tyMap | trace (show ("compileFmapArgs",bc,brd,tyMap)) False = undefined
-compileFmapArgs bc (Zip b1 b2) ty | not (null ty) = do
+compileFmapArgs bc (Board _ (Zip b1 b2)) ty | not (null ty) = do
 	(insts1,mp1) <- compileFmapArgs bc b1 [ (p,t) | (Expr.GoLeft:p,t) <- ty ]
 	(insts2,mp2) <- compileFmapArgs bc b2 [ (p,t) | (Expr.GoRight:p,t) <- ty ]
 	return $ (insts1 ++ insts2, 
 		  [ (bid,Expr.GoLeft:p) | (bid,p) <- mp1 ] ++
 		  [ (bid,Expr.GoRight:p) | (bid,p) <- mp2 ]
 		 )
-compileFmapArgs bc (Zip {}) ty = error $ "found zip of boards, without zip types" ++ show ty
+compileFmapArgs bc (Board _ (Zip {})) ty = error $ "found zip of boards, without zip types" ++ show ty
 compileFmapArgs bc brd [([],ty)] = do
 	-- Otherwise, we allocate a board, construct it, and pass it back.
 	(rest,bid) <- allocAndCompileBoard bc ty brd
@@ -551,7 +553,7 @@ compileFmapFun env e ty = error $ show ("compileFmapFun",env,e,ty)
 
 compileFmapFunE env (E ty' e) ty = compileFmapFun env e ty
 
-compileBufferOnBoard bc t (Buffer low@(x0,y0) high@(x1,y1) buffer) brd = do
+compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer) brd = do
 	insts1          <- compileBoard2 bc t brd
 	(insts2,buffId) <- compileBuffer2 t low high buffer
 	

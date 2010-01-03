@@ -38,10 +38,10 @@ import Codec.Image.DevIL
 -- | 'fmap' like operator over a 'Board'.
 
 instance OFunctor Buffer where
-  (<$>) f (Buffer low hi brd) = Buffer low hi (FmapBuffer f brd)
+  (<$>) f (Buffer ty low hi brd) = Buffer (typeO1 f ty) low hi (FmapBuffer f brd)
 
 newBufferOf :: (Int,Int) -> (Int,Int) -> O a -> Buffer a
-newBufferOf low hi a = Buffer low hi (BoardInBuffer (PrimConst a))
+newBufferOf low hi a = Buffer (typeO a) low hi (BoardInBuffer (Board (typeO a) (PrimConst a)))
 
 -- | read a file containing a common image format (jpg, gif, etc.), and create a 'Board RGBA', and the X and Y size of the image.
 readBuffer :: String -> IO (Buffer (RGBA -> RGBA))
@@ -52,21 +52,21 @@ readBuffer filename = do
   return $ newBufferRGBA bs (w+1,h+1)
 
 newBufferRGB :: ByteString -> (Int,Int) -> Buffer RGB
-newBufferRGB bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageRGB bs
+newBufferRGB bs (x,y) = Buffer RGB_Ty (0,0) (x-1,y-1) $ ImageRGB bs
 
 newBufferRGBA :: ByteString -> (Int,Int) -> Buffer (RGBA -> RGBA)
-newBufferRGBA bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageRGBA bs
+newBufferRGBA bs (x,y) = Buffer RGBA_Ty (0,0) (x-1,y-1) $ ImageRGBA bs
 
 -- | building a 2d byte buffer
 newBufferUI :: ByteString -> (Int,Int) -> Buffer UI
-newBufferUI bs (x,y) = Buffer (0,0) (x-1,y-1) $ ImageUI bs
+newBufferUI bs (x,y) = Buffer UI_Ty (0,0) (x-1,y-1) $ ImageUI bs
 
 bufferBounds :: Buffer a -> ((Int,Int),(Int,Int))
-bufferBounds (Buffer low hi _) = (low,hi)
+bufferBounds (Buffer _ low hi _) = (low,hi)
 
 bufferSize :: Buffer a -> (Int,Int)
-bufferSize (Buffer (x0,y0) (x1,y1) _) = (1+x1-x0,1+y1-y0)
+bufferSize (Buffer _ (x0,y0) (x1,y1) _) = (1+x1-x0,1+y1-y0)
 
 -- how is this sampled? Is it supersampled?
 boardToBuffer :: (Int,Int) -> (Int,Int) -> Board a -> Buffer a
-boardToBuffer low high brd = Buffer low high $ BoardInBuffer brd
+boardToBuffer low high brd = Buffer (typeOfBoard brd) low high $ BoardInBuffer brd

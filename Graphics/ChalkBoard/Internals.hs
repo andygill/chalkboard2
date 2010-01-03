@@ -2,6 +2,7 @@
 
 module Graphics.ChalkBoard.Internals
 	( Board(..)
+	, InsideBoard(..)
 	, Buffer(..)
 	, InsideBuffer(..)
 	, Trans(..)
@@ -10,7 +11,8 @@ module Graphics.ChalkBoard.Internals
 	, Argument(..)
 	, board
 	, uniform
-	, boardType
+	, typeOfBoard
+	, typeOfBuffer
 	) where
 		
 import Graphics.ChalkBoard.Types
@@ -21,7 +23,7 @@ import Graphics.ChalkBoard.IStorable as IS
 import Data.ByteString
 import Graphics.Rendering.OpenGL.GL.Shaders (Uniform)
 
-data Buffer a = Buffer (Int,Int) (Int,Int) (InsideBuffer a)
+data Buffer a = Buffer ExprType (Int,Int) (Int,Int) (InsideBuffer a)
 
 data InsideBuffer a where
 	BoardInBuffer	:: Board a -> InsideBuffer a
@@ -37,19 +39,21 @@ data InsideBuffer a where
 	FlipLR		:: InsideBuffer a -> InsideBuffer a
 	FlipTB		:: InsideBuffer a -> InsideBuffer a
 	
-data Board a where
-	PrimConst 	:: (O a)					-> Board a
-	Trans 		:: Trans -> Board a				-> Board a
-	Crop 		:: ((R,R),(R,R)) -> Board a			-> Board (Maybe a)
-	Fmap :: forall b . (O b -> O a) -> Board b			-> Board a
-	Zip		:: Board b -> Board c 				-> Board (b,c)
-	Polygon 	:: (Float -> [(R,R)]) 				-> Board Bool	-- later, have two types of Polygon
+data Board a = Board ExprType (InsideBoard a)
+
+data InsideBoard a where
+	PrimConst 	:: (O a)					-> InsideBoard a
+	Trans 		:: Trans -> Board a				-> InsideBoard a
+	Crop 		:: ((R,R),(R,R)) -> Board a			-> InsideBoard (Maybe a)
+	Fmap :: forall b . (O b -> O a) -> Board b			-> InsideBoard a
+	Zip		:: Board b -> Board c 				-> InsideBoard (b,c)
+	Polygon 	:: (Float -> [(R,R)]) 				-> InsideBoard Bool	-- later, have two types of Polygon
 	-- only used in code generator, when types do not matter.
-	Over  		:: 	(a -> a -> a) -> Board a -> Board a 	-> Board a
-	BufferOnBoard	:: Buffer a -> Board a 				-> Board a
+	Over  		:: 	(a -> a -> a) -> Board a -> Board a 	-> InsideBoard a
+	BufferOnBoard	:: Buffer a -> Board a 				-> InsideBoard a
 	-- FFI into the Graphics shader langauge.
-	BoardGSI 	:: String -> [(String,UniformTexture)] -> [(String,UniformArgument)] -> Board a	
-	BoardUnAlpha	:: Board RGB -> Board (RGBA -> RGBA) 		-> Board RGB
+	BoardGSI 	:: String -> [(String,UniformTexture)] -> [(String,UniformArgument)] -> InsideBoard a	
+	BoardUnAlpha	:: Board RGB -> Board (RGBA -> RGBA) 		-> InsideBoard RGB
 
 data UniformArgument = UniformArgument Argument
 		     | UniformListArgument [Argument]
@@ -102,8 +106,10 @@ uniform = UniformArgument
     :: [any of the above]
 
 -}
-
 instance Show (Board a) where
+	show (Board ty b) = "(" ++ show b ++ " :: " ++ show ty ++ ")"
+
+instance Show (InsideBoard a) where
 --	show (PrimFun {}) = "PrimFun"
 	show (PrimConst {}) = "PrimConst"
 	show (Trans _ brd)  = "Trans (..) (" ++ show brd ++ ")"
@@ -119,7 +125,7 @@ instance Show (Board a) where
 				++ show (Prelude.map Prelude.fst arg2) 
 
 instance Show (Buffer a) where
-	show (Buffer x y a) = "Buffer " ++ show (x,y) ++ " " ++ show a
+	show (Buffer ty x y a) = "(Buffer " ++ show (x,y) ++ " " ++ show a ++ " " ++ show ty ++ ")"
 
 instance Show (InsideBuffer a) where
 	show (BoardInBuffer brd) = "BoardInBuffer (" ++ show brd ++ ")"
@@ -135,11 +141,8 @@ data Trans = Move (R,R)
 	deriving Show
 
 -- TODO: add ty to Board (and Buffer), to make this cheap
-boardType :: Board a -> ExprType	
-boardType (PrimConst o)   = typeO o
-boardType (Polygon {})    = BOOL_Ty
-boardType (Trans _ brd)   = boardType brd
-boardType (Over _ lhs _)  = boardType lhs
-boardType (Zip a b)       = Pair_Ty (boardType a) (boardType b)
-boardType (Fmap f brd)    = typeO1 f (boardType brd)
-boardType other = error $ "boardType of " ++ show other
+typeOfBoard :: Board a -> ExprType	
+typeOfBoard (Board ty _)   = ty
+
+typeOfBuffer :: Buffer a -> ExprType
+typeOfBuffer (Buffer ty _ _ _) = ty
