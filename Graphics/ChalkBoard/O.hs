@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, GADTs, FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE TypeFamilies, GADTs, FlexibleInstances, TypeSynonymInstances, MultiParamTypeClasses  #-}
 module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	  O	-- abstract
 	, Obs(..)
@@ -24,13 +24,14 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, Graphics.ChalkBoard.O.fstO
 	, Graphics.ChalkBoard.O.sndO
 	, withDefault
+	, Boolean(..)
 	) where
 	
 import Graphics.ChalkBoard.Types as Ty
 import Graphics.ChalkBoard.O.Internals as I
 import qualified Graphics.ChalkBoard.Core as C
 import Graphics.ChalkBoard.Expr as Expr
-
+import Data.Boolean
 
 ------------------------------------------------------------------------------------------------
 -- Obs Class
@@ -85,14 +86,6 @@ choose (O a ea) (O b eb) (O c ec)  = O (if c then a else b) (E $ Choose ea eb ec
 
 mix :: (Lerp o) => O o -> O o -> O UI -> O o
 mix (O a ea) (O b eb) (O c ec)  = O (lerp c a b) (E $ Mix ea eb ec)
-
--- | Observable 'True'.
-true :: O Bool
-true  = primO (O_Bool True) True
-
--- | Observable 'False'.
-false :: O Bool
-false = primO (O_Bool False) False
 
 ------------------------------------------------------------------------------------------------
 -- Functions from Core, lifted into the O type.
@@ -154,4 +147,23 @@ fstO (O ~(a,_) e) = O a (E $ oFst e)
 sndO :: O (a,b) -> O b
 sndO (O ~(_,b) e) = O b (E $ oSnd e)
 
+instance Boolean (O Bool) where
+	true = o True
+	false = o False
+	-- notB :: b -> b
+	-- (&&*) :: b -> b -> b
+	-- (||*) :: b -> b -> b
+	
 
+instance IfB (O Bool) (O a) where
+	ifB = error "ifB" -- :: bool -> a -> a -> a
+
+instance EqB (O Bool) (O a) where
+	(==*) = error "==*" -- :: a -> a -> bool
+	(/=*) = error "/=*" --  :: a -> a -> bool
+	
+instance OrdB (O Bool) (O a) where
+	(<*) = error "" -- :: a -> a -> bool
+	(>=*) = error "" --(>=*) :: a -> a -> bool
+	(>*) = error "" --(>*) :: a -> a -> bool
+	(<=*) = error "" --(<=*) :: a -> a -> bool	
