@@ -155,6 +155,7 @@ targetOver Target_RGB  		= ( Target_RGB		, Nothing)
 targetOver (Target_Bool c) 	= ( Target_Bool c	, Just $ Target_Bool c )
 targetOver (Target_Maybe_RGB)	= ( Target_Maybe_RGB	, Just $ Target_Maybe_RGB )
 targetOver (Target_UI)		= ( Target_UI		, Nothing )
+targetOver (Target_Maybe_UI)	= ( Target_Maybe_UI	, Just $ Target_Maybe_UI )
 
 targetRep :: Target -> Depth
 targetRep (Target_RGBA {})		= RGBADepth
@@ -162,6 +163,7 @@ targetRep Target_RGB  			= RGB24Depth
 targetRep (Target_Bool {}) 		= RGB24Depth
 targetRep (Target_Maybe_RGB)		= RGBADepth
 targetRep (Target_Maybe_RGB)		= RGB24Depth
+targetRep (Target_Maybe_UI)		= RGB24Depth
 
 -- TODO: rename as targetToType 
 targetType :: Target -> ExprType
@@ -169,6 +171,7 @@ targetType (Target_RGBA {})		= RGBA_Ty
 targetType Target_RGB  			= RGB_Ty 
 targetType (Target_Bool {}) 		= BOOL_Ty
 targetType (Target_Maybe_RGB)		= Maybe_Ty RGB_Ty
+targetType (Target_Maybe_UI)		= Maybe_Ty UI_Ty
 
 -- not used yet!
 targetFromType :: ExprType -> Target
@@ -300,7 +303,8 @@ data FmapArg where
 	FmapArg :: Board a -> ExprType -> Path -> FmapArg
 
 assignFrag RGBA_Ty expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	-- TODO: assumes merging???
-assignFrag (Maybe_Ty RGB_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	-- TODO: assumes merging???
+assignFrag (Maybe_Ty RGB_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	
+assignFrag (Maybe_Ty UI_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"
 assignFrag RGB_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
 assignFrag BOOL_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
 assignFrag other expr = error $ show ("assignFrag",other,expr)
@@ -312,8 +316,10 @@ assignFrag other expr = error $ show ("assignFrag",other,expr)
 prelude = unlines
 	[ "vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }"
 	, "vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }" 
-	, "vec4 cb_WithMask(vec3 c,float x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x); }" 
-	, "vec3 cb_WithDefault(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }"
+	, "vec4 cb_WithMaskRGB(vec3 c,float x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x); }" 
+	, "vec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }"
+	, "vec4 cb_WithMaskUI(float c,float x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x); }" 
+	, "float cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }"
 	]
 
 
@@ -441,6 +447,17 @@ allocAndCompileBoard bc RGBA_Ty brd = do
 				(BackgroundRGBADepth (RGBA 0 0 0 1))
 			  ] ++ rest
 		], newBoard )
+allocAndCompileBoard bc (Maybe_Ty UI_Ty) brd = do
+	newBoard <- newNumber
+	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_Maybe_UI) brd	-- TODO: could this be Blend???
+	return ( [ Nested ("alloc (Maybe_Ty RGB_Ty)") $
+			  [ Allocate 
+		        	newBoard 	   -- tag for this ChalkBoardBufferObject
+        			(bcSize bc)		   -- tiny board
+        			RGBADepth          -- depth of buffer	
+				(BackgroundRGBADepth (RGBA 0 0 0 0))
+			  ] ++ rest
+		], newBoard )
 allocAndCompileBoard bc (Maybe_Ty RGB_Ty) brd = do
 	newBoard <- newNumber
 	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_Maybe_RGB) brd
@@ -503,9 +520,14 @@ compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
 compileFmapFun env (Alpha v e) RGBA_Ty =
 	"cb_Alpha(" ++ show v ++ "," ++ compileFmapFunE env e RGB_Ty ++ ")"
 compileFmapFun env (WithMask e1 e2) (Maybe_Ty RGB_Ty) =
-	"cb_WithMask(" ++ compileFmapFunE env e1 RGB_Ty  ++ "," ++ compileFmapFunE env e2 BOOL_Ty ++ ")"
+	"cb_WithMaskRGB(" ++ compileFmapFunE env e1 RGB_Ty  ++ "," ++ compileFmapFunE env e2 BOOL_Ty ++ ")"
+compileFmapFun env (WithMask e1 e2) (Maybe_Ty UI_Ty) =
+	"cb_WithMaskUI(" ++ compileFmapFunE env e1 UI_Ty  ++ "," ++ compileFmapFunE env e2 BOOL_Ty ++ ")"
 compileFmapFun env (WithDefault e1 e2) RGB_Ty =
-	"cb_WithDefault(" ++ compileFmapFunE env e1 RGB_Ty  ++ "," ++ compileFmapFunE env e2 (Maybe_Ty RGB_Ty) ++ ")"
+	"cb_WithDefaultRGB(" ++ compileFmapFunE env e1 RGB_Ty  ++ "," ++ compileFmapFunE env e2 (Maybe_Ty RGB_Ty) ++ ")"
+compileFmapFun env (WithDefault e1 e2) UI_Ty =
+	"cb_WithDefaultUI(" ++ compileFmapFunE env e1 UI_Ty  ++ "," ++ compileFmapFunE env e2 (Maybe_Ty UI_Ty) ++ ")"
+compileFmapFun env (Lit v) UI_Ty = show v
 -- UnAlpha is the only way of getting to a RGBA->RGBA.
 {-
 

@@ -16,6 +16,8 @@ import Data.Reify.Graph
 import Data.Reify
 import Data.List as L
 import Debug.Trace
+import Graphics.ChalkBoard.Types  as Ty
+import Data.Ratio
 	
 ------------------------------------------------------------------------------------------------
 -- Our O (Observable) structure.
@@ -54,3 +56,28 @@ argTypeForOFun :: (O a -> O b) -> ExprType -> [([Path],ExprType)]
 argTypeForOFun f ty = (exprUnifyE e ty)
 	 where
 		(O _ e) = (f (O (error "typeOfO (should not be looking here!)") (E $ Var [])))
+
+
+instance Eq (O UI) where
+	(O a _) == (O b _) = a == b
+
+instance Num (O UI) where
+{-
+  (+) :: a -> a -> a
+  (*) :: a -> a -> a
+  (-) :: a -> a -> a
+  negate :: a -> a
+  abs :: a -> a
+  signum :: a -> a
+-}
+  fromInteger i = O v (E $ Lit v)
+	   where v = fromInteger i
+	
+instance Fractional (O UI) where
+	fromRational r = O v (E $ Lit v)
+	   where v = fromInteger (numerator r) / fromInteger (denominator r)
+{-
+	(/) :: a -> a -> a	
+  	recip :: a -> a
+-}
+

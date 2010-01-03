@@ -77,11 +77,13 @@ exprUnify (Mix a b c) 	ty 			= L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ expr
 exprUnify (O_Bool {}) 		BOOL_Ty 	= []
 exprUnify (O_RGB {}) 		RGB_Ty 		= []
 exprUnify (O_RGBA {}) 		RGBA_Ty 	= []
+exprUnify (Lit {}) 		UI_Ty 		= []
 exprUnify (Alpha _ e) 		RGBA_Ty 	= exprUnifyE e RGB_Ty
 exprUnify (UnAlpha e1 e2) 	RGB_Ty 		= L.nub (exprUnifyE e1 RGB_Ty ++ exprUnifyE e2 RGBA_Ty)
 exprUnify (ScaleAlpha _ e) 	RGBA_Ty 	= exprUnifyE e RGBA_Ty
 exprUnify (WithMask e1 e2) 	(Maybe_Ty ty) 	= L.nub (exprUnifyE e1 ty ++ exprUnifyE e2 BOOL_Ty)
 exprUnify (WithDefault e1 e2) 	ty 		= L.nub (exprUnifyE e1 ty ++ exprUnifyE e2 (Maybe_Ty ty))
+
 exprUnify (Var i) 		ty 		= [(i,ty)]
 --exprUnify (O_Fst e) 		ty 		= exprUnifyE e (Pair_Ty ty Poly_Ty)
 --exprUnify (O_Snd e) 		ty 		= exprUnifyE e (Pair_Ty Poly_Ty ty)

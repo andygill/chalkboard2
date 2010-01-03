@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, GADTs, FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies, GADTs, FlexibleInstances, TypeSynonymInstances #-}
 module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	  O	-- abstract
 	, Obs(..)
@@ -131,12 +131,21 @@ purple = o $ RGB 1.0 0.0 1.0
 yellow :: O RGB
 yellow = o $ RGB 1.0 1.0 0.0
 
+
 -- TODO: generalize to UI as well as RGB
 
-withMask :: O RGB -> O Bool -> O (Maybe RGB)
+class Maskable a 
+
+--     maskable :: a -> ExprType
+
+instance Maskable RGB
+
+instance Maskable UI
+
+withMask :: Maskable a => O a -> O Bool -> O (Maybe a)
 withMask (O a ea) (O b eb) = O (C.withMask a b) (E $ WithMask ea eb)
 
-withDefault :: O RGB -> O (Maybe RGB) -> O RGB
+withDefault :: O a -> O (Maybe a) -> O a
 withDefault (O a ea) (O b eb) = O (C.withDefault a b) (E $ WithDefault ea eb)
 
 fstO :: O (a,b) -> O a
@@ -144,3 +153,5 @@ fstO (O ~(a,_) e) = O a (E $ oFst e)
 
 sndO :: O (a,b) -> O b
 sndO (O ~(_,b) e) = O b (E $ oSnd e)
+
+

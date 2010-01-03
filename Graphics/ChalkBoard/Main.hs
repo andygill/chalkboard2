@@ -159,6 +159,7 @@ openChalkBoard args = do
 			B.hPut ein (encode (fromIntegral (B.length code) :: Word32))
 			B.hPut ein code
 			hFlush ein
+			print v
 			case v of
 			  [Exit] -> putMVar vEnd ()
 			  _ -> loop $! (n+1)
@@ -216,7 +217,7 @@ compiler options v1 v2 = do
 
 openServerStream :: IO (Handle,Handle,Handle,ProcessHandle)
 openServerStream = do
-	server <- getEnv "CHALKBOARD_SERVER" `catch` (\ _ -> return "chalkboard-server-1_9_0_14")
+	server <- getEnv "CHALKBOARD_SERVER" `catch` (\ _ -> return "chalkboard-server-1_9_0_19")
 	runInteractiveProcess server [] Nothing Nothing `catch` (\ _ -> do print "DOOL" ; error "")
 
 
