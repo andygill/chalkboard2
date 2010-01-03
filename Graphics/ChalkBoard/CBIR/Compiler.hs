@@ -142,6 +142,7 @@ data Target
 		   --  		works if * All transparent boards are considered equal
 		   --			 * RGBA 0 0 0 0 is the unit
  | Target_UI
+ | Target_Maybe_UI	-- 	use r and a{0,1}.
 	deriving Show
 
 
@@ -367,8 +368,10 @@ compileBoardFmap bc t (E f) other argTypes resTy = do
 -- Abort!
 compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,t,other,argTy,resTy)
 
+
+-- TODO: Add Target_Maybe_RGB here
 -- use this to check if you can fmap over the Bool
-goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E (O_RGBA (RGBA _ _ _ 1)))) (Just (E (O_RGBA (RGBA _ _ _ 0)))) = True
+goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E (O_RGBA (RGBA _ _ _ 1)))) (Just (E (O_RGBA (RGBA _ _ _ 0)))) = True -- to: RM
 goodToFmapBool [([],BOOL_Ty)] (Target_RGB) (Just (E (O_RGB {}))) (Just (E (O_RGB (RGB {})))) = True
 goodToFmapBool _ _ _ _ = False
 
@@ -523,9 +526,10 @@ compileBufferOnBoard bc t (Buffer low@(x0,y0) high@(x1,y1) buffer) brd = do
 	let (x,y) = bcSize bc
 	-- TODO!
 	-- really, this is about 0 and 1, not x and y.
-	let mv = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,
+	let mv0 = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,
 			fromIntegral (1 + y1-y0) / fromIntegral 1)
-	let tr = bcTrans (updateTrans mv bc)
+	let mv1 = Move (fromIntegral x0,fromIntegral y0)			
+	let tr = bcTrans (updateTrans mv0 $ updateTrans mv1 bc)
 	
 	return $ 
 		[ Nested "buffer inside board (...)" $
@@ -736,6 +740,10 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 and 
 
     RGB <- seed.
+
+  compile :: context -> fmap (f (...) (...)) (Board XX)
+
+
 
 -}
 
