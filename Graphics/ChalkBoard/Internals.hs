@@ -25,13 +25,16 @@ import Graphics.Rendering.OpenGL.GL.Shaders (Uniform)
 
 data Buffer a = Buffer ExprType (Int,Int) (Int,Int) (InsideBuffer a)
 
+-- TODO: an intermeduate between Buffer and InsideBuffer, that caches the type.
+-- This avoids the hack inside FmapBuffer.
+
 data InsideBuffer a where
 	BoardInBuffer	:: Board a -> InsideBuffer a
-	FmapBuffer	:: forall b . (O b -> O a) -> InsideBuffer b -> InsideBuffer a
+			-- ExprType is the type of the inner inside Buffer
+	FmapBuffer	:: forall b . (O b -> O a) -> InsideBuffer b -> ExprType -> InsideBuffer a
 		-- we represent image as mutable arrays simply because
 		-- we need a quick way to get to a pointer to the array
 		-- They are really actually constant.
-	Image		:: ReadOnlyCByteArray -> InsideBuffer a	-- RGB or RGBA
 	ImageG		:: ByteString -> InsideBuffer UI
 	ImageRGB	:: ByteString -> InsideBuffer RGB
 	ImageRGBA	:: ByteString -> InsideBuffer (RGBA -> RGBA)	-- later, Maybe RGB
@@ -129,8 +132,7 @@ instance Show (Buffer a) where
 
 instance Show (InsideBuffer a) where
 	show (BoardInBuffer brd) = "BoardInBuffer (" ++ show brd ++ ")"
-	show (FmapBuffer _ brd) = "FmapBuffer (..) (" ++ show brd ++ ")"
-	show (Image arr)        = "Image (..)"
+	show (FmapBuffer _ ty brd) = "FmapBuffer (..) (" ++ show brd ++ ")"
 	show (ImageRGB arr)        = "ImageRGB (..)"
 	show (ImageRGBA arr)        = "ImageRGBA (..)"
 	show (ImageUI arr)        = "ImageUI (..)"

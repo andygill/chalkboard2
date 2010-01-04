@@ -15,6 +15,7 @@ module Graphics.ChalkBoard.Buffer
 	, newBufferRGBA
 	, newBufferUI
 	, boardToBuffer
+	, moveBuffer
 	) where
 
 
@@ -38,7 +39,7 @@ import Codec.Image.DevIL
 -- | 'fmap' like operator over a 'Board'.
 
 instance OFunctor Buffer where
-  (<$>) f (Buffer ty low hi brd) = Buffer (typeO1 f ty) low hi (FmapBuffer f brd)
+  (<$>) f (Buffer ty low hi brd) = Buffer (typeO1 f ty) low hi (FmapBuffer f brd ty)
 
 newBufferOf :: (Int,Int) -> (Int,Int) -> O a -> Buffer a
 newBufferOf low hi a = Buffer (typeO a) low hi (BoardInBuffer (Board (typeO a) (PrimConst a)))
@@ -70,3 +71,6 @@ bufferSize (Buffer _ (x0,y0) (x1,y1) _) = (1+x1-x0,1+y1-y0)
 -- how is this sampled? Is it supersampled?
 boardToBuffer :: (Int,Int) -> (Int,Int) -> Board a -> Buffer a
 boardToBuffer low high brd = Buffer (typeOfBoard brd) low high $ BoardInBuffer brd
+
+moveBuffer :: (Int,Int) -> Buffer a -> Buffer a
+moveBuffer (x,y) (Buffer ty (x0,y0) (x1,y1) buff) = Buffer ty (x0 + x,y0 + y) (x1 + x,y1 + y) buff

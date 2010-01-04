@@ -23,17 +23,20 @@ import Control.Monad
 data Expr s 
 	-- The var
 	= Var [Path]
-	-- constants
+	-- constants TODO: common up the constants
+	| Lit R
 	| O_Bool Bool
 	| O_RGB RGB
 	| O_RGBA RGBA -- (Ty.Alpha RGB)
-	| Lit R
+	| O_Nothing
 	-- deconstructors
 --	| O_Fst s
 --	| O_Snd s
 	-- constructors
 --	| O_Pair s s 			-- (a,b)
 	-- Functions
+	| O_Just s			-- 
+--	| IsJust s			-- O (Just a) -> O Bool
 	| OrBool			-- the || function
 	| Choose s s s			-- O a -> O a -> O Bool -> O a
         | Mix s s s 			-- O a -> O a -> O UI -> O a
@@ -42,6 +45,9 @@ data Expr s
 	| UnAlpha s s			-- RGB -> (RGBA -> RGBA) -> RGB
         | WithMask s s			-- O a -> O Bool 	-> O (Maybe a)
 	| WithDefault s s		-- O a -> O (Maybe a) 	-> O a
+
+	-- boolean ops
+	| EQUAL s s			-- O a -> O a -> O Bool
 	deriving Show
 
 data Path  = GoLeft | GoRight 
@@ -72,6 +78,7 @@ data ExprType
 	| Poly_Ty		-- because of fst, snd
     deriving (Show, Eq)
 
+-- SHOULD BE DEAD CODE!
 exprUnifyE :: E -> ExprType -> [([Path],ExprType)]
 exprUnifyE (E _ e) = exprUnify e
 
@@ -169,8 +176,9 @@ instance T.Traversable Expr where
 	traverse f (ScaleAlpha c e) 	= ScaleAlpha c <$> f e
 	traverse f (UnAlpha e1 e2) 	= UnAlpha <$> f e1 <*> f e2
 
-        traverse f (WithMask v1 v2)	= pure WithMask <*> f v1 <*> f v2
-        traverse f (WithDefault v1 v2)	= pure WithDefault <*> f v1 <*> f v2
+        traverse f (WithMask v1 v2)	= pure WithMask 	<*> f v1 <*> f v2
+        traverse f (WithDefault v1 v2)	= pure WithDefault 	<*> f v1 <*> f v2
+        traverse f (EQUAL v1 v2)	= pure EQUAL 		<*> f v1 <*> f v2
 	-- TODO
 	
 instance F.Foldable Expr where

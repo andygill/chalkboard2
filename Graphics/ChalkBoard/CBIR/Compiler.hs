@@ -135,7 +135,7 @@ newNumber = do
 -- 	Data		Alpha?	Notes
 
 data Target 
- = Target_RGBA Write --		Write => the type of blending writing to a board does
+ = Target_RGBA Blender --		Write => the type of blending writing to a board does
  | Target_RGB      --	N	A = 1
  | Target_Bool RGB --	N	Arg is what do we draw for *True*
  | Target_Maybe_RGB --	Y	Nothing => transparent <ANY>
@@ -172,12 +172,18 @@ targetType Target_RGB  			= RGB_Ty
 targetType (Target_Bool {}) 		= BOOL_Ty
 targetType (Target_Maybe_RGB)		= Maybe_Ty RGB_Ty
 targetType (Target_Maybe_UI)		= Maybe_Ty UI_Ty
+targetType (Target_UI)			= UI_Ty
+targetType other			= error $ show ("targetType",other)
+
 
 -- not used yet!
 targetFromType :: ExprType -> Target
 targetFromType RGBA_Ty 			= Target_RGBA Copy	-- only because this is the only case
 								-- used, aka buffer fmap.
 targetFromType RGB_Ty 			= Target_RGB
+targetFromType UI_Ty 			= Target_UI
+targetFromType (Maybe_Ty UI_Ty)		= Target_Maybe_UI
+targetFromType other			= error $ show ("targetFromType",other)
 
 compileBoard2 
 	:: BoardContext
@@ -328,9 +334,9 @@ assignFrag other expr = error $ show ("assignFrag",other,expr)
 prelude = unlines
 	[ "vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }"
 	, "vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }" 
-	, "vec4 cb_WithMaskRGB(vec3 c,float x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x); }" 
+	, "vec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }" 
 	, "vec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }"
-	, "vec4 cb_WithMaskUI(float c,float x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x); }" 
+	, "vec4 cb_WithMaskUI(float c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 0.0); }" 
 	, "float cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }"
 	]
 
@@ -510,7 +516,7 @@ compileFmapFun :: Map [Path] String -> Expr E -> ExprType -> String
 compileFmapFun env (Choose e1 e2 e3) ty =
 	      "mix(" ++ compileFmapFunE env e2 ty ++ "," ++
 			compileFmapFunE env e1 ty ++ "," ++
-		        compileFmapFunE env e3 BOOL_Ty ++ ")";
+   	         "(" ++ compileFmapFunE env e3 BOOL_Ty ++ ") ? 1.0 : 0.0)";
 compileFmapFun env (Mix e1 e2 e3) ty =
 	      "mix(" ++ compileFmapFunE env e1 ty ++ "," ++
 			compileFmapFunE env e2 ty ++ "," ++
@@ -520,11 +526,13 @@ compileFmapFun env v@(Var path) ty =
 	  Just varName -> coerce ("texture2D(" ++ varName ++ ",gl_TexCoord[0].st)")
 	  Nothing -> error $ "Can not find Var " ++ show v
   where coerce txt = case ty of
-		       BOOL_Ty -> "(" ++ txt ++ ").r > 0.5 ? 1.0 : 0.0"
+		       BOOL_Ty -> "(" ++ txt ++ ").r > 0.5"
 		       UI_Ty   -> "(" ++ txt ++ ").r"
 		       RGB_Ty  ->  "(" ++ txt ++ ").rgb"
 --		       RGBA_Ty -> error "can not directly access RGBA"
 		       other   -> txt
+compileFmapFun env (O_Bool True) BOOL_Ty = "true";
+compileFmapFun env (O_Bool False) BOOL_Ty = "false";
 compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
 		"vec3(" ++ show r ++ "," ++
 			   show g ++ "," ++
@@ -599,14 +607,10 @@ compileBuffer2 Target_UI low high (ImageUI bs) = do
   where bs' = BS.concatMap (\ w -> BS.pack [w,0,0]) bs
 
 -- TODO: common up with other fmap function. Not that Buffer can *not* use zip.
-compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff) = do
+compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = do
 	let tarTy = targetType t
-	let expr  = runO1 f (E tarTy $ Var [])
-	let argTy =  case lookup [] (argTypeForOFun f tarTy) of
-		      Just t -> t
-		      Nothing -> error "can not find type of f in `fmap f (.. buffer ..)'"
-		
-			-- only place targetFromType is used!!!
+	let expr  = runO1 f (E argTy $ Var [])
+				-- only place targetFromType is used!!!
 	(insts,bId) <- compileBuffer2 (targetFromType argTy) low high buff
 	let env = Map.fromList [ ([],"cb_sampler0") ]
 	let code = compileFmapFunE env expr tarTy	
@@ -687,6 +691,12 @@ allocateBuffer (sx,sy) newBoard Target_RGB =
 			RGB24Depth       -- depth of buffer
 			(BackgroundRGB24Depth (RGB 0 0 0))
 allocateBuffer (sx,sy) newBoard (Target_RGBA Copy) =
+		Allocate 
+			newBoard 	-- tag for this ChalkBoardBufferObject
+			(sx,sy)	   	-- we know size
+			RGBADepth       -- depth of buffer
+			(BackgroundRGBADepth (RGBA 0 0 0 0))
+allocateBuffer (sx,sy) newBoard Target_Maybe_UI =
 		Allocate 
 			newBoard 	-- tag for this ChalkBoardBufferObject
 			(sx,sy)	   	-- we know size

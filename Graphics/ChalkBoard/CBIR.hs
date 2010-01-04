@@ -81,8 +81,13 @@ data WithAlpha = WithSrcAlpha
                | WithDestAlpha
         deriving Show
 
--- Move into CBIR
-data Write = Blend | Copy deriving (Eq, Show)
+-- Ways of blending the background with the new splat-ee.
+-- Blend ==> Alpha Blend
+-- Sum   ==> Add back and splat-ee (what about alpha? set it to one?)
+-- Max   ==> Take max of back and splat-ee (again, what about alpha)
+-- Copy  ==> use the splat-ee only,
+
+data Blender = Blend | Sum | Max | Copy deriving (Eq, Show)
 
 -- AG: The depth is determined by the Background, we only need one!
 
@@ -109,7 +114,7 @@ AG: other considerations include
 
 
 
-     | Splat var Write (Splat var)
+     | Splat var Blender (Splat var)
 
 
        --- Everything can be written as triangles (for now)!
@@ -193,12 +198,21 @@ AG: other considerations include
 
 
 data Splat var
-	= SplatPolygon'
-	| SplatColor'
+	= SplatPolygon' 
+		var 			-- source board
+		[PointMap]		-- points
+	| SplatColor' 
+		RGBA
+		[UIPoint]
 	| SplatFunction'
+       		var			-- FragFunId
+       		[(String,var)]		-- argument BufferId(s)
+       		[(String,UniformArgument)]		-- the extra uniform args
+       		[UIPoint]		-- should be UIPoint???
 	| SplatBuffer'
+		var			-- source
+	  -- todo, consider also CopyBuffer
 	deriving (Show)
-	
 
 copyBoard :: var -> var -> Inst var
 copyBoard src target = CopyBuffer WithSrcAlpha src target

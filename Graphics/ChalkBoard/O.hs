@@ -25,6 +25,7 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, Graphics.ChalkBoard.O.sndO
 	, withDefault
 	, Boolean(..)
+	, Maskable
 	) where
 	
 import Graphics.ChalkBoard.Types as Ty
@@ -44,7 +45,7 @@ class Obs a where
 	-- construct an Observable
   	o :: a -> O a
 
-infixl 4 <$>
+infixr 0 <$>
 
 class OFunctor f where
 	(<$>) :: (O a -> O b) -> f a -> f b
@@ -158,10 +159,10 @@ instance Boolean (O Bool) where
 	
 
 instance IfB (O Bool) (O a) where
-	ifB = error "ifB" -- :: bool -> a -> a -> a
+	ifB c t e = choose t e c
 
-instance EqB (O Bool) (O a) where
-	(==*) = error "==*" -- :: a -> a -> bool
+instance Eq a => EqB (O Bool) (O a) where
+	(==*) (O a ea) (O b eb) = O (a == b) $ E BOOL_Ty $ EQUAL ea eb
 	(/=*) = error "/=*" --  :: a -> a -> bool
 	
 instance OrdB (O Bool) (O a) where
@@ -169,3 +170,6 @@ instance OrdB (O Bool) (O a) where
 	(>=*) = error "" --(>=*) :: a -> a -> bool
 	(>*) = error "" --(>*) :: a -> a -> bool
 	(<=*) = error "" --(<=*) :: a -> a -> bool	
+
+--nothing :: O (Maybe a)
+--nothing = O Nothing (O $ E
