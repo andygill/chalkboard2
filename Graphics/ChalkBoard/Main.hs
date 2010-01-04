@@ -159,7 +159,6 @@ openChalkBoard args = do
 			B.hPut ein (encode (fromIntegral (B.length code) :: Word32))
 			B.hPut ein code
 			hFlush ein
-			print v
 			case v of
 			  [Exit] -> putMVar vEnd ()
 			  _ -> loop $! (n+1)
