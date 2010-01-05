@@ -181,7 +181,8 @@ compiler options v1 v2 = do
 	case cmd of
 	  DrawChalkBoard brd -> do
 		cmds <- compile (x,y) viewBoard (move (0.5,0.5) brd)
---		putStrLn $ showCBIRs cmds
+		when (elem DebugCBIR options) $ do
+			putStrLn $ showCBIRs cmds
 		putMVar v2 cmds
 		loop (n+1) brd
 	  DrawChalkBuffer buff -> do

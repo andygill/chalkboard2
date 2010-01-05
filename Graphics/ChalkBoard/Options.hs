@@ -16,6 +16,7 @@ data Options = NoFBO
              | DebugBoards [BufferId]		-- ^ not supported (yet!)
 	     | BoardSize Int Int		-- ^ default is 400x400.
 	     | FullScreen			-- ^ not supported (yet!)
+	     | DebugCBIR
         deriving (Eq, Show)
 
 instance Binary Options where
@@ -24,6 +25,7 @@ instance Binary Options where
   put (DebugBoards buffs)        = put (2 :: Word8) >> put buffs
   put (BoardSize w h) 		 = put (3 :: Word8) >> put w >> put h
   put (FullScreen) 		 = put (4 :: Word8)
+  put (DebugCBIR) 		 = put (5 :: Word8)
   get = do tag <- getWord8
            case tag of
                   0 -> return $ NoFBO 
@@ -31,3 +33,4 @@ instance Binary Options where
                   2 -> liftM DebugBoards get
 		  3 -> liftM2 BoardSize get get
 		  4 -> return $ FullScreen
+		  5 -> return $ DebugCBIR
