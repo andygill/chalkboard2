@@ -262,7 +262,9 @@ compileBoardOver bc t above below (t1,Just t2) = do
 -- Drawing something onto the screen
 compileBoardPolygon bc (Target_Bool (RGB r g b)) nodes = do
 	return $ [ Nested ("precision factor = " ++ show res)
-		     [ SplatColor (RGBA r g b 1) (bcDest bc) False (map (mapPoint (bcTrans bc)) (nodes res))
+		     [ Splat (bcDest bc) 
+		             Copy
+		             (SplatColor' (RGBA r g b 1)  (map (mapPoint (bcTrans bc)) (nodes res)))
 		     ]
 		]
   where
@@ -280,17 +282,17 @@ compileBoardConst bc t@(Target_Bool rgb) (Just (E _ (O_Bool False)))
 		= return []
 compileBoardConst bc t@(Target_RGB) (Just (E _ (O_RGB (RGB r g b))))
 		= return [
-		 	SplatColor (RGBA r g b 1)
-				(bcDest bc)
-				False
-				[(0,0),(1,0),(1,1),(0,1)]
+		 	(Splat (bcDest bc)
+		 	       Copy 
+		 	       (SplatColor' (RGBA r g b 1) [(0,0),(1,0),(1,1),(0,1)])
+		 	)
 			]
 compileBoardConst bc t@(Target_UI) (Just (E _ (Lit r)))
 		= return [
-		 	SplatColor (RGBA r 0 0 1)
-				(bcDest bc)
-				False
-				[(0,0),(1,0),(1,1),(0,1)]
+		 	(Splat (bcDest bc)
+		 	       Copy 
+		 	       (SplatColor' (RGBA r 0 0 1) [(0,0),(1,0),(1,1),(0,1)])
+		 	)
 			]
 compileBoardConst bc t@(Target_RGBA Copy) (Just (E _ (O_RGBA rgba)))
 		= do
@@ -308,10 +310,9 @@ compileBoardConst bc t@(Target_RGBA Blend) (Just (E _ (O_RGBA rgba)))
 		= do
 		newBoard <- newNumber
 		return [ Nested ("Const (a :: RGBA)") $
-			  [ SplatColor rgba
-				(bcDest bc)
-				False
-				[(0,0),(1,0),(1,1),(0,1)]
+			  [ Splat (bcDest bc)
+			          Blend
+			          (SplatColor' rgba [(0,0),(1,0),(1,1),(0,1)])
 			  ]
 			]
 compileBoardConst bc t constant = error $ show ("compileBoardConst",bc,t,constant)
@@ -360,11 +361,12 @@ compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 	newFrag <- newNumber
 	return $ insts ++
 		 [ AllocFragmentShader newFrag fn []
-		 , SplatWithFunction newFrag 
+		 , Splat (bcDest bc)
+		         Blend
+		         (SplatFunction' newFrag 
 				[ ("cb_sampler" ++ show n,bid) | ((bid,_),n) <- zip idMap [0..]]
 				[]
-				(bcDest bc) 
-				[ (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+				[ (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]])
 		 , Delete newFrag	-- really should cache these
 		 ] ++
 		 [ Delete bId | bId <- List.nub (map fst idMap) ]
@@ -409,10 +411,9 @@ compileBoardFmapBool bc t@(Target_RGB)
 		(Just (E _ (O_RGB fCol@(RGB r g b))))
 		other argTypes resTy = do
 			insts <- compileBoard2 bc (Target_Bool tCol) other
-			return $ [ SplatColor (RGBA r g b 1)
-					(bcDest bc)
-					False
-					[(0,0),(1,0),(1,1),(0,1)]
+			return $ [ Splat (bcDest bc)
+			                 Copy 
+			                 (SplatColor' (RGBA r g b 1) [(0,0),(1,0),(1,1),(0,1)])
 				 ] ++ insts
 compileBoardFmapBool bc t tr fa other argTypes resTy = do
 	error $ "Found fmap over (Board Bool) (perhaps non transparent background?) " ++ show (t,tr,fa)
@@ -585,10 +586,12 @@ compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer) brd = do
 	return $ 
 		[ Nested "buffer inside board (...)" $
 			insts1 ++ insts2 ++ 
-			[ SplatPolygon buffId (bcDest bc) -- need a version that does no merging, but just copies
-		    		[ PointMap (x,y) (mapPoint tr (x,y))
-		    		| (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
-		    		]
+			[ Splat (bcDest bc)
+			        Blend
+			        (SplatPolygon' buffId -- need a version that does no merging, but just copies
+		    		        [ PointMap (x,y) (mapPoint tr (x,y))
+		    		        | (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
+		    		        ] )
 			, Delete buffId
 			]
 	       ]
@@ -636,13 +639,14 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = do
 	return ( insts ++
 		 [ allocateBuffer (1+x1-x0,1+y1-y0) targetBuff t
 		 , AllocFragmentShader newFrag fn []
-		 , SplatWithFunction newFrag 
+		 , Splat targetBuff
+		         Blend
+		         (SplatFunction' newFrag 
 				[ ("cb_sampler0",bId)]
 				[]
-				targetBuff
 				[ (x,y) | (x,y) <- let (x0,x1,y0,y1) = (0,1,0,1) 
 								 in [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
-
+                         )
 		 , Delete newFrag	-- really should cache these
 		 , Delete bId 
 		 ], targetBuff )
@@ -765,14 +769,16 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 		++ concat fill_Boards_RGB
 		++ concat fill_Boards_Bool
 		++ concat fill_Boards_UI
-		++ [ SplatWithFunction newFrag 
+		++ [ Splat (bcDest bc)
+		           Blend
+		           (SplatFunction' newFrag 
 				[ (nm,brdId) 
 				| (nm,brdId) <- zip (map Prelude.fst boards_RGB ++ map Prelude.fst boards_Bool  ++ map Prelude.fst boards_UI)
 						    (num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI)
 				]
 				vargs
-				(bcDest bc) 
 				[(x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+			   )
 		   ]
 		++ delete_Boards
 

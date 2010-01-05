@@ -438,12 +438,6 @@ drawInsts env (i:is) = do
             (Allocate b size depth bgColor) -> allocateBuffer env b size depth bgColor
             (AllocateImage b imagePath) -> allocateImgBuffer env b imagePath
             (Splat target blender stype) -> splat env target blender stype
-            (SplatTriangle bSource bDest ptMap1 ptMap2 ptMap3) -> splatPolygon env bSource bDest [ptMap1, ptMap2, ptMap3]
-            (SplatPolygon bSource bDest ptMaps) -> splatPolygon env bSource bDest ptMaps
-            (SplatColor sColor bDest useBlend ptList) -> splatColor env sColor bDest ptList
-            (SplatBuffer bSource bDest) -> splatPolygon env bSource bDest [ PointMap p p | p <- [(0,0),(0,1),(1,1),(1,0)] ]
-	    (SplatWithFunction fnId bargs uargs bDest ptList) -> splatWithFunction env fnId bargs uargs bDest ptList
-            (CopyBuffer alpha bSource bDest) -> copyBuffer env alpha bSource bDest
             (SaveImage b savePath) -> saveImage env b savePath
             (OpenStream streamID cmd) -> openStream env streamID cmd
             (WriteStream bufferID streamID) -> writeStream env bufferID streamID

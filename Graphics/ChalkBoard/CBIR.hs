@@ -116,47 +116,12 @@ AG: other considerations include
 
      | Splat var Blender (Splat var)
 
-
-       --- Everything can be written as triangles (for now)!
-     | SplatTriangle
-       var	--  to write from (may be a color, but will be allocated)
-       var	--  to write to
-       PointMap
-       PointMap
-       PointMap
-     
-     | SplatPolygon
-       var
-       var
-       [PointMap]
-     
-     | SplatColor
-       RGBA --Should probably make a color type or something?
-       var
-       Bool		-- do you do alpha blending (True), or just copy bits (False) (TODO: consider removing)
-       [UIPoint]
-
-     | SplatWithFunction
-       var			-- FragFunId
-       [(String,var)]		-- argument BufferId(s)
-       [(String,UniformArgument)]		-- the extra uniform args
-       var			-- target BufferId
-       [UIPoint]		-- should be UIPoint???
 {-
      | SplatWholeBoardColor
 	RGBA
 	var
 -}
 
-     | SplatBuffer
-       var		-- src
-       var		-- dest
-
-     | CopyBuffer
-       WithAlpha
-       var		-- src
-       var		-- dest
-     
      | AllocateImage
        var
        FilePath
@@ -215,10 +180,10 @@ data Splat var
 	deriving (Show)
 
 copyBoard :: var -> var -> Inst var
-copyBoard src target = CopyBuffer WithSrcAlpha src target
+copyBoard src target = Splat target Copy (SplatBuffer' src)
 
 colorBoard :: RGB -> var -> Inst var
-colorBoard (RGB r g b) target = SplatColor (RGBA r g b 1) target False [ p | p <- [(0,0),(0,1),(1,1),(1,0)]]
+colorBoard (RGB r g b) target = Splat target Copy (SplatColor' (RGBA r g b 1) [ p | p <- [(0,0),(0,1),(1,1),(1,0)]])
 
 {-
 
@@ -351,12 +316,12 @@ instance Binary Background where
 
 instance (Show var, Binary var) => Binary (Inst var) where
   put (Allocate v sz d b) 	= put (0 :: Word8) >> put v >> put sz >> put d >> put b
-  put (SplatTriangle v1 v2 p1 p2 p3) 
-				= put (1 :: Word8) >> put v1 >> put v2 >> put p1 >> put p2 >> put p3
-  put (SplatPolygon v1 v2 ps) 	= put (2 :: Word8) >> put v1 >> put v2 >> put ps
-  put (SplatColor rgba v a ps) 	= put (3 :: Word8) >> put rgba >> put v >> put a >> put ps
-  put (SplatBuffer src dst)     = put (4 :: Word8) >> put src >> put dst
-  put (CopyBuffer wa src dst)   = put (5 :: Word8) >> put wa >> put src >> put dst
+  --put (SplatTriangle v1 v2 p1 p2 p3) 
+  --                              = put (1 :: Word8) >> put v1 >> put v2 >> put p1 >> put p2 >> put p3
+  --put (SplatPolygon v1 v2 ps)   = put (2 :: Word8) >> put v1 >> put v2 >> put ps
+  --put (SplatColor rgba v a ps)  = put (3 :: Word8) >> put rgba >> put v >> put a >> put ps
+  --put (SplatBuffer src dst)     = put (4 :: Word8) >> put src >> put dst
+  --put (CopyBuffer wa src dst)   = put (5 :: Word8) >> put wa >> put src >> put dst
   put (AllocateImage rgba v) 	= error "AllocateImage"
   put (SaveImage v nm)		= put (7 :: Word8) >> put v >> put nm
   put (Delete v)		= put (8 :: Word8) >> put v 
@@ -364,22 +329,22 @@ instance (Show var, Binary var) => Binary (Inst var) where
   put (Exit)			= put (10 :: Word8)
   put (AllocFragmentShader v txt args)
 				= put (11 :: Word8) >> put v >> put txt >> put args
-  put (SplatWithFunction v1 vs us v2 points)
-				= put (12 :: Word8) >> put v1 >> put vs >> put us >> put v2 >> put points
+  --put (SplatWithFunction v1 vs us v2 points)
+  --                              = put (12 :: Word8) >> put v1 >> put vs >> put us >> put v2 >> put points
   put other			= error $ show ("put",other)
 
   get = do tag <- getWord8
 	   case tag of
 		0 -> liftM4 Allocate get get get get
-		1 -> liftM5 SplatTriangle get get get get get
-		2 -> liftM3 SplatPolygon get get get
-		3 -> liftM4 SplatColor get get get get
-		4 -> liftM2 SplatBuffer get get
-		5 -> liftM3 CopyBuffer get get get
+		--1 -> liftM5 SplatTriangle get get get get get
+		--2 -> liftM3 SplatPolygon get get get
+		--3 -> liftM4 SplatColor get get get get
+		--4 -> liftM2 SplatBuffer get get
+		--5 -> liftM3 CopyBuffer get get get
 		6 -> error "AllocateImage"
 		7 -> liftM2 SaveImage get get
 		8 -> liftM  Delete get
 		9 -> liftM2 Nested get get
 		10 -> return $ Exit
 		11 -> liftM3 AllocFragmentShader get get get
-		12 -> liftM5 SplatWithFunction get get get get get
+		--12 -> liftM5 SplatWithFunction get get get get get
