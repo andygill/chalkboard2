@@ -42,7 +42,8 @@ Library
        Graphics.ChalkBoard.O,
        Graphics.ChalkBoard.Utils
        Graphics.ChalkBoard.Options,
-       Graphics.ChalkBoard.Shader
+       Graphics.ChalkBoard.Shader,
+       Graphics.ChalkBoard.Font
   Other-modules:
        Graphics.ChalkBoard.Internals,
        Graphics.ChalkBoard.O.Internals,
