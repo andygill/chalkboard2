@@ -1296,7 +1296,7 @@ splatWithFunction env fnId args  uargs bDest ptList = do
 
 
             	renderPrimitive Polygon $
-                	placeColorVerticies w h ptList 
+                	placeVerticies w h [ PointMap xy xy | xy <- ptList ]
 
 		currentProgram $= Nothing
 		glActiveTexture (gl_TEXTURE0 + 0)
