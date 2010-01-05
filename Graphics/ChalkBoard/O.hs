@@ -106,7 +106,7 @@ withAlpha n (O a e) = O (C.alpha a) (E RGBA_Ty $ Expr.Alpha n e)
 
 -- | Observable function to add a transparent alpha channel.
 transparent :: O (RGBA -> RGBA)
-transparent = O id (E RGBA_Ty $ Expr.Alpha 0 (E RGBA_Ty $ O_RGB (RGB 0 0 0)))
+transparent = O id (E RGBA_Ty $ Expr.Alpha 0 (E RGB_Ty $ O_RGB (RGB 0 0 0)))
 
 red    :: O RGB
 red    = o $ RGB 1.0 0.0 0.0
