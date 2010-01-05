@@ -548,6 +548,14 @@ compileFmapFun env (WithDefault e1 e2) RGB_Ty =
 compileFmapFun env (WithDefault e1 e2) UI_Ty =
 	"cb_WithDefaultUI(" ++ compileFmapFunE env e1 UI_Ty  ++ "," ++ compileFmapFunE env e2 (Maybe_Ty UI_Ty) ++ ")"
 compileFmapFun env (Lit v) UI_Ty = show v
+
+compileFmapFun env (NOT e) BOOL_Ty =
+		"!(" ++ compileFmapFunE env e BOOL_Ty ++ ")"
+compileFmapFun env (EQUAL e1 e2) BOOL_Ty = 
+		"(" ++ compileFmapFunE env e1 (error "XX") ++ 
+	   ") == (" ++ compileFmapFunE env e2 (error "XX") ++ 
+           ")"
+
 -- UnAlpha is the only way of getting to a RGBA->RGBA.
 {-
 
@@ -559,7 +567,8 @@ compileFmapFun env e@(O_Snd {}) ty = digForVa env e ty
 compileFmapFun env e ty = error $ show ("compileFmapFun",env,e,ty)
 
 
-compileFmapFunE env (E ty' e) ty = compileFmapFun env e ty
+-- Ha! Can use internal ty.
+compileFmapFunE env (E ty' e) ty = compileFmapFun env e ty'
 
 compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer) brd = do
 	insts1          <- compileBoard2 bc t brd
@@ -621,6 +630,7 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = do
 		assignFrag tarTy code ++
 		"}\n"
 
+--	putStrLn fn
 	newFrag <- newNumber
 	targetBuff <- newNumber
 	return ( insts ++

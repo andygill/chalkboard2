@@ -153,7 +153,7 @@ sndO (O ~(_,b) e) = O b (oSnd e)
 instance Boolean (O Bool) where
 	true = o True
 	false = o False
-	-- notB :: b -> b
+	notB (O a ea) = O (not a) $ E BOOL_Ty $ NOT ea
 	-- (&&*) :: b -> b -> b
 	-- (||*) :: b -> b -> b
 	
@@ -163,8 +163,8 @@ instance IfB (O Bool) (O a) where
 
 instance Eq a => EqB (O Bool) (O a) where
 	(==*) (O a ea) (O b eb) = O (a == b) $ E BOOL_Ty $ EQUAL ea eb
-	(/=*) = error "/=*" --  :: a -> a -> bool
-	
+
+		
 instance OrdB (O Bool) (O a) where
 	(<*) = error "" -- :: a -> a -> bool
 	(>=*) = error "" --(>=*) :: a -> a -> bool

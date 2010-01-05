@@ -48,6 +48,7 @@ data Expr s
 
 	-- boolean ops
 	| EQUAL s s			-- O a -> O a -> O Bool
+	| NOT s				-- O Bool -> O Bool
 	deriving Show
 
 data Path  = GoLeft | GoRight 
