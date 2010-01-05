@@ -102,6 +102,16 @@ Executable chalkboard-tests-video1
   Hs-Source-Dirs:       .,tests/video1
   Ghc-Options:          -O2
   Main-Is:              Main.hs
+  
+flag font1 { Default: False }
+Executable chalkboard-tests-font1
+  if flag(all) || flag(font1)
+    buildable:            True
+  else
+    Buildable:           False
+  Hs-Source-Dirs:       .,tests/font1
+  Ghc-Options:          -O2
+  Main-Is:              Main.hs
 
 
 flag gsi1 { Default: False }
