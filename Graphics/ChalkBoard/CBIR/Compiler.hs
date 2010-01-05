@@ -364,7 +364,7 @@ compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 				[ ("cb_sampler" ++ show n,bid) | ((bid,_),n) <- zip idMap [0..]]
 				[]
 				(bcDest bc) 
-				[PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+				[ (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
 		 , Delete newFrag	-- really should cache these
 		 ] ++
 		 [ Delete bId | bId <- List.nub (map fst idMap) ]
@@ -630,7 +630,7 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = do
 				[ ("cb_sampler0",bId)]
 				[]
 				targetBuff
-				[PointMap (x,y) (x,y) | (x,y) <- let (x0,x1,y0,y1) = (0,1,0,1) 
+				[ (x,y) | (x,y) <- let (x0,x1,y0,y1) = (0,1,0,1) 
 								 in [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
 
 		 , Delete newFrag	-- really should cache these
@@ -762,7 +762,7 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 				]
 				vargs
 				(bcDest bc) 
-				[PointMap (x,y) (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+				[(x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
 		   ]
 		++ delete_Boards
 

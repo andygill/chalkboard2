@@ -141,7 +141,7 @@ AG: other considerations include
        [(String,var)]		-- argument BufferId(s)
        [(String,UniformArgument)]		-- the extra uniform args
        var			-- target BufferId
-       [PointMap]		-- should be UIPoint???
+       [UIPoint]		-- should be UIPoint???
 {-
      | SplatWholeBoardColor
 	RGBA

@@ -436,12 +436,13 @@ drawInsts env (i:is) = do
     case i of
             (Allocate b size depth (BackgroundByteString arr)) -> allocateArrBuffer env b size depth arr
             (Allocate b size depth bgColor) -> allocateBuffer env b size depth bgColor
-            (AllocateImage b imagePath ) -> allocateImgBuffer env b imagePath
+            (AllocateImage b imagePath) -> allocateImgBuffer env b imagePath
+            (Splat target blender stype) -> splat env target blender stype
             (SplatTriangle bSource bDest ptMap1 ptMap2 ptMap3) -> splatPolygon env bSource bDest [ptMap1, ptMap2, ptMap3]
             (SplatPolygon bSource bDest ptMaps) -> splatPolygon env bSource bDest ptMaps
-            (SplatColor sColor bDest useBlend ptList) -> splatColor env sColor bDest useBlend ptList
+            (SplatColor sColor bDest useBlend ptList) -> splatColor env sColor bDest ptList
             (SplatBuffer bSource bDest) -> splatPolygon env bSource bDest [ PointMap p p | p <- [(0,0),(0,1),(1,1),(1,0)] ]
-	    (SplatWithFunction fnId bargs uargs bDest ptMaps) -> splatWithFunction env fnId bargs uargs bDest ptMaps
+	    (SplatWithFunction fnId bargs uargs bDest ptList) -> splatWithFunction env fnId bargs uargs bDest ptList
             (CopyBuffer alpha bSource bDest) -> copyBuffer env alpha bSource bDest
             (SaveImage b savePath) -> saveImage env b savePath
             (OpenStream streamID cmd) -> openStream env streamID cmd
@@ -454,6 +455,26 @@ drawInsts env (i:is) = do
     drawInsts env is
 
 
+
+
+
+
+splat :: CBenv -> BufferId -> Blender -> Splat BufferId -> IO ()
+splat env target blender stype = do
+        case blender of
+                CBIR.Blend -> blendFuncSeparate $= ((SrcAlpha, OneMinusSrcAlpha), (One, OneMinusSrcAlpha))
+                CBIR.Copy -> blendFuncSeparate $= ((One, Zero), (One, Zero))
+                CBIR.Sum -> blendFuncSeparate $= ((One, One), (One, One)) -- Adds the alphas at the moment
+                CBIR.Max -> blendEquation $= GLUT.Max
+        
+        case stype of
+                (SplatPolygon' src ptMaps) -> splatPolygon env src target ptMaps
+                (SplatColor' color ptList) -> splatColor env color target ptList
+                (SplatBuffer' src) -> splatPolygon env src target [ PointMap p p | p <- [(0,0),(0,1),(1,1),(1,0)] ]
+                (SplatFunction' fnId bargs uargs ptList) -> splatWithFunction env fnId bargs uargs target ptList
+
+        blendFuncSeparate $= ((SrcAlpha, OneMinusSrcAlpha), (One, OneMinusSrcAlpha))
+        blendEquation $= FuncAdd
 
 
 
@@ -819,8 +840,8 @@ fixTexLoopback texInfoS = do
 --   * (r,g,b,a) - The color to splat onto the destination board
 --   * bD - The destination buffer (board) object name
 --   * ps - A list of UIPoints, which specify the points of the colored polygon to draw onto the destination buffer
-splatColor :: CBenv -> RGBA -> BufferId -> Bool -> [UIPoint] -> IO ()
-splatColor env (T.RGBA r g b a) bD _useBlend ps = do
+splatColor :: CBenv -> RGBA -> BufferId -> [UIPoint] -> IO ()
+splatColor env (T.RGBA r g b a) bD ps = do
     fboSupp <- getFBOSupport env
     texMap <- getTexMap env
 
@@ -1182,7 +1203,7 @@ allocFragmentShader env f txt args = do
 	
         return ()
 
-splatWithFunction env fnId args  uargs bDest ptMaps = do
+splatWithFunction env fnId args  uargs bDest ptList = do
         texMap <- getTexMap env
 	mp <- get (fracFunctionInfo env)
 	case lookup fnId mp of
@@ -1275,7 +1296,7 @@ splatWithFunction env fnId args  uargs bDest ptMaps = do
 
 
             	renderPrimitive Polygon $
-                	placeVerticies w h ptMaps 
+                	placeColorVerticies w h ptList 
 
 		currentProgram $= Nothing
 		glActiveTexture (gl_TEXTURE0 + 0)
