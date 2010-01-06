@@ -75,37 +75,51 @@ instance Applicative O where {}
 
 main = do
      	font <- Font.initFont "../../Arial.ttf" 0
-	startChalkBoard [BoardSize 400 400] $ \ cb -> main2 font cb 0.04
+     	let (w,h) = (800,600)
+	startChalkBoard [BoardSize w h] $ \ cb -> main2 cb font 0.04 (w,h)
 
 
-main2 font cb sz = do
+main2 cb font sz (w,h) = do
 	sp <- Font.lineSpacing font sz
-	print sp
-	(title,sp2) <- Font.label font sz ("ChalkBoard") -- Logistics of Moving Satellites in Space")
-	print sp2
-
+	--print sp
+	(title,titleSP) <- Font.label font sz ("Logistics of Moving Satellites in Space")
+	--print titleSP
 	
-	
-
-	{-	
-	point1 <- Font.label font sz ([chr 0x25cf] ++ " KU supplied 4 ''binaries'', one for each problem.")
-        point2 <- Font.label font sz ([chr 0x25cf] ++ " We also provided specification of small virtual machine, to run these binaries.")
-        point3 <- Font.label font sz ([chr 0x25cf] ++ " Contestants write the VM, then interact with virtual actuators to fire rockets " ++
+		
+	(point1, sp1) <- Font.label font sz ([chr 0x25cf] ++ " KU supplied 4 ''binaries'', one for each problem.")
+        (point2, sp2) <- Font.label font sz ([chr 0x25cf] ++ " We also provided specification of small virtual machine, to run these binaries.")
+        (point3, sp3) <- Font.label font sz ([chr 0x25cf] ++ " Contestants write the VM, then interact with virtual actuators to fire rockets " ++
                                                                 "and virtual sensors to detect location in orbit.")
-        point4 <- Font.label font sz ([chr 0x25cf] ++ " Contestants upload an audit trail of what actuator fires when.")
-        point5 <- Font.label font sz ([chr 0x25cf] ++ " We replay these on our local VM, validate the score, and update a leader board.")
-        point6 <- Font.label font sz ([chr 0x25cf] ++ " At the end of the contest, teams upload their final source files.")
-        point7 <- Font.label font sz ([chr 0x25cf] ++ " We further evaluate/validate the top 10 scoring entries to determine the winners.")
-
-	-}
+        (point4, sp4) <- Font.label font sz ([chr 0x25cf] ++ " Contestants upload an audit trail of what actuator fires when.")
+        (point5, sp5) <- Font.label font sz ([chr 0x25cf] ++ " We replay these on our local VM, validate the score, and update a leader board.")
+        (point6, sp6) <- Font.label font sz ([chr 0x25cf] ++ " At the end of the contest, teams upload their final source files.")
+        (point7, sp7) <- Font.label font sz ([chr 0x25cf] ++ " We further evaluate/validate the top 10 scoring entries to determine the winners.")
+	--}
         
-	drawChalkBoard cb (mix black white <$> (scaleXY (1,1) $ 
-	                                        move (-0.45,0) $
-	                                        scale (0.9 * (1/sp2)) $
-	                                        title
+
+	drawChalkBoard cb (mix black white <$> (
+	                                        (move (-0.45,0.4) $ adjustTitle (w,h) titleSP title)
+	                                        `over`
+	                                        (move (-0.45,0.35) $ adjustPoint (w,h) sp1 point1)
 	                                       )
 	                  )
+
         return ()
+
+
+adjustTitle :: (Int,Int) -> Float -> Board UI -> Board UI
+adjustTitle (wboard,hboard) size lbl = if (wboard > hboard)
+                                           then scaleXY (xscale,1) $ scale (0.9 * (1/size)) $ lbl
+                                           else scaleXY (1,yscale) $ scale (0.9 * (1/size)) $ lbl
+                                       where xscale = (fromIntegral hboard) / (fromIntegral wboard)
+                                             yscale = (fromIntegral wboard) / (fromIntegral hboard)
+
+adjustPoint :: (Int,Int) -> Float -> Board UI -> Board UI
+adjustPoint (wboard,hboard) size lbl = if (wboard > hboard)
+                                           then scaleXY (xscale,1) $ scale (0.7 * (1/size)) $ lbl
+                                           else scaleXY (1,yscale) $ scale (0.7 * (1/size)) $ lbl
+                                       where xscale = (fromIntegral hboard) / (fromIntegral wboard)
+                                             yscale = (fromIntegral wboard) / (fromIntegral hboard)
 
 
 
