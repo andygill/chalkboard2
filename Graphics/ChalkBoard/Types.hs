@@ -39,6 +39,7 @@ module Graphics.ChalkBoard.Types
 
 import Data.Binary
 import Control.Monad
+import Data.Ratio
 
 -- | A real number.
 type R = Float
@@ -97,6 +98,8 @@ instance Scale R where
 instance (Scale a,Scale b) => Scale (a,b) where
   scale u (x,y) = (scale u x,scale u y)
 
+instance Scale Rational where
+  scale u r = toRational u * r
 
 ------------------------------------------------------------------------------
 
@@ -106,6 +109,9 @@ class Lerp a where
 
 instance Lerp R where
   lerp s v v' = v + (s * (v' - v))
+
+instance Lerp Rational where
+  lerp s v v' = v + (toRational s * (v' - v))
 
 -- | 'Lerp' over pairs
 

@@ -26,6 +26,7 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, withDefault
 	, Boolean(..)
 	, Maskable
+	, (.$)
 	) where
 	
 import Graphics.ChalkBoard.Types as Ty
@@ -46,6 +47,9 @@ class Obs a where
   	o :: a -> O a
 
 infixr 0 <$>
+infixr 0 .$
+
+(.$) a b = (<$>) a b
 
 class OFunctor f where
 	(<$>) :: (O a -> O b) -> f a -> f b
