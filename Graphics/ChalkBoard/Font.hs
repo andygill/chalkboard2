@@ -43,24 +43,24 @@ lineSpacing (Font font _) sz = do
 label :: Font -> Float -> String -> IO (Board UI, Float)
 label font sz str = do
 	
-	let brd0 :: Board (Maybe UI)
-	    brd0 = flip withMask false <$> boardOf 0.9
+	let brd0 :: Board (UI)
+	    brd0 = boardOf 0.0 --flip withMask false <$> boardOf 0.9
 
 	brds <- sequence [ do
 		(b,off) <- letter font sz ch
-		return (just <$> b,off)
+		return (b,off)
 		| ch <- str
 		]
 
 	let lens :: [Float]
 	    lens = 0 : Prelude.zipWith (+) (map snd brds) lens
-	let brd1 :: Board (Maybe UI)
+	let brd1 :: Board UI
 	    brd1 = foldr (\ (buff,off) brd -> buff `bufferOnBoard` (move (off,0) brd)) brd0 
 			(Prelude.zip (map fst brds) (map id (map snd brds)))
 
 	-- Use UI rather than Maybe UI later: it will be more efficient.
 	-- because we avoid the big <$> here, over the *whole* board.
-	return (withDefault 0.0 <$> brd1, sum (map snd brds))
+	return (brd1, sum (map snd brds))
 
 letter :: Font -> Float -> Char -> IO 
 	( Buffer UI		-- 
