@@ -36,7 +36,7 @@ import Debug.Trace
 -- We always compile  a RGB board.
 compile :: (Int,Int) -> BufferId -> Board RGB -> IO [CBIR.Inst Int]
 compile (x,y) bufferId brd = 
-	compileBoard2 (initBoardContext (x,y) bufferId) Target_RGB brd
+	compileBoard2 (initBoardContext (x,y) bufferId) Target_RGB brd 
 --	compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) brd
 
 -- Unless we are compiling a Buffer :-)
@@ -48,7 +48,6 @@ compileB (x,y) bufferId buff = do
 		(scaleXY (1/fromIntegral x,1/fromIntegral y) (Board RGB_Ty (BufferOnBoard buff (boardOf white))))
 
 
-
 mapPoint :: [Trans] -> (R,R) -> (R,R)
 mapPoint [] 			(x,y) = (x,y)
 mapPoint (Move (xd,yd) : r) 	(x,y) = mapPoint r (x + xd,y + yd)
@@ -57,12 +56,15 @@ mapPoint (Rotate theta : r) 	(x,y) = mapPoint r ( cos (-theta) * x - sin (-theta
 						   , sin (-theta) * x + cos (-theta) * y
 						   )
 
--- n+1 attempt
-initBoardContext (x,y) i = BoardContext [] (x,y) i
+-- Assumping that the init board is RGB.
+
+initBoardContext (x,y) i = BoardContext [] (x,y) i Copy
+
 data BoardContext = BoardContext 
 	{ bcTrans :: [Trans]		-- movement of board
 	, bcSize :: (Int,Int)		-- approx size of resolution required for final board
 	, bcDest :: BufferId		-- board to draw onto
+	, bcBlend :: Blender		-- how to draw onto the board
 	}
 	deriving Show
 	
@@ -148,14 +150,18 @@ data Target
 
 -- What 'over' do with the forground and background?
 
-targetOver :: Target -> (Target,Maybe Target)
-targetOver (Target_RGBA Copy)	= ( Target_RGBA Blend	, Just $ Target_RGBA Copy)
-targetOver (Target_RGBA Blend)	= ( Target_RGBA Blend	, Just $ Target_RGBA Blend)
-targetOver Target_RGB  		= ( Target_RGB		, Nothing)
-targetOver (Target_Bool c) 	= ( Target_Bool c	, Just $ Target_Bool c )
-targetOver (Target_Maybe_RGB)	= ( Target_Maybe_RGB	, Just $ Target_Maybe_RGB )
-targetOver (Target_UI)		= ( Target_UI		, Just $ Target_UI )
-targetOver (Target_Maybe_UI)	= ( Target_Maybe_UI	, Just $ Target_Maybe_UI )
+targetOverBlend :: Target -> Blender -> ( Blender, Maybe Blender )
+targetOverBlend (Target_UI)  Copy     = ( Max, Just $ Copy )
+targetOverBlend (Target_UI)  Max      = ( Max, Just $ Max ) 
+targetOverBlend (Target_RGBA _) Copy    = ( Blend, Just $ Copy ) 
+targetOverBlend (Target_RGBA _) Blend   = ( Blend, Just $ Blend ) 
+targetOverBlend (Target_Bool c) Blend = ( Blend, Just $ Blend )
+targetOverBlend (Target_Bool c) Copy  = ( Blend, Just $ Copy )
+targetOverBlend (Target_Maybe_RGB) Blend = ( Blend, Just $ Blend )
+targetOverBlend (Target_Maybe_RGB) Copy  = ( Blend, Just $ Copy )
+targetOverBlend (Target_Maybe_UI) Blend  = ( Blend, Just $ Blend )
+targetOverBlend (Target_Maybe_UI) Copy   = ( Blend, Just $ Copy )
+targetOverBlend other b = error $ show ("targetOverBlend",other,b)
 
 targetRep :: Target -> Depth
 targetRep (Target_RGBA {})		= RGBADepth
@@ -197,7 +203,7 @@ targetFromType other			= error $ show ("targetFromType",other)
 
 compileBoard2 
 	:: BoardContext
-	-> Target
+	-> Target			-- merge with board context
 	-> Board a
 	-> IO [CBIR.Inst Int]
 
@@ -207,7 +213,7 @@ compileBoard2 bc t (Board ty (Fmap g (Board _ (Fmap h brd))))
 							= compileBoard2 bc t (Board ty (Fmap (g . h) brd))
 compileBoard2 bc t (Board ty (Fmap g (Board ty' (Trans mv brd)))) 	
 							= compileBoard2 bc t (Board ty (Trans mv (Board ty (Fmap g brd))))
-compileBoard2 bc t (Board ty (Over fn above below)) 	= compileBoardOver bc t above below (targetOver t)
+compileBoard2 bc t (Board ty (Over fn above below)) 	= compileBoardOver bc t above below (targetOverBlend t (bcBlend bc))
 compileBoard2 bc t (Board ty (Polygon nodes)) 		= compileBoardPolygon bc t nodes
 compileBoard2 bc t (Board ty (PrimConst o)) 		= 
 --	trace (show ("const",runO0 o)) $ 
@@ -257,11 +263,11 @@ compileBoard2 bc t@(Target_RGB) (Board ty (BoardUnAlpha back fn)) = do
 compileBoard2 bc t other          		= error $ show ("compileBoard2",bc,t,other)
 
 -- Drawing something *over* something.
-compileBoardOver bc t above below (t1,Nothing) = compileBoard2 bc t above
-compileBoardOver bc t above below (t1,Just t2) = do
+compileBoardOver bc t above below (b1,Nothing) = compileBoard2 (bc { bcBlend = b1})  t above
+compileBoardOver bc t above below (b1,Just b2) = do
 	-- not quite right; assumes that the backing board is white.
-	before <- compileBoard2 bc t2 below
-	after  <- compileBoard2 bc t1 above
+	before <- compileBoard2 (bc { bcBlend = b2}) t below
+	after  <- compileBoard2 (bc { bcBlend = b1}) t above
 	return   [ Nested ("over: " ++ show t)
 		   ( before ++
 		     [Nested "`over`" []] ++
@@ -300,7 +306,7 @@ compileBoardConst bc t@(Target_RGB) (Just (E _ (O_RGB (RGB r g b))))
 compileBoardConst bc t@(Target_UI) (Just (E _ (Lit r)))
 		= return [
 		 	(Splat (bcDest bc)
-		 	       Copy 
+		 	       (bcBlend bc) 
 		 	       (SplatColor' (RGBA r 0 0 1) [(0,0),(1,0),(1,1),(0,1)])
 		 	)
 			]
