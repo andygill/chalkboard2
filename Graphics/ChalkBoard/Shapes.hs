@@ -98,7 +98,7 @@ functionLine line width steps = pointsToLine samples width
 --arrowhead p rad sz = move p $ rotate rad $ scale sz $ (\ (x,y) -> y >= 0 && y <= 1 && abs x * 2 <= 1 - y) <$> coord		
 
 class LerpBoard a where
- lerpBoard ::Board a -> Board a -> Board UI -> Board a
+ lerpBoard :: Board a -> Board a -> Board UI -> Board a
 
 instance LerpBoard RGB where
   lerpBoard b1 b2 bU = 
@@ -122,6 +122,10 @@ instance LerpBoard RGB where
         " gl_FragColor.a = 1.0;",
 	"}" ]
 	
+
+instance (LerpBoard a) => Lerp (Board a) where
+   lerp ui b1 b2  = lerpBoard b1 b2 (boardOf (o ui))
+
 class ChooseBoard a where
  chooseBoard :: Board a -> Board a -> Board Bool -> Board a
 
