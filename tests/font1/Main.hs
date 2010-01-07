@@ -96,30 +96,41 @@ main2 cb font sz (w,h) = do
         (point7, sp7) <- Font.label font sz ([chr 0x25cf] ++ " We further evaluate/validate the top 10 scoring entries to determine the winners.")
 	--}
         
-
+        let over2 a b = over b a
+        
 	drawChalkBoard cb (mix black white <$> (
-	                                        (move (-0.45,0.4) $ adjustTitle (w,h) titleSP title)
+	                                        (move (0,0.4) $ center (w,h) titleSP $ adjustTitle (w,h) titleSP title)
 	                                        `over`
-	                                        (move (-0.45,0.35) $ adjustPoint (w,h) sp1 point1)
+	                                        (move (-0.45,0.0) $ adjustPoint (w,h) sp1 point1)
 	                                       )
 	                  )
 
         return ()
+        
+
+center :: (Int,Int) -> Float -> Board UI -> Board UI
+center (wboard,hboard) size lbl = move (x,0) $ lbl
+                                  where
+                                        x = if (wboard > hboard)
+                                                then -0.5 -- + (((fromIntegral wboard) - (fromIntegral hboard)::R) / (2.0 * (fromIntegral wboard)))
+                                                else -0.5
 
 
 adjustTitle :: (Int,Int) -> Float -> Board UI -> Board UI
 adjustTitle (wboard,hboard) size lbl = if (wboard > hboard)
                                            then scaleXY (xscale,1) $ scale (0.9 * (1/size)) $ lbl
                                            else scaleXY (1,yscale) $ scale (0.9 * (1/size)) $ lbl
-                                       where xscale = (fromIntegral hboard) / (fromIntegral wboard)
-                                             yscale = (fromIntegral wboard) / (fromIntegral hboard)
+                                       where 
+                                           xscale = (fromIntegral hboard) / (fromIntegral wboard)
+                                           yscale = (fromIntegral wboard) / (fromIntegral hboard)
 
 adjustPoint :: (Int,Int) -> Float -> Board UI -> Board UI
 adjustPoint (wboard,hboard) size lbl = if (wboard > hboard)
                                            then scaleXY (xscale,1) $ scale (0.7 * (1/size)) $ lbl
                                            else scaleXY (1,yscale) $ scale (0.7 * (1/size)) $ lbl
-                                       where xscale = (fromIntegral hboard) / (fromIntegral wboard)
-                                             yscale = (fromIntegral wboard) / (fromIntegral hboard)
+                                       where 
+                                           xscale = (fromIntegral hboard) / (fromIntegral wboard)
+                                           yscale = (fromIntegral wboard) / (fromIntegral hboard)
 
 
 
