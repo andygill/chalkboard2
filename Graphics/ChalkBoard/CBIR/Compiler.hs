@@ -154,7 +154,7 @@ targetOver (Target_RGBA Blend)	= ( Target_RGBA Blend	, Just $ Target_RGBA Blend)
 targetOver Target_RGB  		= ( Target_RGB		, Nothing)
 targetOver (Target_Bool c) 	= ( Target_Bool c	, Just $ Target_Bool c )
 targetOver (Target_Maybe_RGB)	= ( Target_Maybe_RGB	, Just $ Target_Maybe_RGB )
-targetOver (Target_UI)		= ( Target_UI		, Nothing )
+targetOver (Target_UI)		= ( Target_UI		, Just $ Target_UI )
 targetOver (Target_Maybe_UI)	= ( Target_Maybe_UI	, Just $ Target_Maybe_UI )
 
 targetRep :: Target -> Depth
@@ -175,6 +175,16 @@ targetType (Target_Maybe_UI)		= Maybe_Ty UI_Ty
 targetType (Target_UI)			= UI_Ty
 targetType other			= error $ show ("targetType",other)
 
+
+targetToBlender :: Target -> Blender
+targetToBlender Target_UI 		= Max
+targetToBlender (Target_RGBA b) 	= b
+targetToBlender (Target_RGB)    	= Copy
+targetToBlender (Target_Maybe_UI) 	= Blend
+targetToBlender (Target_Maybe_RGB) 	= Blend
+targetToBlender (Target_Bool c) 	= Copy		-- ??? or Blend???
+
+targetToBlender other 	  = error $ show ("targetToBlender",other)
 
 -- not used yet!
 targetFromType :: ExprType -> Target
@@ -326,6 +336,7 @@ assignFrag (Maybe_Ty RGB_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"
 assignFrag (Maybe_Ty UI_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"
 assignFrag RGB_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
 assignFrag BOOL_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
+assignFrag UI_Ty expr = "  gl_FragColor.r = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
 assignFrag other expr = error $ show ("assignFrag",other,expr)
 --
 -- Fmap works by basically handling conversions between all the supported types
@@ -362,7 +373,8 @@ compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 	return $ insts ++
 		 [ AllocFragmentShader newFrag fn []
 		 , Splat (bcDest bc)
-		         Blend
+		         (case t of
+			    _ -> targetToBlender t)
 		         (SplatFunction' newFrag 
 				[ ("cb_sampler" ++ show n,bid) | ((bid,_),n) <- zip idMap [0..]]
 				[]
@@ -587,7 +599,7 @@ compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer) brd = do
 		[ Nested "buffer inside board (...)" $
 			insts1 ++ insts2 ++ 
 			[ Splat (bcDest bc)
-			        Blend
+			        (targetToBlender t)
 			        (SplatPolygon' buffId -- need a version that does no merging, but just copies
 		    		        [ PointMap (x,y) (mapPoint tr (x,y))
 		    		        | (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
@@ -640,7 +652,7 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = do
 		 [ allocateBuffer (1+x1-x0,1+y1-y0) targetBuff t
 		 , AllocFragmentShader newFrag fn []
 		 , Splat targetBuff
-		         Blend
+	         	(targetToBlender t)
 		         (SplatFunction' newFrag 
 				[ ("cb_sampler0",bId)]
 				[]
@@ -770,7 +782,7 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 		++ concat fill_Boards_Bool
 		++ concat fill_Boards_UI
 		++ [ Splat (bcDest bc)
-		           Blend
+		         (targetToBlender Target_RGB)
 		           (SplatFunction' newFrag 
 				[ (nm,brdId) 
 				| (nm,brdId) <- zip (map Prelude.fst boards_RGB ++ map Prelude.fst boards_Bool  ++ map Prelude.fst boards_UI)
