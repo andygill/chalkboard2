@@ -76,13 +76,6 @@ instance Applicative Active where
 		start = min start0 start1
 		stop  = max stop0 stop1
 
-{-
-after :: Active a -> Active b -> Active b
-after (Pure a) 
-after (Active start0 stop0 _) (Active start1 stop1 b) =
-	Active (
--}
-
 data Era = Before | During | After
 	deriving Show
 
@@ -94,10 +87,10 @@ sleep t = fmap (\ i -> if i <= 0 then Before
 both :: Active a -> Active b -> Active (a,b)
 both a b = pure (,) <*> a <*> b
 
-
 instance Over a => Over (Active a) where
   over a1 a2 = fmap (\ (a,b) -> a `over` b) (both a1 a2)
 
+infixr 5 `lay`
 -- Note the different order; the second thing goes on top
 lay :: Over a => Active a -> Active a -> Active a
 lay a b = (b `after` a) `over` a
@@ -135,8 +128,36 @@ streach act@(Active low' high' f) aux@(Active low high _) =
 rev :: Active a -> Active a
 rev (Active low high f) = Active low high $ \ tm -> f $ (high - tm) + low
 
+infixr 5 `page`
+page :: Active a -> Active a -> Active a
+page (Active low high f) (Active low' high' f') =
+	Active low (high' + delta) $ \ tm ->
+		if tm <= high
+		then f tm
+		else f' (tm - delta)
+  where
+     delta = high - low'
+ 
+instance Show a => Show (Active a) where
+	show (Pure a) = "pure (" ++ show a ++ ")"
+	show (Active low high _) = "active (" ++ show low ++ ") (" ++ show high ++ ")"
+
+turnPages :: Active (a -> a -> a) -> [Active a] -> Active a
+turnPages turn (x:y:xs) = x `page` (turn <*> pure (snap 1 x) <*> pure (snap 0 y)) `page` turnPages turn (y:xs)
+turnPages _ [x] = x
+
+-- Freeze an active value in time.
+snap :: UI -> Active a -> a
+snap ui (Pure a) 	      = a
+snap ui a@(Active low high f) = f (toTime a (toRational ui))
+
+transition :: Active (a -> a -> a) -> Active a -> Active a -> Active a
+transition merge s1 s2 = merge <*> pure (snap 1 s1) <*> pure (snap 0 s2)
 
 --------------------------------------------------
+
+lerpAct :: (Lerp a) => Active (a -> a -> a)
+lerpAct = Active 0 1 (\ tm -> lerp (fromRational tm))
 
 fadein :: UI -> Active UI
 fadein k = fmap (\ ui -> if ui < k then lerp (ui / k) 0 1 else 1) balloon
