@@ -44,6 +44,8 @@ Library
        Graphics.ChalkBoard.Options,
        Graphics.ChalkBoard.Shader,
        Graphics.ChalkBoard.Font
+       Graphics.ChalkBoard.Video
+       Graphics.ChalkBoard.Active
   Other-modules:
        Graphics.ChalkBoard.Internals,
        Graphics.ChalkBoard.O.Internals,
@@ -54,7 +56,6 @@ Library
        Graphics.ChalkBoard.Expr
        Graphics.ChalkBoard.OpenGL.CBBE
        Graphics.ChalkBoard.OpenGL.Env
-       Graphics.ChalkBoard.Video
 
 -- We choose to build this with O2, because this is about acceleration
   Ghc-Options:  -O2
@@ -121,6 +122,16 @@ Executable chalkboard-tests-gsi1
   else
     Buildable:           False
   Hs-Source-Dirs:       .,tests/gsi1
+  Ghc-Options:          -O2
+  Main-Is:              Main.hs
+
+flag anim1 { Default: False }
+Executable chalkboard-tests-anim1
+  if flag(all) || flag(anim1)
+    buildable:            True
+  else
+    Buildable:           False
+  Hs-Source-Dirs:       .,tests/anim1
   Ghc-Options:          -O2
   Main-Is:              Main.hs
 

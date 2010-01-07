@@ -19,6 +19,9 @@ module Graphics.ChalkBoard
 	, module Graphics.ChalkBoard.Main
 	, module Graphics.ChalkBoard.Utils
 	, module Graphics.ChalkBoard.Options
+	, module Graphics.ChalkBoard.Font
+	, module Graphics.ChalkBoard.Video
+	, module Graphics.ChalkBoard.Active
 	) where
 
 import Graphics.ChalkBoard.Board
@@ -29,3 +32,6 @@ import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.Main
 import Graphics.ChalkBoard.Utils
 import Graphics.ChalkBoard.Options
+import Graphics.ChalkBoard.Video
+import Graphics.ChalkBoard.Font
+import Graphics.ChalkBoard.Active

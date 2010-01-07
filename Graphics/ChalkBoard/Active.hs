@@ -3,9 +3,7 @@ module Graphics.ChalkBoard.Active where
 import Control.Applicative
 import Graphics.ChalkBoard.Types 
 import Graphics.ChalkBoard.Utils
-import Graphics.ChalkBoard hiding (zip)
 import Data.Ratio
-import Prelude hiding (zip)
 
 data Active a 
 	= Active Rational		-- start
@@ -25,6 +23,9 @@ balloon = Active 0 1 f		-- TODO: check that this nevee
 actLerp :: (Lerp a) => Active UI -> a -> a -> Active a
 actLerp (Active start stop f) a0 a1 = Active start stop (\ i -> lerp (f i) a0 a1)
 actLerp (Pure i) a0 a1              = Pure $ lerp i a0 a1
+
+travel :: (Lerp a) => a -> a -> Active a
+travel = actLerp balloon
 
 -- Todo: fix this so as it is exact, and does not use toRational
 -- Takes number of 'frames' per second.
@@ -75,38 +76,6 @@ instance Applicative Active where
 		start = min start0 start1
 		stop  = max stop0 stop1
 
-example2 :: Active (Board RGB)
-example2 = fmap (scale 0.2)
-	 $ fmap (choose red white .$)
-	 $ flicker [ e1 , e2 , e3 , e4 ]
- where
-	e1 = example1 (-1,1) (1,1) 0.1
-	e2 = example1 (1,1) (1,-1) 0.1
-	e3 = example1 (1,-1) (-1,-1) 0.1
-	e4 = example1 (-1,-1) (-1,1) 0.1
-	
-example3 :: Active (Board RGB)
-example3 = rot <*> example2
-  where
-	rot = fmap (\ ui -> rotate (pi * ui)) balloon `streach` example2
-	
-example1 :: Point -> Point -> R -> Active (Board Bool)
-example1 s e th = id
- 	$ fmap (\ (a,b) -> straightLine (s,(a,b)) th) 
-	$ scale 5
-	$ actLerp balloon s e
-
-main = startChalkBoard [] $ \ cb -> do
-	let loop (brd:rest) = do
-		drawChalkBoard cb brd
-		loop rest
-	    loop [] = return ()
-
-	startMyWriteStream cb "ffmpeg -f image2pipe -vcodec ppm -i - -vcodec libx264 -b 500k -vpre hq -vpre main square.mp4" 
-	loop (simulate 30 example3)
-	endWriteStream cb
-	exitChalkBoard cb
-
 {-
 after :: Active a -> Active b -> Active b
 after (Pure a) 
@@ -122,13 +91,12 @@ sleep t = fmap (\ i -> if i <= 0 then Before
 	 	  else if i >= 1 then After
 		  else During) (scale t balloon)
 	
-zip :: Active a -> Active b -> Active (a,b)
-zip a b = pure (,) <*> a <*> b
+both :: Active a -> Active b -> Active (a,b)
+both a b = pure (,) <*> a <*> b
 
-gzip = Graphics.ChalkBoard.Active.zip
 
 instance Over a => Over (Active a) where
-  over a1 a2 = fmap (\ (a,b) -> a `over` b) (zip a1 a2)
+  over a1 a2 = fmap (\ (a,b) -> a `over` b) (both a1 a2)
 
 -- Note the different order; the second thing goes on top
 lay :: Over a => Active a -> Active a -> Active a
@@ -136,6 +104,12 @@ lay a b = (b `after` a) `over` a
 
 flicker :: Over a => [Active a] -> Active a
 flicker = foldr1 lay
+
+-------------------------------------------------
+
+--page :: Active a -> Active a -> Active a
+
+
 
 -------------------------------------------------
 -- Time changers --------
@@ -148,6 +122,10 @@ after act@(Active low' _ _) (Active _ high _)  = actMove (fromRational (high - l
 before :: Active a -> Active b -> Active a
 before act@(Active _ high' _) (Active low _ _)  = actMove (fromRational (low - high')) act
 
+-- add duration.
+duration :: Active a -> Active b -> Active ()
+duration a b = (const ()) `fmap` (a `both` b)
+
 -- Make the duration of the first argument
 -- the same as the duration of the second argument.
 streach :: Active a -> Active b -> Active a
@@ -157,10 +135,10 @@ streach act@(Active low' high' f) aux@(Active low high _) =
 rev :: Active a -> Active a
 rev (Active low high f) = Active low high $ \ tm -> f $ (high - tm) + low
 
+
 --------------------------------------------------
 
 fadein :: UI -> Active UI
 fadein k = fmap (\ ui -> if ui < k then lerp (ui / k) 0 1 else 1) balloon
-
 
 

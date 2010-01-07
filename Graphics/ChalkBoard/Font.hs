@@ -2,6 +2,7 @@ module Graphics.ChalkBoard.Font
 	( Graphics.ChalkBoard.Font.initFont
 	, Font
 	, letter
+	, lineSpacing
 	, label
 	) where
 
@@ -12,7 +13,13 @@ import Data.Ix
 import Data.Array.Unboxed
 import Graphics.Rendering.TrueType.STB hiding (Font)
 import qualified Graphics.Rendering.TrueType.STB as STB
-import Graphics.ChalkBoard
+--import Graphics.ChalkBoard
+import Graphics.ChalkBoard.Utils
+import Graphics.ChalkBoard.Types
+import Graphics.ChalkBoard.Board
+import Graphics.ChalkBoard.Buffer
+import Graphics.ChalkBoard.O
+
 import qualified Data.ByteString as BS
 
 data Font = Font
@@ -26,7 +33,14 @@ initFont fontFile ix = do
     font <- STB.initFont tt (en !! ix)
     return $ Font font ()
 
-label :: Font -> Float -> String -> IO (Board UI)
+
+lineSpacing :: Font -> Float -> IO Float
+lineSpacing (Font font _) sz = do
+	met <- getFontVerticalMetrics font
+	return $ sz * (fromIntegral (ascent met - descent met + lineGap met))
+	
+
+label :: Font -> Float -> String -> IO (Board UI, Float)
 label font sz str = do
 	
 	let brd0 :: Board (Maybe UI)
@@ -44,7 +58,9 @@ label font sz str = do
 	    brd1 = foldr (\ (buff,off) brd -> buff `bufferOnBoard` (move (off,0) brd)) brd0 
 			(Prelude.zip (map fst brds) (map id (map snd brds)))
 
-	return $ withDefault 0.0 <$> brd1
+	-- Use UI rather than Maybe UI later: it will be more efficient.
+	-- because we avoid the big <$> here, over the *whole* board.
+	return (withDefault 0.0 <$> brd1, sum (map snd brds))
 
 letter :: Font -> Float -> Char -> IO 
 	( Buffer UI		-- 
@@ -62,6 +78,7 @@ letter (Font font ()) sz ch = do
     let pot = pot' 1
 
     let ((x0,y0),(x1,y1)) = bounds bma_K
+--    print (x1,y1)
 
     let x1' = pot x1 - 1
     let y1' = pot y1 - 1

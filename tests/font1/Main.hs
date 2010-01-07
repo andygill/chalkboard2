@@ -75,12 +75,19 @@ instance Applicative O where {}
 
 main = do
      	font <- Font.initFont "../../Arial.ttf" 0
-	startChalkBoard [BoardSize 800 800] $ \ cb -> main2 font cb 0.1
+	startChalkBoard [BoardSize 400 400] $ \ cb -> main2 font cb 0.04
 
 
 main2 font cb sz = do
-	title <- Font.label font sz ("Logistics of Moving Satellites in Space")
-	{-
+	sp <- Font.lineSpacing font sz
+	print sp
+	(title,sp2) <- Font.label font sz ("ChalkBoard") -- Logistics of Moving Satellites in Space")
+	print sp2
+
+	
+	
+
+	{-	
 	point1 <- Font.label font sz ([chr 0x25cf] ++ " KU supplied 4 ''binaries'', one for each problem.")
         point2 <- Font.label font sz ([chr 0x25cf] ++ " We also provided specification of small virtual machine, to run these binaries.")
         point3 <- Font.label font sz ([chr 0x25cf] ++ " Contestants write the VM, then interact with virtual actuators to fire rockets " ++
@@ -89,14 +96,15 @@ main2 font cb sz = do
         point5 <- Font.label font sz ([chr 0x25cf] ++ " We replay these on our local VM, validate the score, and update a leader board.")
         point6 <- Font.label font sz ([chr 0x25cf] ++ " At the end of the contest, teams upload their final source files.")
         point7 <- Font.label font sz ([chr 0x25cf] ++ " We further evaluate/validate the top 10 scoring entries to determine the winners.")
+
+	-}
         
 	drawChalkBoard cb (mix black white <$> (scaleXY (1,1) $ 
-	                                        move (0,0) $
-	                                        scale (1/(20000 * sz)) $
+	                                        move (-0.45,0) $
+	                                        scale (0.9 * (1/sp2)) $
 	                                        title
 	                                       )
 	                  )
-	-}
         return ()
 
 
