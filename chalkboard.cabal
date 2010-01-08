@@ -135,6 +135,16 @@ Executable chalkboard-tests-anim1
   Ghc-Options:          -O2
   Main-Is:              Main.hs
 
+flag anim2 { Default: False }
+Executable chalkboard-tests-anim2
+  if flag(all) || flag(anim2)
+    buildable:            True
+  else
+    Buildable:           False
+  Hs-Source-Dirs:       .,tests/anim2
+  Ghc-Options:          -O2
+  Main-Is:              Main.hs
+
 
 flag cbbe1 { Default: False }
 Executable chalkboard-tests-cbbe1
