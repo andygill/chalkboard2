@@ -67,7 +67,10 @@ letter :: Font -> Float -> Char -> IO
 	, Float			-- how far to push rest of word to right
 	)
 letter (Font font ()) sz ch = do
-    Just glyph_K <- findGlyph font ch
+    glyph_K <- do opt <- findGlyph font ch
+                  case opt of
+                        Just v -> return v
+                        Nothing -> error $ "Cannot find: " ++ show ch
     bb_K <- getGlyphBoundingBox font glyph_K
     (bm_K,bo_K) <- newGlyphBitmap font glyph_K (sz,sz)
     m_K <- getGlyphHorizontalMetrics font glyph_K
