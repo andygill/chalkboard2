@@ -153,6 +153,7 @@ data Target
 targetOverBlend :: Target -> Blender -> ( Blender, Maybe Blender )
 targetOverBlend (Target_UI)  Copy     = ( Max, Just $ Copy )
 targetOverBlend (Target_UI)  Max      = ( Max, Just $ Max ) 
+targetOverBlend (Target_RGB) Copy       = ( Copy, Nothing )
 targetOverBlend (Target_RGBA _) Copy    = ( Blend, Just $ Copy ) 
 targetOverBlend (Target_RGBA _) Blend   = ( Blend, Just $ Blend ) 
 targetOverBlend (Target_Bool c) Blend = ( Blend, Just $ Blend )
