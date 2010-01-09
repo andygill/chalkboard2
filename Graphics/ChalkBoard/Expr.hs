@@ -145,6 +145,10 @@ evalExprE (Choose a b c) =
 evalExprE (Alpha n e) =
 	case liftM unE $ evalE e of
 	  Just (O_RGB (RGB r g b)) -> return (O_RGBA (RGBA r g b n))
+evalExprE (O_Just e) =
+	case evalE e of
+	   Just e' -> return (O_Just e')
+	   Nothing -> fail "opps"
 evalExprE other = Nothing
 
 evalE :: E -> Maybe E

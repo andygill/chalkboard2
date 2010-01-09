@@ -152,6 +152,7 @@ data Target
 targetOverBlend :: Target -> Blender -> ( Blender, Maybe Blender )
 targetOverBlend (Target_UI)  Copy     = ( Max, Just $ Copy )
 targetOverBlend (Target_UI)  Max      = ( Max, Just $ Max ) 
+targetOverBlend (Target_UI)  Blend    = ( Max, Just $ Max ) 	-- Err, should never happen
 targetOverBlend (Target_RGB) Copy       = ( Copy, Nothing )
 targetOverBlend (Target_RGBA _) Copy    = ( Blend, Just $ Copy ) 
 targetOverBlend (Target_RGBA _) Blend   = ( Blend, Just $ Blend ) 
@@ -215,7 +216,7 @@ compileBoard2 bc t (Board ty (Fmap g (Board ty' (Trans mv brd))))
 							= compileBoard2 bc t (Board ty (Trans mv (Board ty (Fmap g brd))))
 compileBoard2 bc t (Board ty (Over fn above below)) 	= compileBoardOver bc t above below (targetOverBlend t (bcBlend bc))
 compileBoard2 bc t (Board ty (Polygon nodes)) 		= compileBoardPolygon bc t nodes
-compileBoard2 bc t (Board ty (PrimConst o)) 		= 
+compileBoard2 bc t (Board ty (PrimConst o)) 		= do
 --	trace (show ("const",runO0 o)) $ 
 	compileBoardConst bc t (evalE $ runO0 o)
 compileBoard2 bc t (Board ty (Fmap f other))
@@ -333,6 +334,17 @@ compileBoardConst bc t@(Target_RGBA Blend) (Just (E _ (O_RGBA rgba)))
 			          (SplatColor' rgba [(0,0),(1,0),(1,1),(0,1)])
 			  ]
 			]
+
+compileBoardConst bc t@(Target_Maybe_RGB) (Just (E  (Maybe_Ty RGB_Ty) (O_Just (E RGB_Ty (O_RGB (RGB r g b))))))
+		= do
+		newBoard <- newNumber
+		return [ Nested ("Const (Just a :: Maybe RGB)") $
+			  [ Splat (bcDest bc)
+			          Copy
+			          (SplatColor' (RGBA r g b 1) [(0,0),(1,0),(1,1),(0,1)])
+			  ]
+			]
+
 compileBoardConst bc t constant = error $ show ("compileBoardConst",bc,t,constant)
 
 
