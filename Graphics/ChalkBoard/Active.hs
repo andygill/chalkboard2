@@ -4,6 +4,8 @@ import Control.Applicative
 import Graphics.ChalkBoard.Types 
 import Graphics.ChalkBoard.Utils
 import Data.Ratio
+import Data.Time.Clock
+import Control.Concurrent.MVar
 
 data Active a 
 	= Active Rational		-- start
@@ -14,8 +16,8 @@ data Active a
 
 
 -- alts: duration, event, lifetime, time, clock
-balloon :: Active UI
-balloon = Active 0 1 f		-- TODO: check that this nevee
+age :: Active UI
+age = Active 0 1 f		-- TODO: check that this nevee
   where f n | n < 0     = error $ "ballon value negative" ++ show n
  	    | n > 1     = error $ "ballon value above unit (1)" ++ show n
 	    | otherwise = fromRational n
@@ -25,7 +27,7 @@ actLerp (Active start stop f) a0 a1 = Active start stop (\ i -> lerp (f i) a0 a1
 actLerp (Pure i) a0 a1              = Pure $ lerp i a0 a1
 
 travel :: (Lerp a) => a -> a -> Active a
-travel = actLerp balloon
+travel = actLerp age
 
 -- Todo: fix this so as it is exact, and does not use toRational
 -- Takes number of 'frames' per second.
@@ -82,7 +84,7 @@ data Era = Before | During | After
 sleep :: Float -> Active Era
 sleep t = fmap (\ i -> if i <= 0 then Before
 	 	  else if i >= 1 then After
-		  else During) (scale t balloon)
+		  else During) (scale t age)
 	
 both :: Active a -> Active b -> Active (a,b)
 both a b = pure (,) <*> a <*> b
@@ -124,9 +126,11 @@ duration a b = (const ()) `fmap` (a `both` b)
 streach :: Active a -> Active b -> Active a
 streach act@(Active low' high' f) aux@(Active low high _) =
 	Active low high $ \ tm -> f (toTime act (fromTime aux tm))
+streach act@(Pure a) aux@(Active low high _) =
+	Active low high $ \ tm -> a
 
-rev :: Active a -> Active a
-rev (Active low high f) = Active low high $ \ tm -> f $ (high - tm) + low
+reverse :: Active a -> Active a
+reverse (Active low high f) = Active low high $ \ tm -> f $ (high - tm) + low
 
 infixr 5 `page`
 page :: Active a -> Active a -> Active a
@@ -143,23 +147,84 @@ instance Show a => Show (Active a) where
 	show (Active low high _) = "active (" ++ show low ++ ") (" ++ show high ++ ")"
 
 turnPages :: Active (a -> a -> a) -> [Active a] -> Active a
-turnPages turn (x:y:xs) = x `page` (turn <*> pure (snap 1 x) <*> pure (snap 0 y)) `page` turnPages turn (y:xs)
+turnPages turn (x:y:xs) = x `page` (turn <*> (snap 1 x) <*>  (snap 0 y)) `page` turnPages turn (y:xs)
 turnPages _ [x] = x
 
 -- Freeze an active value in time.
-snap :: UI -> Active a -> a
-snap ui (Pure a) 	      = a
-snap ui a@(Active low high f) = f (toTime a (toRational ui))
+snap :: UI -> Active a -> Active a
+snap ui (Pure a) 	      = Pure a
+snap ui a@(Active low high f) = Pure $ f (toTime a (toRational ui))
 
 transition :: Active (a -> a -> a) -> Active a -> Active a -> Active a
-transition merge s1 s2 = merge <*> pure (snap 1 s1) <*> pure (snap 0 s2)
+transition merge s1 s2 = merge <*> (snap 1 s1) <*> (snap 0 s2)
 
 --------------------------------------------------
 
 lerpAct :: (Lerp a) => Active (a -> a -> a)
 lerpAct = Active 0 1 (\ tm -> lerp (fromRational tm))
 
+
+-- 0..1 in the first k fraction, then 1 from then onwards.
 fadein :: UI -> Active UI
-fadein k = fmap (\ ui -> if ui < k then lerp (ui / k) 0 1 else 1) balloon
+fadein k = scale k age
+--	fmap (\ ui -> if ui < k then lerp (ui / k) 0 1 else 1) age
+
+
+-----------------------------------------------
+
+-- Take a movie of what an Active object does between two type stamps.
+movie :: R -> R -> Active a -> Active a
+movie start stop act@(Active start' stop' f) = Active (toRational start) (toRational stop) $ f . boundBy act
+movie start stop (Pure a) 		     = Active (toRational start) (toRational stop) $ const a
+
+-- | 'for' takes short movie of the Active argument, assumping starting at zero.
+-- concept: 'for 44 (...)' runs '(...)' for 44 seconds.
+for :: R -> Active a -> Active a
+for n a = movie 0 n a
+-- 
+-- 
+taking :: R -> Active a -> Active a
+taking n a = streach a (sleep n)
+
+
+
+--------
+
+data Player = RealTime UTCTime
+	    | Frame Rational (MVar Integer)
+
+realTime :: IO Player
+realTime = do
+	tm <- getCurrentTime
+	return $ RealTime tm
+	
+-- 	
+byFrame :: Rational -> IO Player
+byFrame fps = do
+	v <- newMVar 0
+	return $ Frame (1 / fps) v
+	
+playActive :: Player -> Active a -> IO (Maybe a)
+playActive _ (Pure a) = return (Just a)
+playActive (RealTime tm) act = do
+	tm' <- getCurrentTime
+	let r :: Rational
+	    r = toRational (diffUTCTime tm' tm)
+	return $ snapAt r act
+playActive (Frame rate frameVar) act = do
+	frame <- takeMVar frameVar 
+	putMVar frameVar (frame + 1)
+	let r :: Rational
+	    r = rate * toRational frame
+	return $ snapAt r act
+
+
+-- Internal function, only works *inside* the motion-live of an object.
+snapAt :: Rational -> Active a -> Maybe a
+snapAt r act@(Active start end f) 
+	| r >= start && r <= end = Just $ f (boundBy act r)
+	| otherwise              = Nothing
+
+
 
 
