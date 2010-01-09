@@ -103,9 +103,9 @@ class LerpBoard a where
 instance LerpBoard RGB where
   lerpBoard b1 b2 bU = 
 	gslBoard fn
-		[ ("b1",board b1)
-		, ("b2",board b2)
-		, ("bU",board bU)
+		[ ("b1",ResultSize,board b1)
+		, ("b2",ResultSize,board b2)
+		, ("bU",ResultSize,board bU)
 		]
 		[]
     where 

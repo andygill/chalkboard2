@@ -7,11 +7,11 @@ import Data.Boolean
 
 main = startChalkBoard [BoardSize 400 400] $ \ cb -> do
 
-	rt <- realTime			-- plays in real time
---	rt <- byFrame 29.97		-- plays in 'frame' time
+	rt <- realTime anim		-- plays in real time
+--	rt <- byFrame 29.97 anim		-- plays in 'frame' time
 
 	let loop = do
-		optBrd <- playActive rt anim
+		optBrd <- play rt
 		case optBrd of
 		   Just brd -> do
 			drawChalkBoard cb brd

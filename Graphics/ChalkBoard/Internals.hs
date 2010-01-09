@@ -9,6 +9,7 @@ module Graphics.ChalkBoard.Internals
 	, UniformArgument(..)
 	, UniformTexture(..)
 	, Argument(..)
+	, TextureSize(..)
 	, board
 	, uniform
 	, typeOfBoard
@@ -55,7 +56,7 @@ data InsideBoard a where
 	Over  		:: 	(a -> a -> a) -> Board a -> Board a 	-> InsideBoard a
 	BufferOnBoard	:: Buffer a -> Board a 				-> InsideBoard a
 	-- FFI into the Graphics shader langauge.
-	BoardGSI 	:: String -> [(String,UniformTexture)] -> [(String,UniformArgument)] -> InsideBoard a	
+	BoardGSI 	:: String -> [(String,TextureSize,UniformTexture)] -> [(String,UniformArgument)] -> InsideBoard a	
 	BoardUnAlpha	:: Board RGB -> Board (RGBA -> RGBA) 		-> InsideBoard RGB
 
 data UniformArgument = UniformArgument Argument
@@ -65,8 +66,12 @@ data UniformArgument = UniformArgument Argument
 data UniformTexture  = BoardRGBArgument (Board RGB)
 		     | BoardBoolArgument (Board Bool)
 		     | BoardUIArgument (Board UI)
+		     | BoardMaybeRGBArgument (Board (Maybe RGB))
 		
 	deriving Show
+
+data TextureSize = ResultSize
+		 | ActualSize Int Int
 
 --		     | forall a . (GSArg a) => ScalarArg a
 --		     | forall a . (GSArg a) => VectorArg a
@@ -94,6 +99,8 @@ instance UniformBoard Bool where
 instance UniformBoard Float where
   board = BoardUIArgument
 
+instance UniformBoard (Maybe RGB) where
+  board = BoardMaybeRGBArgument
 
 uniform  :: Argument -> UniformArgument
 uniform = UniformArgument
@@ -124,7 +131,7 @@ instance Show (InsideBoard a) where
 	show (BufferOnBoard buff brd)  = "BufferOnBoard (" ++ show buff ++ ") (" ++ show brd ++ ")"
 	show (BoardUnAlpha b1 b2)  = "BoardUnAlpha (" ++ show b1 ++ ") (" ++ show b2 ++ ")"
 	show (BoardGSI nm arg1 arg2) = "BoardGSI ffi " 
-				++ show (Prelude.map Prelude.fst arg1) 
+				++ show (Prelude.map (\ (x,_,_) -> x) arg1) 
 				++ show (Prelude.map Prelude.fst arg2) 
 
 instance Show (Buffer a) where

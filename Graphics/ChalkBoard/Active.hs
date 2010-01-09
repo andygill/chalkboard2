@@ -190,34 +190,34 @@ taking n a = streach a (sleep n)
 
 --------
 
-data Player = RealTime UTCTime
-	    | Frame Rational (MVar Integer)
+data Player a = RealTime UTCTime (Active a)
+	      | Frame Rational (MVar Integer) (Active a)
 
-realTime :: IO Player
-realTime = do
+realTime :: Active a -> IO (Player a)
+realTime act = do
 	tm <- getCurrentTime
-	return $ RealTime tm
+	return $ RealTime tm act
 	
 -- 	
-byFrame :: Rational -> IO Player
-byFrame fps = do
+byFrame :: Rational -> Active a -> IO (Player a)
+byFrame fps act = do
 	v <- newMVar 0
-	return $ Frame (1 / fps) v
+	return $ Frame (1 / fps) v act
 	
-playActive :: Player -> Active a -> IO (Maybe a)
-playActive _ (Pure a) = return (Just a)
-playActive (RealTime tm) act = do
+play :: Player a -> IO (Maybe a)
+play (RealTime _ (Pure a))= return (Just a)
+play (RealTime tm act) = do
 	tm' <- getCurrentTime
 	let r :: Rational
 	    r = toRational (diffUTCTime tm' tm)
 	return $ snapAt r act
-playActive (Frame rate frameVar) act = do
+play (Frame _ _ (Pure a)) = return (Just a)
+play (Frame rate frameVar act) = do
 	frame <- takeMVar frameVar 
 	putMVar frameVar (frame + 1)
 	let r :: Rational
 	    r = rate * toRational frame
 	return $ snapAt r act
-
 
 -- Internal function, only works *inside* the motion-live of an object.
 snapAt :: Rational -> Active a -> Maybe a

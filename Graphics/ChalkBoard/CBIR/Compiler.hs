@@ -217,7 +217,7 @@ compileBoard2 bc t (Board ty (Fmap g (Board ty' (Trans mv brd))))
 compileBoard2 bc t (Board ty (Over fn above below)) 	= compileBoardOver bc t above below (targetOverBlend t (bcBlend bc))
 compileBoard2 bc t (Board ty (Polygon nodes)) 		= compileBoardPolygon bc t nodes
 compileBoard2 bc t (Board ty (PrimConst o)) 		= do
---	trace (show ("const",runO0 o)) $ 
+--	print (show ("const",runO0 o))
 	compileBoardConst bc t (evalE $ runO0 o)
 compileBoard2 bc t (Board ty (Fmap f other))
 --	| trace (show (bc,t,(runO1 f (E $ Var [])),ty)) False = undefined
@@ -766,22 +766,28 @@ allocateBuffer (sx,sy) newBoard Target_Maybe_UI =
 allocateBuffer (sx,sy) newBoard t = error $ show ("allocateBuffer",(sx,sy),newBoard,t)
 
 
+
 -- TODO: use allocAnd... to build this.
 compileBoardGSI 
 	:: BoardContext 
 	-> Target 
 	-> String 
-	-> [(String,UniformTexture)] 
+	-> [(String,TextureSize,UniformTexture)] 
 	-> [(String,UniformArgument)] 
 	-> IO [Inst Int]
 compileBoardGSI bc Target_RGB fn bargs vargs = do
-	let boards_RGB  = [ (nm,brd) | (nm,BoardRGBArgument brd) <- bargs ]
-	let boards_Bool = [ (nm,brd) | (nm,BoardBoolArgument brd) <- bargs ]
-	let boards_UI   = [ (nm,brd) | (nm,BoardUIArgument brd) <- bargs ]
+	let findSize ResultSize       = bcSize bc
+	    findSize (ActualSize x y) = bcSize bc	-- ignore this for now
+
+	let boards_RGB  = [ (nm,findSize sz,brd) | (nm,sz,BoardRGBArgument brd) <- bargs ]
+	let boards_Bool = [ (nm,findSize sz,brd) | (nm,sz,BoardBoolArgument brd) <- bargs ]
+	let boards_UI   = [ (nm,findSize sz,brd) | (nm,sz,BoardUIArgument brd) <- bargs ]
+	let boards_Maybe_RGB = [ (nm,findSize sz,brd) | (nm,sz,BoardMaybeRGBArgument brd) <- bargs ]
  
 	num_for_boards_RGB <- sequence [ newNumber | _ <- boards_RGB ]
 	num_for_boards_Bool <- sequence [ newNumber | _ <- boards_Bool ]
 	num_for_boards_UI <- sequence [ newNumber | _ <- boards_UI ]
+	num_for_boards_Maybe_RGB <- sequence [ newNumber | _ <- boards_Maybe_RGB ]
 	let create_Boards
 	 	  = [ Allocate 
 		        num		   -- tag for this ChalkBoardBufferObject
@@ -790,38 +796,55 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 			(BackgroundRGB24Depth (RGB 0 0 0))	-- black is the background, now! (== False)
 		    | num <- num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI
 		    ]
+	let create_Boards2
+	 	  = [ Allocate 
+		        num		   -- tag for this ChalkBoardBufferObject
+        		(bcSize bc)		   -- we know size
+        		RGBADepth           -- depth of buffer
+			(BackgroundRGBADepth (RGBA 0 0 0 0))	-- black is the background, now! (== False)
+		    | num <- num_for_boards_Maybe_RGB
+		    ]
 	fill_Boards_RGB
-	 	<- sequence [ compileBoard2  (bc { bcDest = brdId }) Target_RGB brd
-			    | ((_,brd),brdId) <- zip boards_RGB num_for_boards_RGB
+	 	<- sequence [ compileBoard2  (bc { bcDest = brdId, bcSize = sz }) Target_RGB brd
+			    | ((_,sz,brd),brdId) <- zip boards_RGB num_for_boards_RGB
 			    ]
 	fill_Boards_Bool
-	 	<- sequence [ compileBoard2 (bc { bcDest = brdId }) (Target_Bool (RGB 1 1 1)) brd
-			    | ((_,brd),brdId) <- zip boards_Bool num_for_boards_Bool
+	 	<- sequence [ compileBoard2 (bc { bcDest = brdId, bcSize = sz  }) (Target_Bool (RGB 1 1 1)) brd
+			    | ((_,sz,brd),brdId) <- zip boards_Bool num_for_boards_Bool
 			    ]
 	fill_Boards_UI
-	 	<- sequence [ compileBoard2 (bc { bcDest = brdId }) Target_UI brd
-			    | ((_,brd),brdId) <- zip boards_UI num_for_boards_UI
+	 	<- sequence [ compileBoard2 (bc { bcDest = brdId, bcSize = sz  }) Target_UI brd
+			    | ((_,sz,brd),brdId) <- zip boards_UI num_for_boards_UI
 			    ]
+	fill_Boards_Maybe_RGB
+	 	<- sequence [ compileBoard2  (bc { bcDest = brdId, bcSize = sz }) Target_Maybe_RGB brd
+			    | ((_,sz,brd),brdId) <- zip boards_Maybe_RGB num_for_boards_Maybe_RGB
+			    ]
+
+
 
 	let delete_Boards
 		  = [ Delete num 
-	            | num <- num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI
+	            | num <- num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI ++ num_for_boards_Maybe_RGB
 	            ]
 
 	newFrag <- newNumber
+	let fst3 (a,_,_) = a
 	
  	let (x0,x1,y0,y1) = (0,1,0,1) 
 	return $ [ AllocFragmentShader newFrag fn [] ]
 		++ create_Boards
+		++ create_Boards2
 		++ concat fill_Boards_RGB
 		++ concat fill_Boards_Bool
 		++ concat fill_Boards_UI
+		++ concat fill_Boards_Maybe_RGB
 		++ [ Splat (bcDest bc)
 		         (bcBlend bc)
 		           (SplatFunction' newFrag 
 				[ (nm,brdId) 
-				| (nm,brdId) <- zip (map Prelude.fst boards_RGB ++ map Prelude.fst boards_Bool  ++ map Prelude.fst boards_UI)
-						    (num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI)
+				| (nm,brdId) <- zip (map fst3 boards_RGB ++ map fst3 boards_Bool  ++ map fst3 boards_UI ++ map fst3 boards_Maybe_RGB)
+						    (num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI ++ num_for_boards_Maybe_RGB)
 				]
 				vargs
 				[(x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
