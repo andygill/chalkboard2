@@ -33,6 +33,7 @@ import Foreign.Marshal.Alloc ( malloc, free )
 import Foreign.Storable ( peek )
 import Foreign.Marshal.Array (withArray )
 import Data.Map ( Map, empty, insert, delete, lookup, notMember, member )
+import qualified Data.Map as Map
 import Data.Maybe ( fromMaybe )
 import Data.Array.Unboxed as U  
 import Data.Array.Storable ( withStorableArray, StorableArray )
@@ -360,6 +361,13 @@ drawBoard env = do
                 b <- getCurrentBoard env
                 writeStream env b streamid
 
+    -- sanity check; look for space leaks
+    texMap <- getTexMap env
+    b <- getCurrentBoard env
+    when (Map.size texMap /= 1) $ do
+       putStrLn "There are boards still allocated"
+       print (Map.keys (Map.filterWithKey (\ k a -> (k /= b)) texMap))
+    
 
 
 -- Function to display the current output board of a chalkboard image. Done once per frame.

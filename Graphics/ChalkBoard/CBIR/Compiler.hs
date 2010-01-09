@@ -260,6 +260,7 @@ compileBoard2 bc t@(Target_RGB) (Board ty (BoardUnAlpha back fn)) = do
 		      ++ [ copyBoard (bcDest bc) newBoard ]
 		      ++ inst2
 		      ++ [ copyBoard newBoard (bcDest bc) ]
+		      ++ [ Delete newBoard ]
 	         ]
 compileBoard2 bc t other          		= error $ show ("compileBoard2",bc,t,other)
 
@@ -321,6 +322,7 @@ compileBoardConst bc t@(Target_RGBA Copy) (Just (E _ (O_RGBA rgba)))
         			RGBADepth          -- depth of buffer	
 				(BackgroundRGBADepth rgba)
 			  , copyBoard newBoard (bcDest bc) 
+			  , Delete newBoard
 			  ]
 			]
 compileBoardConst bc t@(Target_RGBA Blend) (Just (E _ (O_RGBA rgba)))
@@ -380,8 +382,7 @@ compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 	return $ insts ++
 		 [ AllocFragmentShader newFrag fn []
 		 , Splat (bcDest bc)
-		         (case t of
-			    _ -> targetToBlender t)
+		         (bcBlend bc)
 		         (SplatFunction' newFrag 
 				[ ("cb_sampler" ++ show n,bid) | ((bid,_),n) <- zip idMap [0..]]
 				[]
@@ -606,7 +607,7 @@ compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer) brd = do
 		[ Nested "buffer inside board (...)" $
 			insts1 ++ insts2 ++ 
 			[ Splat (bcDest bc)
-			        (targetToBlender t)
+			        (bcBlend bc)
 			        (SplatPolygon' buffId -- need a version that does no merging, but just copies
 		    		        [ PointMap (x,y) (mapPoint tr (x,y))
 		    		        | (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
@@ -659,7 +660,7 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = do
 		 [ allocateBuffer (1+x1-x0,1+y1-y0) targetBuff t
 		 , AllocFragmentShader newFrag fn []
 		 , Splat targetBuff
-	         	(targetToBlender t)
+	         	Copy		-- copy, because it is a new board
 		         (SplatFunction' newFrag 
 				[ ("cb_sampler0",bId)]
 				[]
@@ -789,7 +790,7 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 		++ concat fill_Boards_Bool
 		++ concat fill_Boards_UI
 		++ [ Splat (bcDest bc)
-		         (targetToBlender Target_RGB)
+		         (bcBlend bc)
 		           (SplatFunction' newFrag 
 				[ (nm,brdId) 
 				| (nm,brdId) <- zip (map Prelude.fst boards_RGB ++ map Prelude.fst boards_Bool  ++ map Prelude.fst boards_UI)
