@@ -1,24 +1,44 @@
 module Main where
 
-import Graphics.ChalkBoard
---import Control.Applicative
-
+import Graphics.ChalkBoard as CB
+import qualified Control.Applicative as A
+import Control.Concurrent as C
+import Data.Boolean
 
 main = startChalkBoard [BoardSize 400 400] $ \ cb -> do
 	let loop (brd:rest) = do
 		drawChalkBoard cb brd -- $ unAlphaBoard (boardOf white) brd
+		C.threadDelay 10000
 		loop rest
 	    loop [] = return ()
 
 --	startMyWriteStream cb "ffmpeg -f image2pipe -vcodec ppm -i - -vcodec libx264 -b 500k -vpre hq -vpre main orbit.mp4" 
-	loop $ concat $ fmap (simulate 25) orbit
+	loop $ simulate 25 anim
 --	endWriteStream cb
 
 	--exitChalkBoard cb
 
 
+orbit' :: Active (Board RGB)
+orbit' = flicker
+	[ travel (boardOf green) (boardOf red),
+	  travel (boardOf blue) (boardOf red) ]
 
-orbit = {-flicker-} [
+
+anim :: Active (Board RGB)
+anim = fmap (CB.maybe white id .$) earth
+
+earth :: Active (Board (Maybe RGB))
+earth = fmap (mapMaybe (\ ui -> mix white blue ui) .$) 
+      $ fmap (trans 0 .$)
+      $ fmap (\ ui -> scale (0.2) $ (choose (o ui) (o 0) <$> circle)) 
+      $ scale 5
+      $ balloon
+
+trans :: (Maskable a, Eq a) => O a -> O a -> O (Maybe a)
+trans z a = withMask a (a /=* z)
+
+orbit = head [
                         (fmap (mix white green .$) $ (fmap (\ ui -> scale (0.2) $ (choose (o ui) (o 0) <$> circle)) $ scale 5 $ fadein 1)),
                         
                         (fmap (mix white blue .$) 
