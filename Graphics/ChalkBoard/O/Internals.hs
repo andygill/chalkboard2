@@ -39,7 +39,7 @@ instance Show o => Show (O o) where
   show (O o _) = show o
 
 -- showing structure, not the value
-showO :: (Show a) => O a -> String
+showO :: O a -> String
 showO (O a e) = show e
 
 reifyO :: O a -> IO (Graph Expr)
