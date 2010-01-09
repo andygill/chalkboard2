@@ -28,14 +28,12 @@ data Expr s
 	| O_Bool Bool
 	| O_RGB RGB
 	| O_RGBA RGBA -- (Ty.Alpha RGB)
-	| O_Nothing
 	-- deconstructors
 --	| O_Fst s
 --	| O_Snd s
 	-- constructors
 --	| O_Pair s s 			-- (a,b)
 	-- Functions
-	| O_Just s			-- 
 --	| IsJust s			-- O (Just a) -> O Bool
 	| OrBool			-- the || function
 	| Choose s s s			-- O a -> O a -> O Bool -> O a
@@ -49,6 +47,12 @@ data Expr s
 	-- boolean ops
 	| EQUAL s s			-- O a -> O a -> O Bool
 	| NOT s				-- O Bool -> O Bool
+
+	| IsJust s
+	| UnJust s
+	| O_Nothing
+	| O_Just s			 
+
 	deriving Show
 
 data Path  = GoLeft | GoRight 
@@ -180,6 +184,13 @@ instance T.Traversable Expr where
         traverse f (WithMask v1 v2)	= pure WithMask 	<*> f v1 <*> f v2
         traverse f (WithDefault v1 v2)	= pure WithDefault 	<*> f v1 <*> f v2
         traverse f (EQUAL v1 v2)	= pure EQUAL 		<*> f v1 <*> f v2
+
+
+	traverse f (IsJust e) 		= IsJust <$> f e
+	traverse f (UnJust e) 		= UnJust <$> f e
+	traverse f (O_Nothing) 		= pure O_Nothing 
+	traverse f (O_Just e)	 	= O_Just <$> f e
+
 	-- TODO
 	
 instance F.Foldable Expr where

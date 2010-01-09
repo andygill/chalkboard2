@@ -27,6 +27,12 @@ module Graphics.ChalkBoard.O ( -- * The Observable datatype
 	, Boolean(..)
 	, Maskable
 	, (.$)
+	, isJust
+	, unJust
+	, nothing
+	, just
+	, maybe
+	, mapMaybe
 	) where
 	
 import Graphics.ChalkBoard.Types as Ty
@@ -34,6 +40,7 @@ import Graphics.ChalkBoard.O.Internals as I
 import qualified Graphics.ChalkBoard.Core as C
 import Graphics.ChalkBoard.Expr as Expr
 import Data.Boolean
+import Prelude hiding (maybe)
 
 ------------------------------------------------------------------------------------------------
 -- Obs Class
@@ -48,8 +55,10 @@ class Obs a where
 
 infixr 0 <$>
 infixr 0 .$
+--infixr 0 ..$
 
 (.$) a b = (<$>) a b
+
 
 class OFunctor f where
 	(<$>) :: (O a -> O b) -> f a -> f b
@@ -92,6 +101,7 @@ choose (O a ea) (O b eb) (O c ec)  = O (if c then a else b) (E (unifyTy (typeE e
 mix :: (Lerp o) => O o -> O o -> O UI -> O o
 mix (O a ea) (O b eb) (O c ec)  = O (lerp c a b) (E (unifyTy (typeE ea) (typeE eb)) $ Mix ea eb ec)
 
+
 ------------------------------------------------------------------------------------------------
 -- Functions from Core, lifted into the O type.
 ------------------------------------------------------------------------------------------------
@@ -132,13 +142,14 @@ yellow = o $ RGB 1.0 1.0 0.0
 
 -- TODO: generalize to UI as well as RGB
 
-class Maskable a 
+class Maskable a where
+     maskType:: a -> ExprType
 
---     maskable :: a -> ExprType
+instance Maskable RGB where
+     maskType _ = RGB_Ty
 
-instance Maskable RGB
-
-instance Maskable UI
+instance Maskable UI where
+     maskType _ = UI_Ty
 
 withMask :: Maskable a => O a -> O Bool -> O (Maybe a)
 withMask (O a ea) (O b eb) = O (C.withMask a b) (E (Maybe_Ty (typeE ea)) $ WithMask ea eb)
@@ -177,3 +188,36 @@ instance OrdB (O Bool) (O a) where
 
 --nothing :: O (Maybe a)
 --nothing = O Nothing (O $ E
+
+--zz :: (O a -> O b) -> O (Maybe a) -> O (Maybe b)
+--zz = (O a -> O b) -> O b -> O b
+	
+mapMaybe :: (Maskable a, Maskable b) => (O a -> O b) -> O (Maybe a) -> O (Maybe b)
+mapMaybe f = maybe nothing (just . f)
+
+maybe :: (Maskable a) => O b ->  (O a -> O b) -> O (Maybe a) -> O b
+maybe d f m = choose (f $ unJust m) d (isJust m)
+
+isJust :: (Maskable a) => O (Maybe a) -> O Bool
+isJust o@(O a ea) = O (case a of
+	     	         Nothing -> False
+		         Just {} -> True) (E BOOL_Ty $ IsJust ea)
+
+unJust :: (Maskable a) => O (Maybe a) -> O a
+unJust o@(O a ea) = O (case a of
+			Nothing -> error "bad unJust"
+			Just v -> v) (E (maskType $ getA o) $ UnJust ea)
+
+nothing :: (Maskable a) => O (Maybe a)
+nothing = res
+   where
+	res = O Nothing (E (Maybe_Ty $ maskType $ getA res) $ O_Nothing)
+
+just :: (Maskable a) =>  O a -> O (Maybe a)
+just (O a ea) = res
+	where res = O (Just a) 
+		      (E (Maybe_Ty $ maskType $ getA res) $ O_Just ea)
+
+-- typing hack
+getA :: O (Maybe a) -> a
+getA _ = undefined

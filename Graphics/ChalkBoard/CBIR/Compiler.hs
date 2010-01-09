@@ -169,8 +169,7 @@ targetRep (Target_RGBA {})		= RGBADepth
 targetRep Target_RGB  			= RGB24Depth
 targetRep (Target_Bool {}) 		= RGB24Depth
 targetRep (Target_Maybe_RGB)		= RGBADepth
-targetRep (Target_Maybe_RGB)		= RGB24Depth
-targetRep (Target_Maybe_UI)		= RGB24Depth
+targetRep (Target_Maybe_UI)		= RGBADepth
 
 -- TODO: rename as targetToType 
 targetType :: Target -> ExprType
@@ -359,8 +358,8 @@ prelude = unlines
 	, "vec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }"
 	, "vec4 cb_WithMaskUI(float c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 0.0); }" 
 	, "float cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }"
+	, "vec4 cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }"	-- could reuse cb_WithMaskRGB
 	]
-
 
 -- TODO: The good thing about a boolean argument is that it can only have two possible values.
 compileBoardFmap :: BoardContext -> Target -> E -> Board a -> [([Path],ExprType)] -> ExprType -> IO [Inst Int]
@@ -375,6 +374,15 @@ compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 		"void main(void) {\n" ++
 		assignFrag resTy expr ++
 		"}\n"
+{-
+	fn' <- if length fn == 1688 then do
+		   print "replacing ..."
+		   fn <- readFile "XX" 
+		   print fn
+		   return fn
+		 else return $ fn
+	let fn = fn'
+-}
 --	putStrLn "----------"
 --	putStrLn fn
 --	putStrLn "----------"
@@ -535,13 +543,13 @@ allocAndCompileBoard bc ty brd = error $ show ("allocAndCompileBoard",bc,ty,brd)
 -- what a hack! Compiles our Expr language into GLSL.
 compileFmapFun :: Map [Path] String -> Expr E -> ExprType -> String
 compileFmapFun env (Choose e1 e2 e3) ty =
-	      "mix(" ++ compileFmapFunE env e2 ty ++ "," ++
+	      "\nmix(" ++ compileFmapFunE env e2 ty ++ "," ++
 			compileFmapFunE env e1 ty ++ "," ++
-   	         "(" ++ compileFmapFunE env e3 BOOL_Ty ++ ") ? 1.0 : 0.0)";
+   	         "(" ++ compileFmapFunE env e3 BOOL_Ty ++ ") ? 1.0 : 0.0)\n";
 compileFmapFun env (Mix e1 e2 e3) ty =
-	      "mix(" ++ compileFmapFunE env e1 ty ++ "," ++
+	      "\nmix(" ++ compileFmapFunE env e1 ty ++ "," ++
 			compileFmapFunE env e2 ty ++ "," ++
-		        compileFmapFunE env e3 UI_Ty ++ ")";
+		        compileFmapFunE env e3 UI_Ty ++ ")\n";
 compileFmapFun env v@(Var path) ty =
 	case Map.lookup path env of
 	  Just varName -> coerce ("texture2D(" ++ varName ++ ",gl_TexCoord[0].st)")
@@ -576,20 +584,27 @@ compileFmapFun env (EQUAL e1 e2) BOOL_Ty =
 		"(" ++ compileFmapFunE env e1 (error "XX") ++ 
 	   ") == (" ++ compileFmapFunE env e2 (error "XX") ++ 
            ")"
+compileFmapFun env (IsJust e1@(E (Maybe_Ty UI_Ty) _)) BOOL_Ty = 
+		"(" ++ compileFmapFunE' env e1 ++ ").a > 0.5" 
+compileFmapFun env (IsJust e1@(E (Maybe_Ty RGB_Ty) _)) BOOL_Ty =
+		"(" ++ compileFmapFunE' env e1 ++ ").a > 0.5" 
+compileFmapFun env (UnJust e1) UI_Ty =
+		"(" ++ compileFmapFunE' env e1 ++ ").r" 
+compileFmapFun env (UnJust e1) RGB_Ty =
+		"(" ++ compileFmapFunE' env e1 ++ ").rgb" 
+compileFmapFun env (O_Just e1) (Maybe_Ty UI_Ty) =
+		"vec4(" ++ compileFmapFunE' env e1 ++ ",0.0,0.0,1.0)"
+compileFmapFun env (O_Just e1) (Maybe_Ty RGB_Ty) =
+		"cb_Just_RGB(" ++ compileFmapFunE' env e1 ++ ")"
+compileFmapFun env (O_Nothing) (Maybe_Ty UI_Ty) = "vec4(0.0,0.0,0.0,0.0)"
+compileFmapFun env (O_Nothing) (Maybe_Ty RGB_Ty) = "vec4(0.0,0.0,0.0,0.0)"
 
--- UnAlpha is the only way of getting to a RGBA->RGBA.
-{-
-
-compileFmapFun env (UnAlpha e1 e2) RGB_Ty =
-	"cb_UnAlpha(" ++ compileFmapFunE env e RGBA_Ty ++"," ++ compileFmapFunE env e RGBA_Ty ++ ")"
-compileFmapFun env e@(O_Fst {}) ty = digForVar env e ty
-compileFmapFun env e@(O_Snd {}) ty = digForVa env e ty
--}	
 compileFmapFun env e ty = error $ show ("compileFmapFun",env,e,ty)
 
 
 -- Ha! Can use internal ty.
 compileFmapFunE env (E ty' e) ty = compileFmapFun env e ty'
+compileFmapFunE' env (E ty' e) = compileFmapFun env e ty'
 
 compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer) brd = do
 	insts1          <- compileBoard2 bc t brd
