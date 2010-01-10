@@ -137,7 +137,7 @@ newNumber = do
 -- 	Data		Alpha?	Notes
 
 data Target 
- = Target_RGBA Blender --		Write => the type of blending writing to a board does
+ = Target_RGBA     --		Write => the type of blending writing to a board does
  | Target_RGB      --	N	A = 1
  | Target_Bool RGB --	N	Arg is what do we draw for *True*
  | Target_Maybe_RGB --	Y	Nothing => transparent <ANY>
@@ -154,8 +154,8 @@ targetOverBlend (Target_UI)  Copy     = ( Max, Just $ Copy )
 targetOverBlend (Target_UI)  Max      = ( Max, Just $ Max ) 
 targetOverBlend (Target_UI)  Blend    = ( Max, Just $ Max ) 	-- Err, should never happen
 targetOverBlend (Target_RGB) Copy       = ( Copy, Nothing )
-targetOverBlend (Target_RGBA _) Copy    = ( Blend, Just $ Copy ) 
-targetOverBlend (Target_RGBA _) Blend   = ( Blend, Just $ Blend ) 
+targetOverBlend (Target_RGBA) Copy    = ( Blend, Just $ Copy ) 
+targetOverBlend (Target_RGBA) Blend   = ( Blend, Just $ Blend ) 
 targetOverBlend (Target_Bool c) Blend = ( Blend, Just $ Blend )
 targetOverBlend (Target_Bool c) Copy  = ( Blend, Just $ Copy )
 targetOverBlend (Target_Bool c) Max   = ( Blend, Just $ Max )
@@ -166,7 +166,7 @@ targetOverBlend (Target_Maybe_UI) Copy   = ( Blend, Just $ Copy )
 targetOverBlend other b = error $ show ("targetOverBlend",other,b)
 
 targetRep :: Target -> Depth
-targetRep (Target_RGBA {})		= RGBADepth
+targetRep (Target_RGBA)			= RGBADepth
 targetRep Target_RGB  			= RGB24Depth
 targetRep (Target_Bool {}) 		= RGB24Depth
 targetRep (Target_Maybe_RGB)		= RGBADepth
@@ -174,7 +174,7 @@ targetRep (Target_Maybe_UI)		= RGBADepth
 
 -- TODO: rename as targetToType 
 targetType :: Target -> ExprType
-targetType (Target_RGBA {})		= RGBA_Ty
+targetType (Target_RGBA)		= RGBA_Ty
 targetType Target_RGB  			= RGB_Ty 
 targetType (Target_Bool {}) 		= BOOL_Ty
 targetType (Target_Maybe_RGB)		= Maybe_Ty RGB_Ty
@@ -183,19 +183,9 @@ targetType (Target_UI)			= UI_Ty
 targetType other			= error $ show ("targetType",other)
 
 
-targetToBlender :: Target -> Blender
-targetToBlender Target_UI 		= Max
-targetToBlender (Target_RGBA b) 	= b
-targetToBlender (Target_RGB)    	= Copy
-targetToBlender (Target_Maybe_UI) 	= Blend
-targetToBlender (Target_Maybe_RGB) 	= Blend
-targetToBlender (Target_Bool c) 	= Copy		-- ??? or Blend???
-
-targetToBlender other 	  = error $ show ("targetToBlender",other)
-
 -- not used yet!
 targetFromType :: ExprType -> Target
-targetFromType RGBA_Ty 			= Target_RGBA Copy	-- only because this is the only case
+targetFromType RGBA_Ty 			= Target_RGBA     	-- only because this is the only case
 								-- used, aka buffer fmap.
 targetFromType RGB_Ty 			= Target_RGB
 targetFromType UI_Ty 			= Target_UI
@@ -249,7 +239,7 @@ compileBoard2 bc t (Board ty (BoardGSI fn bargs vargs)) 	= compileBoardGSI bc t 
 compileBoard2 bc t@(Target_RGB) (Board ty (BoardUnAlpha back fn)) = do
 	inst1 <- compileBoard2 bc t back
 	newBoard <- newNumber
-	inst2 <- compileBoard2 (bc { bcDest = newBoard }) (Target_RGBA Blend) fn
+	inst2 <- compileBoard2 (bc { bcDest = newBoard, bcBlend = Blend }) (Target_RGBA) fn
 	return $ [ Nested ("BoardUnAlpha") $
 		    [ Allocate 
 		       	newBoard 
@@ -312,25 +302,12 @@ compileBoardConst bc t@(Target_UI) (Just (E _ (Lit r)))
 		 	       (SplatColor' (RGBA r 0 0 1) [(0,0),(1,0),(1,1),(0,1)])
 		 	)
 			]
-compileBoardConst bc t@(Target_RGBA Copy) (Just (E _ (O_RGBA rgba)))
-		= do
-		newBoard <- newNumber
-		return [ Nested ("Const (a :: RGBA)") $
-			  [ Allocate 
-		        	newBoard 	   -- tag for this ChalkBoardBufferObject
-        			(1,1)		   -- tiny board
-        			RGBADepth          -- depth of buffer	
-				(BackgroundRGBADepth rgba)
-			  , copyBoard newBoard (bcDest bc) 
-			  , Delete newBoard
-			  ]
-			]
-compileBoardConst bc t@(Target_RGBA Blend) (Just (E _ (O_RGBA rgba)))
+compileBoardConst bc t@(Target_RGBA) (Just (E _ (O_RGBA rgba)))
 		= do
 		newBoard <- newNumber
 		return [ Nested ("Const (a :: RGBA)") $
 			  [ Splat (bcDest bc)
-			          Blend
+			          (bcBlend bc)
 			          (SplatColor' rgba [(0,0),(1,0),(1,1),(0,1)])
 			  ]
 			]
@@ -375,8 +352,10 @@ prelude = unlines
 
 -- TODO: The good thing about a boolean argument is that it can only have two possible values.
 compileBoardFmap :: BoardContext -> Target -> E -> Board a -> [([Path],ExprType)] -> ExprType -> IO [Inst Int]
-compileBoardFmap bc t (E _ty f) other argTypes resTy = do
-	(insts,idMap) <- compileFmapArgs bc other argTypes
+--compileBoardFmap bc t (E RGBA_Ty f) other argTypes resTy 
+--	| trace (show ("compileBoardFmap (RGBA->RGBA)",f,bc,t,other,argTypes,resTy)) False = undefined
+compileBoardFmap bc t (E _ty f) other argTypes resTy = do	
+	(insts,idMap) <- compileFmapArgs bc t other argTypes
 	let env = Map.fromList [ (path,"cb_sampler" ++ show n) | ((_,path),n) <- zip idMap [0..]]
 	let expr = compileFmapFun env f resTy	
  	let (x0,x1,y0,y1) = (0,1,0,1) 
@@ -435,12 +414,22 @@ compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,t,other,argTy,resTy)
 
 
+pushBack :: E -> Maybe E
+pushBack (E RGBA_Ty (Choose a b c)) = do
+	a' <- pushBack a
+	b' <- pushBack b
+	return $ E RGBA_Ty $ Choose a' b' c
+--pushBack 
+pushBack other = error $ show ("pushBack",other)
+
+
 -- TODO: Add Target_Maybe_RGB here
 -- use this to check if you can fmap over the Bool
-goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E _ (O_RGBA (RGBA _ _ _ 1)))) (Just (E _ (O_RGBA (RGBA _ _ _ 0)))) = True -- to: RM
-goodToFmapBool [([],BOOL_Ty)] (Target_RGB) (Just (E _ (O_RGB {}))) (Just (E _ (O_RGB (RGB {})))) = True
+--goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E _ (O_RGBA (RGBA _ _ _ 1)))) (Just (E _ (O_RGBA (RGBA _ _ _ 0)))) = True -- to: RM
+--goodToFmapBool [([],BOOL_Ty)] (Target_RGB) (Just (E _ (O_RGB {}))) (Just (E _ (O_RGB (RGB {})))) = True
 goodToFmapBool _ _ _ _ = False
 
+{-
 compileBoardFmapBool bc t@(Target_RGBA Blend) 
 		(Just (E _ (O_RGBA (RGBA r g b 1))))
 		(Just (E _ (O_RGBA (RGBA _ _ _ 0))))		-- the background *better* be transparent.
@@ -457,25 +446,25 @@ compileBoardFmapBool bc t@(Target_RGB)
 				 ] ++ insts
 compileBoardFmapBool bc t tr fa other argTypes resTy = do
 	error $ "Found fmap over (Board Bool) (perhaps non transparent background?) " ++ show (t,tr,fa)
-
+-}
 	
 
 -- It is the responsability of the caller to unallocate the returned bufferids.
-compileFmapArgs :: BoardContext -> Board a -> [([Path],ExprType)] -> IO ([Inst Int],[(BufferId,[Path])])
+compileFmapArgs :: BoardContext -> Target -> Board a -> [([Path],ExprType)] -> IO ([Inst Int],[(BufferId,[Path])])
 --compileFmapArgs bc brd tyMap | trace (show ("compileFmapArgs",bc,brd,tyMap)) False = undefined
-compileFmapArgs bc (Board _ (Zip b1 b2)) ty | not (null ty) = do
-	(insts1,mp1) <- compileFmapArgs bc b1 [ (p,t) | (Expr.GoLeft:p,t) <- ty ]
-	(insts2,mp2) <- compileFmapArgs bc b2 [ (p,t) | (Expr.GoRight:p,t) <- ty ]
+compileFmapArgs bc t (Board _ (Zip b1 b2)) ty | not (null ty) = do
+	(insts1,mp1) <- compileFmapArgs bc t b1 [ (p,t) | (Expr.GoLeft:p,t) <- ty ]
+	(insts2,mp2) <- compileFmapArgs bc t b2 [ (p,t) | (Expr.GoRight:p,t) <- ty ]
 	return $ (insts1 ++ insts2, 
 		  [ (bid,Expr.GoLeft:p) | (bid,p) <- mp1 ] ++
 		  [ (bid,Expr.GoRight:p) | (bid,p) <- mp2 ]
 		 )
-compileFmapArgs bc (Board _ (Zip {})) ty = error $ "found zip of boards, without zip types" ++ show ty
-compileFmapArgs bc brd [([],ty)] = do
+compileFmapArgs bc t (Board _ (Zip {})) ty = error $ "found zip of boards, without zip types" ++ show ty
+compileFmapArgs bc t brd [([],ty)] = do
 	-- Otherwise, we allocate a board, construct it, and pass it back.
 	(rest,bid) <- allocAndCompileBoard bc ty brd
 	return (rest,[(bid,[])])
-compileFmapArgs bc brd tyMap = error $ show ("compileFmapArgs",bc,brd,tyMap)
+compileFmapArgs bc t brd tyMap = error $ show ("compileFmapArgs",bc,t,brd,tyMap)
 
 allocAndCompileBoard
 	:: BoardContext		-- ignore the bcDest
@@ -494,16 +483,17 @@ allocAndCompileBoard bc RGB_Ty brd = do
 			  ] ++ rest
 		], newBoard )
 -- TODO: we need to somehome pass in the backing color here.
-
+-- the only time we need 
 allocAndCompileBoard bc RGBA_Ty brd = do
 	newBoard <- newNumber
-	rest <- compileBoard2 (bc { bcDest = newBoard }) (Target_RGBA Copy) brd	-- TODO: could this be Blend???
+	rest <- compileBoard2 (bc { bcDest = newBoard }) Target_RGBA brd	-- TODO: could this be Blend???
 	return ( [ Nested ("alloc RGBA_Ty") $
 			  [ Allocate 
 		        	newBoard 	   -- tag for this ChalkBoardBufferObject
         			(bcSize bc)		   -- tiny board
         			RGBADepth          -- depth of buffer	
 				(BackgroundRGBADepth (RGBA 0 0 0 1))
+			  , copyBoard (bcDest bc) newBoard 
 			  ] ++ rest
 		], newBoard )
 allocAndCompileBoard bc (Maybe_Ty UI_Ty) brd = do
@@ -579,7 +569,7 @@ compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
 			   show g ++ "," ++
 			   show b ++ ")" 			   
 compileFmapFun env (Alpha v e) RGBA_Ty =
-	"cb_Alpha(" ++ show v ++ "," ++ compileFmapFunE env e RGB_Ty ++ ")"
+	"cb_Alpha(" ++ compileFmapFunE' env v ++ "," ++ compileFmapFunE env e RGB_Ty ++ ")"
 compileFmapFun env (WithMask e1 e2) (Maybe_Ty RGB_Ty) =
 	"cb_WithMaskRGB(" ++ compileFmapFunE env e1 RGB_Ty  ++ "," ++ compileFmapFunE env e2 BOOL_Ty ++ ")"
 compileFmapFun env (WithMask e1 e2) (Maybe_Ty UI_Ty) =
@@ -652,13 +642,11 @@ compileBuffer2
 	-> IO ([CBIR.Inst Int],BufferId)
 
 -- TODO: This should be a Copy or a Blend???
-compileBuffer2 (Target_RGBA Copy) low high (ImageRGBA bs) = do
+compileBuffer2 (Target_RGBA) low high (ImageRGBA bs) = do
 	compileByteStringImage low high bs RGBADepth
 -- TODO: Not sure about this. what does blend mean in this context,
 -- because this *always* allocs a new board.
 -- Perhaps we need a mark function, that  maps Blend to Copy, for compileBufferOnBoard?
-compileBuffer2 (Target_RGBA Blend) low high (ImageRGBA bs) = do
-	compileByteStringImage low high bs RGBADepth
 compileBuffer2 Target_RGB low high (ImageRGB bs) = do
 	compileByteStringImage low high bs RGB24Depth
 compileBuffer2 Target_UI low high (ImageUI bs) = do
@@ -751,7 +739,7 @@ allocateBuffer (sx,sy) newBoard Target_RGB =
 			(sx,sy)	   	-- we know size
 			RGB24Depth       -- depth of buffer
 			(BackgroundRGB24Depth (RGB 0 0 0))
-allocateBuffer (sx,sy) newBoard (Target_RGBA Copy) =
+allocateBuffer (sx,sy) newBoard (Target_RGBA) =
 		Allocate 
 			newBoard 	-- tag for this ChalkBoardBufferObject
 			(sx,sy)	   	-- we know size

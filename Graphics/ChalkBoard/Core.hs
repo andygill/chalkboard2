@@ -50,8 +50,8 @@ choose _t f  False = f
 alpha :: RGB -> (RGBA -> RGBA)
 alpha (RGB r g b) _ = RGBA r g b 1
 
-withAlpha :: RGB -> UI -> (RGBA -> RGBA)
-withAlpha (RGB r g b) a rgba = (RGBA r g b a) `over` rgba
+withAlpha :: UI -> RGB -> (RGBA -> RGBA)
+withAlpha a (RGB r g b) rgba = (RGBA r g b a) `over` rgba
 
 unAlpha :: RGB -> (RGBA -> RGBA) -> RGB
 unAlpha (RGB r g b) f = RGB (r' * a') (g' * a') (b' * a')

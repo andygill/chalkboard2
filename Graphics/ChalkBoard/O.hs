@@ -108,19 +108,19 @@ mix (O a ea) (O b eb) (O c ec)  = O (lerp c a b) (E (unifyTy (typeE ea) (typeE e
 
 -- | Observable function to add an alpha channel.
 alpha :: O RGB -> O (RGBA -> RGBA)
-alpha (O a e) = O (C.alpha a) (E RGBA_Ty $ Expr.Alpha 1 e)
+alpha (O a e) = O (C.alpha a) (E RGBA_Ty $ Expr.Alpha (E UI_Ty $ Expr.Lit 1) e)
 
 -- | Observable function to add a preset alpha channel.
-withAlpha :: UI -> O RGB -> O (RGBA -> RGBA)
-withAlpha n (O a e) = O (C.alpha a) (E RGBA_Ty $ Expr.Alpha n e)
+withAlpha :: O UI -> O RGB -> O (RGBA -> RGBA)
+withAlpha (O n en) (O a e) = O (C.withAlpha n a) (E RGBA_Ty $ Expr.Alpha en e)
 
 -- | Observable function to remove the alpha channel.
---unAlpha :: O RGB -> O (RGBA -> RGBA) -> O RGB
---unAlpha (O a1 e1) (O a2 e2) = O (C.unAlpha a1 a2) (E $ Expr.UnAlpha e1 e2)
+unAlpha :: O RGB -> O (RGBA -> RGBA) -> O RGB
+unAlpha (O a1 e1) (O a2 e2) = O (C.unAlpha a1 a2) (E RGB_Ty $ Expr.UnAlpha e1 e2)
 
 -- | Observable function to add a transparent alpha channel.
 transparent :: O (RGBA -> RGBA)
-transparent = O id (E RGBA_Ty $ Expr.Alpha 0 (E RGB_Ty $ O_RGB (RGB 0 0 0)))
+transparent = O id (E RGBA_Ty $ Expr.Alpha (E UI_Ty $ Lit 0) (E RGB_Ty $ O_RGB (RGB 0 0 0)))
 
 red    :: O RGB
 red    = o $ RGB 1.0 0.0 0.0

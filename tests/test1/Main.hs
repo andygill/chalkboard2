@@ -19,7 +19,7 @@ main = do
 	  ["server"] -> do
 		cb <- openChalkBoard [BoardSize 100 100]
 		cbMain cb
-	  _ -> startChalkBoard [BoardSize 100 100] $ cbMain
+	  _ -> startChalkBoard [BoardSize 100 100{-, DebugCBIR-}] $ cbMain
 
 -- server test
 --main = do cb <- openChalkBoard []
@@ -46,7 +46,12 @@ cbMain cb = do
 	let sc = 1 / xy
 	let xd = fromIntegral y / xy
 	let yd = fromIntegral x / xy
-	let img = unAlphaBoard (boardOf white) $ move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
+	let img = unAlphaBoard (boardOf black) $ move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)
+
+	-- test
+	let brd = unAlphaBoard (boardOf white) $ choose (alpha green) (transparent) .$ circle
+	drawChalkBoard cb brd
+	writeChalkBoard cb ("testX.png")
 
 	-- first examples, pure colors.
 	test "test1" 
@@ -265,7 +270,7 @@ cbMain cb = do
 			]
 
 		]
-		
+
 	exitChalkBoard cb
 
 

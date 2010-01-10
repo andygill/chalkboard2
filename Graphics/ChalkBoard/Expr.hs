@@ -23,6 +23,7 @@ import Control.Monad
 data Expr s 
 	-- The var
 	= Var [Path]
+	| Back				-- a var to the backing plane
 	-- constants TODO: common up the constants
 	| Lit R
 	| O_Bool Bool
@@ -38,8 +39,8 @@ data Expr s
 	| OrBool			-- the || function
 	| Choose s s s			-- O a -> O a -> O Bool -> O a
         | Mix s s s 			-- O a -> O a -> O UI -> O a
-	| Alpha UI s			-- O_Alpha?
-	| ScaleAlpha UI s		-- RGBA -> RGBA	-- TODO - is the dead code
+	| Alpha s s			-- O UI -> O RGB -> O (RGBA -> RGBA)
+--	| ScaleAlpha UI s		-- RGBA -> RGBA	-- TODO - is the dead code
 	| UnAlpha s s			-- RGB -> (RGBA -> RGBA) -> RGB
         | WithMask s s			-- O a -> O Bool 	-> O (Maybe a)
 	| WithDefault s s		-- O a -> O (Maybe a) 	-> O a
@@ -82,7 +83,7 @@ data ExprType
 	| Maybe_Ty ExprType
 	| Poly_Ty		-- because of fst, snd
     deriving (Show, Eq)
-
+{-
 -- SHOULD BE DEAD CODE!
 exprUnifyE :: E -> ExprType -> [([Path],ExprType)]
 exprUnifyE (E _ e) = exprUnify e
@@ -106,6 +107,7 @@ exprUnify (Var i) 		ty 		= [(i,ty)]
 --exprUnify (O_Snd e) 		ty 		= exprUnifyE e (Pair_Ty Poly_Ty ty)
 exprUnify other ty = error $ "exprUnify failure (internal errror) " ++ show (other,ty)
 
+-}
 unifyTy :: ExprType -> ExprType -> ExprType
 unifyTy t1 t2 
   | t1 == t2 = t1
@@ -144,7 +146,11 @@ evalExprE (Choose a b c) =
 	  other -> Nothing
 evalExprE (Alpha n e) =
 	case liftM unE $ evalE e of
-	  Just (O_RGB (RGB r g b)) -> return (O_RGBA (RGBA r g b n))
+	  Just (O_RGB (RGB r g b)) -> 
+	     case liftM unE $ evalE n of
+		Just (Lit n') -> return (O_RGBA (RGBA r g b n'))
+		_ ->  Nothing
+	  Nothing -> Nothing
 evalExprE (O_Just e) =
 	case evalE e of
 	   Just e' -> return (O_Just e')
@@ -181,8 +187,8 @@ instance T.Traversable Expr where
 
 	traverse f (Choose a b c) 	= Choose <$> f a <*> f b <*> f c
 	traverse f (Mix a b c) 		= Mix <$> f a <*> f b <*> f c
-	traverse f (Alpha c e) 		= Alpha c <$> f e
-	traverse f (ScaleAlpha c e) 	= ScaleAlpha c <$> f e
+	traverse f (Alpha c e) 		= Alpha <$> f c <*> f e
+--	traverse f (ScaleAlpha c e) 	= ScaleAlpha c <$> f e
 	traverse f (UnAlpha e1 e2) 	= UnAlpha <$> f e1 <*> f e2
 
         traverse f (WithMask v1 v2)	= pure WithMask 	<*> f v1 <*> f v2
