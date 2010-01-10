@@ -11,6 +11,7 @@ module Graphics.ChalkBoard.Internals
 	, Argument(..)
 	, TextureSize(..)
 	, board
+	, buffer
 	, uniform
 	, typeOfBoard
 	, typeOfBuffer
@@ -67,7 +68,8 @@ data UniformTexture  = BoardRGBArgument (Board RGB)
 		     | BoardBoolArgument (Board Bool)
 		     | BoardUIArgument (Board UI)
 		     | BoardMaybeRGBArgument (Board (Maybe RGB))
-		
+		     | BoardRGBAFnArgument (Board (RGBA -> RGBA))
+		     | BufferRGBAFnArgument (Buffer (RGBA -> RGBA))
 	deriving Show
 
 data TextureSize = ResultSize
@@ -89,6 +91,7 @@ data Argument
 
 class UniformBoard a where 
   board :: Board a -> UniformTexture
+  buffer :: Buffer a -> UniformTexture
 
 instance UniformBoard RGB where
   board = BoardRGBArgument
@@ -101,6 +104,10 @@ instance UniformBoard Float where
 
 instance UniformBoard (Maybe RGB) where
   board = BoardMaybeRGBArgument
+
+instance UniformBoard (RGBA -> RGBA) where
+  board = BoardRGBAFnArgument
+  buffer = BufferRGBAFnArgument
 
 uniform  :: Argument -> UniformArgument
 uniform = UniformArgument

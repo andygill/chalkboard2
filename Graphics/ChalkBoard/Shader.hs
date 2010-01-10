@@ -6,6 +6,7 @@ module Graphics.ChalkBoard.Shader
 	, Argument(..)
 	, TextureSize(..)
 	, board
+	, buffer
 	, uniform
 	) where
 	
