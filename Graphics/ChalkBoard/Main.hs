@@ -187,6 +187,8 @@ compiler options v1 v2 = do
 		loop (n+1) brd
 	  DrawChalkBuffer buff -> do
 		cmds <- compileB (x,y) viewBoard buff
+		when (elem DebugCBIR options) $ do
+			putStrLn $ showCBIRs cmds
 --		putStrLn $ showCBIRs cmds
 		putMVar v2 cmds
 		loop (n+1) (error "no ChalkBoard")
