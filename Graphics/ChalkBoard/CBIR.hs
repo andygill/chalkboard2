@@ -1,14 +1,7 @@
 module Graphics.ChalkBoard.CBIR where
 
-import Foreign.Ptr (Ptr)
-import Foreign.C.Types (CUChar)
-import Data.Word
+
 import Graphics.ChalkBoard.Types (UI,RGB(..),RGBA(..))
-import Data.Array.Unboxed
-import Data.Array.MArray
-import Data.Array.Storable
-import Graphics.ChalkBoard.IStorable as IS
-import Graphics.ChalkBoard.Core
 import Graphics.ChalkBoard.Internals
 
 import Data.Binary
@@ -64,7 +57,7 @@ instance Show Background where
 	show (BackgroundG8Bit g) = "(BackgroundG8Bit $ " ++ show g ++ ")"
 	show (BackgroundRGB24Depth c) = "(BackgroundRGB24Depth $ " ++ show c ++ ")"
 	show (BackgroundRGBADepth c) = "(BackgroundRGBADepth $ " ++ show c ++ ")"
-	show (BackgroundByteString bs) = "(BackgroundByteString ...)"
+	show (BackgroundByteString _) = "(BackgroundByteString ...)"
 	
         
 
@@ -241,6 +234,18 @@ instance Binary WithAlpha where
                   0 -> return $ WithSrcAlpha
                   1 -> return $ WithDestAlpha
 
+instance Binary Blender where
+  put Blend     = put (0 :: Word8)
+  put Sum       = put (1 :: Word8)
+  put Max       = put (2 :: Word8)
+  put Copy      = put (3 :: Word8)
+  get = do tag <- getWord8
+           case tag of
+                  0 -> return $ Blend
+                  1 -> return $ Sum
+                  2 -> return $ Max
+                  3 -> return $ Copy
+
 instance Binary Depth where
   put BitDepth 	  = put (0 :: Word8)
   put G8BitDepth  = put (1 :: Word8)
@@ -314,37 +319,48 @@ instance Binary Background where
                   3 -> liftM BackgroundRGBADepth get
                   4 -> liftM BackgroundByteString get
 
+
+instance (Show var, Binary var) => Binary (Splat var) where
+  put (SplatPolygon' v ps)              = put (0 :: Word8) >> put v >> put ps
+  put (SplatColor' rgba ps)             = put (1 :: Word8) >> put rgba >> put ps
+  put (SplatFunction' v bargs uargs ps) = put (2 :: Word8) >> put v >> put bargs >> put uargs >> put ps
+  put (SplatBuffer' v)                  = put (3 :: Word8) >> put v
+  get = do tag <- getWord8
+           case tag of
+                0 -> liftM2 SplatPolygon' get get
+                1 -> liftM2 SplatColor' get get
+                2 -> liftM4 SplatFunction' get get get get
+                3 -> liftM  SplatBuffer' get
+
+
 instance (Show var, Binary var) => Binary (Inst var) where
   put (Allocate v sz d b) 	= put (0 :: Word8) >> put v >> put sz >> put d >> put b
-  --put (SplatTriangle v1 v2 p1 p2 p3) 
-  --                              = put (1 :: Word8) >> put v1 >> put v2 >> put p1 >> put p2 >> put p3
-  --put (SplatPolygon v1 v2 ps)   = put (2 :: Word8) >> put v1 >> put v2 >> put ps
-  --put (SplatColor rgba v a ps)  = put (3 :: Word8) >> put rgba >> put v >> put a >> put ps
-  --put (SplatBuffer src dst)     = put (4 :: Word8) >> put src >> put dst
-  --put (CopyBuffer wa src dst)   = put (5 :: Word8) >> put wa >> put src >> put dst
-  put (AllocateImage rgba v) 	= error "AllocateImage"
-  put (SaveImage v nm)		= put (7 :: Word8) >> put v >> put nm
-  put (Delete v)		= put (8 :: Word8) >> put v 
-  put (Nested nm insts)		= put (9 :: Word8) >> put nm >> put insts
-  put (Exit)			= put (10 :: Word8)
-  put (AllocFragmentShader v txt args)
-				= put (11 :: Word8) >> put v >> put txt >> put args
-  --put (SplatWithFunction v1 vs us v2 points)
-  --                              = put (12 :: Word8) >> put v1 >> put vs >> put us >> put v2 >> put points
+  put (Splat v blend stype)     = put (1 :: Word8) >> put v >> put blend >> put stype
+  put (AllocateImage _ _) 	= error "AllocateImage"
+  put (SaveImage v nm)		= put (2 :: Word8) >> put v >> put nm
+  put (OpenStream sid str)      = put (3 :: Word8) >> put sid >> put str
+  put (WriteStream bid sid)     = put (4 :: Word8) >> put bid >> put sid
+  put (CloseStream sid)         = put (5 :: Word8) >> put sid
+  put (Delete v)		= put (6 :: Word8) >> put v 
+  put (Nested nm insts)		= put (7 :: Word8) >> put nm >> put insts
+  put (Exit)			= put (8 :: Word8)
+  put (AllocFragmentShader v txt args)  = put (9 :: Word8) >> put v >> put txt >> put args
+  put (ShadeFragmentWith v args insts)  = put (10 :: Word8) >> put v >> put args >> put insts
+  put (DeleteFragmentShader v)  = put (11 :: Word8) >> put v
   put other			= error $ show ("put",other)
 
   get = do tag <- getWord8
 	   case tag of
 		0 -> liftM4 Allocate get get get get
-		--1 -> liftM5 SplatTriangle get get get get get
-		--2 -> liftM3 SplatPolygon get get get
-		--3 -> liftM4 SplatColor get get get get
-		--4 -> liftM2 SplatBuffer get get
-		--5 -> liftM3 CopyBuffer get get get
-		6 -> error "AllocateImage"
-		7 -> liftM2 SaveImage get get
-		8 -> liftM  Delete get
-		9 -> liftM2 Nested get get
-		10 -> return $ Exit
-		11 -> liftM3 AllocFragmentShader get get get
-		--12 -> liftM5 SplatWithFunction get get get get get
+		1 -> liftM3 Splat get get get
+		2 -> liftM2 SaveImage get get
+		3 -> liftM2 OpenStream get get
+		4 -> liftM2 WriteStream get get
+		5 -> liftM  CloseStream get
+		6 -> liftM  Delete get
+		7 -> liftM2 Nested get get
+		8 -> return $ Exit
+		9 -> liftM3 AllocFragmentShader get get get
+		10 -> liftM3 ShadeFragmentWith get get get
+		11 -> liftM  DeleteFragmentShader get
+
