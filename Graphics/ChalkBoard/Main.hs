@@ -4,6 +4,7 @@ module Graphics.ChalkBoard.Main
 	, drawChalkBuffer
 	, writeChalkBoard
 	, startMyWriteStream
+	, frameChalkBoard
 	, startDefaultWriteStream
 	, endWriteStream
 	, updateChalkBoard
@@ -47,9 +48,10 @@ data ChalkBoardCommand
 	| DrawChalkBuffer (Buffer RGB)
 	| UpdateChalkBoard (Board RGB -> Board RGB)
 	| WriteChalkBoard FilePath
-	| StartMyWriteStream String
-	| StartDefaultWriteStream FilePath
-	| EndWriteStream
+	| StartMyWriteStream String (MVar StreamId)
+	| StartDefaultWriteStream FilePath (MVar StreamId)
+	| FrameChalkBoard StreamId
+	| EndWriteStream StreamId
 	| ExitChalkBoard
 	| DrawRawChalkBoard [Inst BufferId]
 	
@@ -65,6 +67,7 @@ openStream (.. var) str = do
 
 data ChalkBoard = ChalkBoard (MVar ChalkBoardCommand) (MVar ())
 
+data StreamHandle = StreamHandle StreamId
 
 -- | Draw a board onto the ChalkBoard.
 drawChalkBoard :: ChalkBoard -> Board RGB -> IO ()
@@ -82,20 +85,33 @@ writeChalkBoard :: ChalkBoard -> FilePath -> IO ()
 writeChalkBoard (ChalkBoard var _) nm = putMVar var (WriteChalkBoard nm)
 
 -- | Start streaming the contents of a ChalkBoard buffer into a File.
-startMyWriteStream :: ChalkBoard -> String -> IO ()
-startMyWriteStream (ChalkBoard var _) cmd = putMVar var (StartMyWriteStream cmd)
+startMyWriteStream :: ChalkBoard -> String -> IO StreamHandle
+startMyWriteStream (ChalkBoard var _) cmd = do
+		res <- newEmptyMVar
+		putMVar var (StartMyWriteStream cmd res)
+		sid <- takeMVar res
+		return $ StreamHandle sid
 
 -- | Start streaming the contents of a ChalkBoard buffer into a File, with given ffmpeg command
-startDefaultWriteStream :: ChalkBoard -> FilePath -> IO ()
-startDefaultWriteStream (ChalkBoard var _) nm = putMVar var (StartDefaultWriteStream nm)
+startDefaultWriteStream :: ChalkBoard -> FilePath -> IO StreamHandle
+startDefaultWriteStream (ChalkBoard var _) nm = do
+		res <- newEmptyMVar
+		putMVar var (StartDefaultWriteStream nm res)
+		sid <- takeMVar res
+		return $ StreamHandle sid
+
+--doWriteFrame :: ChalkBoard -> 
 
 -- | End streaming the contents of a ChalkBoard buffer into a File.
-endWriteStream :: ChalkBoard -> IO ()
-endWriteStream (ChalkBoard var _) = putMVar var (EndWriteStream)
+endWriteStream :: ChalkBoard -> StreamHandle -> IO ()
+endWriteStream (ChalkBoard var _) (StreamHandle sid) = putMVar var (EndWriteStream sid)
 
 -- | modify the current ChalkBoard.
 updateChalkBoard :: ChalkBoard -> (Board RGB -> Board RGB) -> IO ()
 updateChalkBoard (ChalkBoard var _) brd = putMVar var (UpdateChalkBoard brd)
+
+frameChalkBoard :: ChalkBoard -> StreamHandle -> IO ()
+frameChalkBoard (ChalkBoard var _) (StreamHandle sid) = putMVar var (FrameChalkBoard sid)
 
 -- | Debugging hook for writing raw CBIR code.
 drawRawChalkBoard :: ChalkBoard -> [Inst BufferId] -> IO ()
@@ -173,10 +189,10 @@ viewBoard = 0
 compiler :: [Options] -> MVar ChalkBoardCommand -> MVar [Inst Int] -> IO ()
 compiler options v1 v2 = do
 	putMVar v2 [Allocate viewBoard (x,y) RGB24Depth (BackgroundRGB24Depth (RGB 1 1 1))]
-	loop (0::Integer) (boardOf (o (RGB 1 1 1)))
+	loop (0::Integer) (boardOf (o (RGB 1 1 1))) (0 :: BufferId)
   where     
      (x,y) = head ([ (x,y) | BoardSize x y <- options ] ++ [(400,400)])
-     loop n old_brd = do
+     loop n old_brd buffIds = do
 	cmd <- takeMVar v1
 	case cmd of
 	  DrawChalkBoard brd -> do
@@ -184,35 +200,40 @@ compiler options v1 v2 = do
 		when (elem DebugCBIR options) $ do
 			putStrLn $ showCBIRs cmds
 		putMVar v2 cmds
-		loop (n+1) brd
+		loop (n+1) brd buffIds
 	  DrawChalkBuffer buff -> do
 		cmds <- compileB (x,y) viewBoard buff
 		when (elem DebugCBIR options) $ do
 			putStrLn $ showCBIRs cmds
 --		putStrLn $ showCBIRs cmds
 		putMVar v2 cmds
-		loop (n+1) (error "no ChalkBoard")
+		loop (n+1) (error "no ChalkBoard") buffIds
 	  UpdateChalkBoard fn -> do
 		let brd = fn old_brd
 		cmds <- compile (x,y) viewBoard (move (0.5,0.5) brd)
 --		putStrLn $ showCBIRs cmds
 		putMVar v2 cmds
-		loop (n+1) brd
+		loop (n+1) brd buffIds
 	  DrawRawChalkBoard cmds -> do
 		putMVar v2 cmds
-		loop (n+1) (error "Board in an unknown state")
+		loop (n+1) (error "Board in an unknown state") buffIds
 	  WriteChalkBoard filename -> do
 		putMVar v2 [SaveImage viewBoard filename]
-		loop (n+1) old_brd
-	  StartMyWriteStream openCmd -> do
-	        putMVar v2 [OpenStream viewBoard openCmd]
-	        loop (n+1) old_brd
-	  StartDefaultWriteStream filename -> do
-	        putMVar v2 [OpenStream viewBoard (ffmpegOutCmd filename)]
-	        loop (n+1) old_brd  
-	  EndWriteStream -> do
-	        putMVar v2 [CloseStream viewBoard]
-	        loop (n+1) old_brd
+		loop (n+1) old_brd buffIds
+	  StartMyWriteStream openCmd v0 -> do
+	        putMVar v2 [OpenStream buffIds openCmd]
+		putMVar v0 buffIds
+	        loop (n+1) old_brd (succ buffIds)
+	  StartDefaultWriteStream filename v0 -> do
+	        putMVar v2 [OpenStream buffIds (ffmpegOutCmd filename)]
+		putMVar v0 buffIds
+	        loop (n+1) old_brd (succ buffIds)
+	  FrameChalkBoard sid -> do
+	        putMVar v2 [WriteStream viewBoard sid]
+	        loop (n+1) old_brd buffIds
+	  EndWriteStream sid -> do
+	        putMVar v2 [CloseStream sid]
+	        loop (n+1) old_brd buffIds
 
 	  ExitChalkBoard -> putMVar v2 [Exit]
 

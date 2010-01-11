@@ -155,9 +155,7 @@ initCBMEnv options state = do
 	putMVar v state
 	ffi <- newIORef empty
 	prog <- newIORef Nothing
-	streamid <- newIORef Nothing
-        return $ CBenv debugFrames' debugAll' debugBoards' fboSupport' v ffi prog streamid
-
+        return $ CBenv debugFrames' debugAll' debugBoards' fboSupport' v ffi prog 
 
 
 
@@ -354,11 +352,13 @@ drawBoard env = do
             flush
             swapBuffers
 
+{- Wrong placement in this refreash logic (which needs revisited)
     stream <- readIORef (currentStream env)
     case stream of
         Nothing -> return ()
         Just streamid -> do
                 b <- getCurrentBoard env
+		print "Writing board to ffmpeg"
                 writeStream env b streamid
 
     -- sanity check; look for space leaks
@@ -367,7 +367,7 @@ drawBoard env = do
     when (Map.size texMap /= 1) $ do
        putStrLn "There are boards still allocated"
        print (Map.keys (Map.filterWithKey (\ k a -> (k /= b)) texMap))
-    
+-}    
 
 
 -- Function to display the current output board of a chalkboard image. Done once per frame.
@@ -1068,7 +1068,7 @@ openStream :: CBenv -> StreamId -> String -> IO ()
 openStream env streamID cmd = do
         outpipe <- openVideoOutPipe cmd
         addOutStream env streamID outpipe
-        writeIORef (currentStream env) (Just streamID)
+--        writeIORef (currentStream env) (Just streamID)
 
 
 closeStream :: CBenv -> StreamId -> IO ()
@@ -1076,7 +1076,7 @@ closeStream env streamID = do
         stream <- getOutStream env streamID
         closeVideoOutPipe stream
         rmOutStream env streamID
-        writeIORef (currentStream env) (Nothing)
+--        writeIORef (currentStream env) (Nothing)
 
 
 writeStream :: CBenv -> BufferId -> StreamId -> IO ()
@@ -1251,6 +1251,11 @@ splatWithFunction env fnId args  uargs bDest ptList = do
 				withArray [ Vertex2 (realToFrac x) (realToFrac y) :: Vertex2 GLfloat
 				          | (x,y) <- vecs 
 				          ] $ \ ptr -> uniformv location (fromIntegral $ length vecs) ptr
+			   CBI.Float f -> do
+				uniform location $= (Index1 (floatToGLfloat f))
+
+
+
 			   _ -> error $ "Opps: " ++ show (s,arg)
 			reportErrors
 		   | (s,CBI.UniformArgument arg) <- uargs
