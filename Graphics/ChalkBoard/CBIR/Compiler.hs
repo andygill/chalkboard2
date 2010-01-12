@@ -624,7 +624,7 @@ compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer) brd = do
 		[ Nested "buffer inside board (...)" $
 			insts1 ++ insts2 ++ 
 			[ Splat (bcDest bc)
-			        (bcBlend bc)
+			        (fst (targetOverBlend t (bcBlend bc)))
 			        (SplatPolygon' buffId -- need a version that does no merging, but just copies
 		    		        [ PointMap (x,y) (mapPoint tr (x,y))
 		    		        | (x,y) <- [(0,0),(1,0),(1,1),(0,1)]
