@@ -20,9 +20,18 @@ newtype OutPipe = OutPipe Handle
 openVideoInPipe :: String -> IO (InPipe)
 openVideoInPipe ffmpegCmd = do
     (Just hin, Just hout, Just herr, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }
+    --(Just hin, Just hout, _, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = Inherit, close_fds = True }
     hClose hin
     hClose herr
     return (InPipe hout)
+
+{- It would be nice to do this... but doesn't seem to work.
+openVideoWithInPipe :: String -> InPipe -> IO ()
+openVideoWithInPipe ffmpegCmd (InPipe h) = do
+    (Just hin, Nothing, Just herr, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = UseHandle h, std_err = CreatePipe, close_fds = True }
+    hClose hin
+    hClose herr
+-}
 
 nextPPMFrame :: InPipe -> IO (Maybe (Buffer RGB))
 nextPPMFrame (InPipe hIn) = do
@@ -61,6 +70,7 @@ closeVideoInPipe (InPipe hin) = do
 openVideoOutPipe :: String -> IO (OutPipe)
 openVideoOutPipe ffmpegCmd = do
     (Just hin, Just hout, Just herr, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }
+    --(Just hin, Just hout, _, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = Inherit, close_fds = True }
     hClose hout
     hClose herr
     return (OutPipe hin)
