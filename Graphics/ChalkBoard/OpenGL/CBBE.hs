@@ -447,7 +447,7 @@ drawInsts env (i:is) = do
             (AllocateImage b imagePath) -> allocateImgBuffer env b imagePath
             (Splat target blender stype) -> splat env target blender stype
             (SaveImage b savePath) -> saveImage env b savePath
-            (OpenStream streamID cmd) -> openStream env streamID cmd
+            (OpenStream streamID cmd verb) -> openStream env streamID cmd verb
             (WriteStream bufferID streamID) -> writeStream env bufferID streamID
             (CloseStream streamID) -> closeStream env streamID
             (Delete b) -> deleteBuffer env b
@@ -1064,9 +1064,9 @@ deleteBuffer env b = do
 
 
 
-openStream :: CBenv -> StreamId -> String -> IO ()
-openStream env streamID cmd = do
-        outpipe <- openVideoOutPipe cmd
+openStream :: CBenv -> StreamId -> String -> Bool -> IO ()
+openStream env streamID cmd verb = do
+        outpipe <- openVideoOutPipe verb cmd
         addOutStream env streamID outpipe
 --        writeIORef (currentStream env) (Just streamID)
 

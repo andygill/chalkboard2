@@ -17,6 +17,7 @@ data Options = NoFBO
 	     | BoardSize Int Int		-- ^ default is 400x400.
 	     | FullScreen			-- ^ not supported (yet!)
 	     | DebugCBIR
+	     | VerboseVideo
         deriving (Eq, Show)
 
 instance Binary Options where
@@ -26,6 +27,8 @@ instance Binary Options where
   put (BoardSize w h) 		 = put (3 :: Word8) >> put w >> put h
   put (FullScreen) 		 = put (4 :: Word8)
   put (DebugCBIR) 		 = put (5 :: Word8)
+  put (VerboseVideo) 		 = put (6 :: Word8)
+
   get = do tag <- getWord8
            case tag of
                   0 -> return $ NoFBO 
@@ -34,3 +37,4 @@ instance Binary Options where
 		  3 -> liftM2 BoardSize get get
 		  4 -> return $ FullScreen
 		  5 -> return $ DebugCBIR
+		  5 -> return $ VerboseVideo

@@ -126,6 +126,7 @@ AG: other considerations include
      | OpenStream
        StreamId
        String
+       Bool		-- if you want the stream status verbose
      
      | WriteStream
        BufferId
@@ -338,7 +339,7 @@ instance (Show var, Binary var) => Binary (Inst var) where
   put (Splat v blend stype)     = put (1 :: Word8) >> put v >> put blend >> put stype
   put (AllocateImage _ _) 	= error "AllocateImage"
   put (SaveImage v nm)		= put (2 :: Word8) >> put v >> put nm
-  put (OpenStream sid str)      = put (3 :: Word8) >> put sid >> put str
+  put (OpenStream sid str verb) = put (3 :: Word8) >> put sid >> put str >> put verb
   put (WriteStream bid sid)     = put (4 :: Word8) >> put bid >> put sid
   put (CloseStream sid)         = put (5 :: Word8) >> put sid
   put (Delete v)		= put (6 :: Word8) >> put v 
@@ -354,7 +355,7 @@ instance (Show var, Binary var) => Binary (Inst var) where
 		0 -> liftM4 Allocate get get get get
 		1 -> liftM3 Splat get get get
 		2 -> liftM2 SaveImage get get
-		3 -> liftM2 OpenStream get get
+		3 -> liftM3 OpenStream get get get
 		4 -> liftM2 WriteStream get get
 		5 -> liftM  CloseStream get
 		6 -> liftM  Delete get

@@ -221,11 +221,11 @@ compiler options v1 v2 = do
 		putMVar v2 [SaveImage viewBoard filename]
 		loop (n+1) old_brd buffIds
 	  StartMyWriteStream openCmd v0 -> do
-	        putMVar v2 [OpenStream buffIds openCmd]
+	        putMVar v2 [OpenStream buffIds openCmd (elem VerboseVideo options)]
 		putMVar v0 buffIds
 	        loop (n+1) old_brd (succ buffIds)
 	  StartDefaultWriteStream filename v0 -> do
-	        putMVar v2 [OpenStream buffIds (ffmpegOutCmd filename)]
+	        putMVar v2 [OpenStream buffIds (ffmpegOutCmd filename) (elem VerboseVideo options)]
 		putMVar v0 buffIds
 	        loop (n+1) old_brd (succ buffIds)
 	  FrameChalkBoard sid -> do

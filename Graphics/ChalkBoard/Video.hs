@@ -63,12 +63,11 @@ closeVideoInPipe :: InPipe -> IO ()
 closeVideoInPipe (InPipe hin) = do
     hClose hin
 
-
-
-
-
-openVideoOutPipe :: String -> IO (OutPipe)
-openVideoOutPipe ffmpegCmd = do
+openVideoOutPipe :: Bool -> String -> IO (OutPipe)
+openVideoOutPipe True ffmpegCmd = do
+    (Just hin, _, _, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, close_fds = True }
+    return (OutPipe hin)
+openVideoOutPipe False ffmpegCmd = do
     (Just hin, Just hout, Just herr, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }
     --(Just hin, Just hout, _, _) <- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = Inherit, close_fds = True }
     hClose hout
