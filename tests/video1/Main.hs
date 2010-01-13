@@ -45,22 +45,23 @@ videoMain cb = do
     closeVideoInPipe videoPipe
     
     
-    
+    {-
     -- Test Video Output
     (w,h,img) <- readNormalizedBoard ("lambda.png")
-    startDefaultWriteStream cb "testOut.mp4"
+    h <- startDefaultWriteStream cb "testOut.mp4"
     
-    let example x = unAlpha <$> (rotate (4*x) (scale (abs x) img)) `over` (boardOf (alpha (o (RGB x x (abs x)))))
-    sequence_ [ drawChalkBoard cb (example (sin x)) | x <- [0,0.01..1] ]
+    let example x = unAlphaBoard (boardOf white) $ (rotate (4*x) (scale (abs x) img)) `over` (boardOf (alpha (o (RGB x x (abs x)))))
+    sequence_ [ do drawChalkBoard cb (example (sin x))
+                   frameChalkBoard cb h | x <- [0,0.01..1] ]
     
-    endWriteStream cb
+    endWriteStream cb h
     
     
     
     -- Test Video End to End
     videoPipe2 <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm -"
 
-    startMyWriteStream cb (ffOut "testBothOut.mp4")
+    h <- startMyWriteStream cb (ffOut "testBothOut.mp4")
     
     let endToEndTest = do
                 maybeBuffer <- nextPPMFrame videoPipe2
@@ -71,7 +72,7 @@ videoMain cb = do
                                         endToEndTest
     
     endToEndTest
-    endWriteStream cb
+    endWriteStream cb h
     closeVideoInPipe videoPipe2
     
     
@@ -108,10 +109,10 @@ videoMain cb = do
     videoPipe3 <- openVideoInPipe (ffmpegInCmd "bigfoot.mpeg")
     videoPipe4 <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm -"
     
-    startDefaultWriteStream cb "testGLSLOut.mp4"
+    streamh <- startDefaultWriteStream cb "testGLSLOut.mp4"
     
     (w,h,img) <- readNormalizedBoard ("lambda.png")
-    let example x = unAlpha <$> (scale 100 (rotate (4*x) (scale (abs x*3) img))) -- `over` (boardOf (alpha white))
+    let example x = unAlphaBoard (boardOf white) (scale 100 (rotate (4*x) (scale (abs x*3) img))) -- `over` (boardOf (alpha white))
     
     mix <- mkMix
     (Just bufferS) <- nextPPMFrame videoPipe3
@@ -132,11 +133,12 @@ videoMain cb = do
                                                          (scaleXY (1,-1) $ bufferOnBoard bufferP (boardOf white))
                                                          ((move (240,-180) $ example (sin count)) `over` (scaleXY (1,-1) $ bufferOnBoard buffer2 (boardOf red)))
                                                     ))
+                                            frameChalkBoard cb streamh
                                             glslTest buffer1 (count+0.04)
     
     glslTest bufferS 0
     
-    endWriteStream cb
+    endWriteStream cb streamh
     closeVideoInPipe videoPipe3
     closeVideoInPipe videoPipe4
     
@@ -151,10 +153,10 @@ mkMix :: IO (Board RGB -> Board RGB -> Board RGB -> Board RGB -> Board RGB)
 mkMix = do 
 	fileContents <- readFile "laplacian2.fs"
 	return $ \ b1 b2 b3 b4 -> gslBoard fileContents
-				[ ("sampler0",board b1)
-				, ("sampler1",board b2)
-				, ("sampler2",board b3)
-				, ("sampler3",board b4)
+				[ ("sampler0",ResultSize,board b1)
+				, ("sampler1",ResultSize,board b2)
+				, ("sampler2",ResultSize,board b3)
+				, ("sampler3",ResultSize,board b4)
 				]
 				[ ("tc_offset",uniform $ 
 						ArrVec2 [ (x*(1/480),y*(1/360))
