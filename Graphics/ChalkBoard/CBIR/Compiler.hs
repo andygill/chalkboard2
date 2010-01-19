@@ -10,18 +10,18 @@ import Graphics.ChalkBoard.Types as Ty
 
 import Graphics.ChalkBoard.O as O
 import Graphics.ChalkBoard.O.Internals as OI
-import Graphics.ChalkBoard.Core as C
+--import Graphics.ChalkBoard.Core as C
 import Graphics.ChalkBoard.Board as B hiding (zip)
 import Graphics.ChalkBoard.Internals as BI
 import Graphics.ChalkBoard.CBIR as CBIR
 import Data.Unique
-import Data.Reify.Graph
+--import Data.Reify.Graph
 import Graphics.ChalkBoard.Expr as Expr
-import Data.Array.Unboxed
-import Data.Array.MArray
-import Data.Array.IO
+--import Data.Array.Unboxed
+--import Data.Array.MArray
+--import Data.Array.IO
 import Control.Monad
-import Graphics.ChalkBoard.IStorable as IS
+--import Graphics.ChalkBoard.IStorable as IS
 import Data.ByteString(ByteString)
 import qualified Data.Map as Map
 import Data.Map (Map)
@@ -30,8 +30,8 @@ import qualified Data.List as List
 import qualified Data.ByteString as BS
 
 
-import Unsafe.Coerce
-import Debug.Trace
+--import Unsafe.Coerce
+--import Debug.Trace
 
 -- We always compile  a RGB board.
 compile :: (Int,Int) -> BufferId -> Board RGB -> IO [CBIR.Inst Int]
@@ -57,7 +57,7 @@ mapPoint (Rotate theta : r) 	(x,y) = mapPoint r ( cos (-theta) * x - sin (-theta
 						   )
 
 -- Assumping that the init board is RGB.
-
+initBoardContext :: (Int, Int) -> BufferId -> BoardContext
 initBoardContext (x,y) i = BoardContext [] (x,y) i Copy
 
 data BoardContext = BoardContext 
@@ -107,7 +107,7 @@ compileByteStringImage low@(x0,y0) high@(x1,y1) bs depth = do
 
 -- Do you have overlapping shapes? Default to True, to be safe if do not know.	
 perhapsOverlapBoardBool :: Board a -> Bool
-perhapsOverlapBoardBool (Board _ (Trans mv brd)) = perhapsOverlapBoardBool brd
+perhapsOverlapBoardBool (Board _ (Trans _ brd)) = perhapsOverlapBoardBool brd
 perhapsOverlapBoardBool (Board _ (Polygon _))    = False	-- single polygon; no overlap
 perhapsOverlapBoardBool _              		 = True
 
@@ -156,9 +156,9 @@ targetOverBlend (Target_UI)  Blend    = ( Max, Just $ Max ) 	-- Err, should neve
 targetOverBlend (Target_RGB) Copy       = ( Copy, Nothing )
 targetOverBlend (Target_RGBA) Copy    = ( Blend, Just $ Copy ) 
 targetOverBlend (Target_RGBA) Blend   = ( Blend, Just $ Blend ) 
-targetOverBlend (Target_Bool c) Blend = ( Blend, Just $ Blend )
-targetOverBlend (Target_Bool c) Copy  = ( Blend, Just $ Copy )
-targetOverBlend (Target_Bool c) Max   = ( Blend, Just $ Max )
+targetOverBlend (Target_Bool _) Blend = ( Blend, Just $ Blend )
+targetOverBlend (Target_Bool _) Copy  = ( Blend, Just $ Copy )
+targetOverBlend (Target_Bool _) Max   = ( Blend, Just $ Max )
 targetOverBlend (Target_Maybe_RGB) Blend = ( Blend, Just $ Blend )
 targetOverBlend (Target_Maybe_RGB) Copy  = ( Blend, Just $ Copy )
 targetOverBlend (Target_Maybe_UI) Blend  = ( Blend, Just $ Blend )
@@ -199,17 +199,17 @@ compileBoard2
 	-> IO [CBIR.Inst Int]
 
 -- compileBoard _ _ brd | trace (show ("compileBoard",brd)) False = undefined
-compileBoard2 bc t (Board ty (Trans mv brd)) 		= compileBoard2 (updateTrans mv bc) t brd
+compileBoard2 bc t (Board _ (Trans mv brd)) 		= compileBoard2 (updateTrans mv bc) t brd
 compileBoard2 bc t (Board ty (Fmap g (Board _ (Fmap h brd)))) 	
 							= compileBoard2 bc t (Board ty (Fmap (g . h) brd))
-compileBoard2 bc t (Board ty (Fmap g (Board ty' (Trans mv brd)))) 	
+compileBoard2 bc t (Board ty (Fmap g (Board _ (Trans mv brd)))) 	
 							= compileBoard2 bc t (Board ty (Trans mv (Board ty (Fmap g brd))))
-compileBoard2 bc t (Board ty (Over fn above below)) 	= compileBoardOver bc t above below (targetOverBlend t (bcBlend bc))
-compileBoard2 bc t (Board ty (Polygon nodes)) 		= compileBoardPolygon bc t nodes
-compileBoard2 bc t (Board ty (PrimConst o)) 		= do
---	print (show ("const",runO0 o))
-	compileBoardConst bc t (evalE $ runO0 o)
-compileBoard2 bc t (Board ty (Fmap f other))
+compileBoard2 bc t (Board _ (Over _ above below)) 	= compileBoardOver bc t above below (targetOverBlend t (bcBlend bc))
+compileBoard2 bc t (Board _ (Polygon nodes)) 		= compileBoardPolygon bc t nodes
+compileBoard2 bc t (Board _ (PrimConst o')) 		= do
+--	print (show ("const",runO0 o'))
+	compileBoardConst bc t (evalE $ runO0 o')
+compileBoard2 bc t (Board _ (Fmap f other))
 --	| trace (show (bc,t,(runO1 f (E $ Var [])),ty)) False = undefined
 		-- special optimization: fmap (...) (xxx :: Board Bool) can often be optimized
 {- TODO
@@ -225,18 +225,18 @@ compileBoard2 bc t (Board ty (Fmap f other))
 	      brdTy = typeOfBoard other
 	      argTy = ff brdTy
 	      ff (Pair_Ty t1 t2) = 
-			[ (GoLeft  : p,t)  | (p,t) <- ff t1 ] ++
-			[ (GoRight : p,t)  | (p,t) <- ff t2 ] 
-	      ff other = [([],other)]
+			[ (GoLeft  : p,t')  | (p,t') <- ff t1 ] ++
+			[ (GoRight : p,t')  | (p,t') <- ff t2 ] 
+	      ff other' = [([],other')]
 			
-	      tr = evalE $ runO1 f (E BOOL_Ty $ O_Bool True)
-	      fa = evalE $ runO1 f (E BOOL_Ty $ O_Bool False)
+--	      tr = evalE $ runO1 f (E BOOL_Ty $ O_Bool True)
+--	      fa = evalE $ runO1 f (E BOOL_Ty $ O_Bool False)
 		
 		
-compileBoard2 bc t (Board ty (BufferOnBoard buffer brd)) 	= compileBufferOnBoard bc t buffer brd
-	where ty = targetType t
-compileBoard2 bc t (Board ty (BoardGSI fn bargs vargs)) 	= compileBoardGSI bc t fn bargs vargs
-compileBoard2 bc t@(Target_RGB) (Board ty (BoardUnAlpha back fn)) = do
+compileBoard2 bc t (Board _ (BufferOnBoard buffer' brd)) 	= compileBufferOnBoard bc t buffer' brd
+--	where ty = targetType t
+compileBoard2 bc t (Board _ (BoardGSI fn bargs vargs)) 	= compileBoardGSI bc t fn bargs vargs
+compileBoard2 bc t@(Target_RGB) (Board _ (BoardUnAlpha back fn)) = do
 	inst1 <- compileBoard2 bc t back
 	newBoard <- newNumber
 	inst2 <- compileBoard2 (bc { bcDest = newBoard, bcBlend = Blend }) (Target_RGBA) fn
@@ -255,7 +255,8 @@ compileBoard2 bc t@(Target_RGB) (Board ty (BoardUnAlpha back fn)) = do
 compileBoard2 bc t other          		= error $ show ("compileBoard2",bc,t,other)
 
 -- Drawing something *over* something.
-compileBoardOver bc t above below (b1,Nothing) = compileBoard2 (bc { bcBlend = b1})  t above
+compileBoardOver :: BoardContext -> Target -> Board a -> Board b -> (Blender, Maybe Blender) -> IO [Inst Int] -- Inferred Type
+compileBoardOver bc t above _ (b1,Nothing) = compileBoard2 (bc { bcBlend = b1})  t above
 compileBoardOver bc t above below (b1,Just b2) = do
 	-- not quite right; assumes that the backing board is white.
 	before <- compileBoard2 (bc { bcBlend = b2}) t below
@@ -268,6 +269,7 @@ compileBoardOver bc t above below (b1,Just b2) = do
 		 ]
 
 -- Drawing something onto the screen
+compileBoardPolygon :: (Monad m) => BoardContext -> Target -> (R -> [(R, R)]) -> m [Inst BufferId]
 compileBoardPolygon bc (Target_Bool (RGB r g b)) nodes = do
 	return $ [ Nested ("precision factor = " ++ show res)
 		     [ Splat (bcDest bc) 
@@ -276,35 +278,36 @@ compileBoardPolygon bc (Target_Bool (RGB r g b)) nodes = do
 		     ]
 		]
   where
-	[(x0,y0),(x1,y1),(x2,y2)] = map (mapPoint [ Scale (a,b) | Scale (a,b) <- bcTrans bc]) [(0,0),(1,0),(0,1)]
+	[(x0,y0),(x1,_),(_,y2)] = map (mapPoint [ Scale (a,b') | Scale (a,b') <- bcTrans bc]) [(0,0),(1,0),(0,1)]
 	res   = 1 + max (abs (fromIntegral x * (x0 - x1))) (abs (fromIntegral y * (y0 - y2)))
 	(x,y)  = bcSize bc
 
 -- draw a constant board.
+compileBoardConst :: BoardContext -> Target -> Maybe E -> IO [Inst BufferId]
 compileBoardConst bc t@(Target_Bool rgb) (Just (E _ (O_Bool True)))
 		| targetRep t == targetRep Target_RGB 
 			-- sanity check, then use the RGB drawing
 		= compileBoardConst bc (Target_RGB) (Just (E RGB_Ty (O_RGB rgb)))
-compileBoardConst bc t@(Target_Bool rgb) (Just (E _ (O_Bool False)))
+compileBoardConst _ (Target_Bool _) (Just (E _ (O_Bool False)))
 	   	-- background *is* false
 		= return []
-compileBoardConst bc t@(Target_RGB) (Just (E _ (O_RGB (RGB r g b))))
+compileBoardConst bc (Target_RGB) (Just (E _ (O_RGB (RGB r g b))))
 		= return [
 		 	(Splat (bcDest bc)
 		 	       Copy 
 		 	       (SplatColor' (RGBA r g b 1) [(0,0),(1,0),(1,1),(0,1)])
 		 	)
 			]
-compileBoardConst bc t@(Target_UI) (Just (E _ (Lit r)))
+compileBoardConst bc (Target_UI) (Just (E _ (Lit r)))
 		= return [
 		 	(Splat (bcDest bc)
 		 	       (bcBlend bc) 
 		 	       (SplatColor' (RGBA r 0 0 1) [(0,0),(1,0),(1,1),(0,1)])
 		 	)
 			]
-compileBoardConst bc t@(Target_RGBA) (Just (E _ (O_RGBA rgba)))
+compileBoardConst bc (Target_RGBA) (Just (E _ (O_RGBA rgba)))
 		= do
-		newBoard <- newNumber
+--		newBoard <- newNumber
 		return [ Nested ("Const (a :: RGBA)") $
 			  [ Splat (bcDest bc)
 			          (bcBlend bc)
@@ -312,9 +315,9 @@ compileBoardConst bc t@(Target_RGBA) (Just (E _ (O_RGBA rgba)))
 			  ]
 			]
 
-compileBoardConst bc t@(Target_Maybe_RGB) (Just (E  (Maybe_Ty RGB_Ty) (O_Just (E RGB_Ty (O_RGB (RGB r g b))))))
+compileBoardConst bc (Target_Maybe_RGB) (Just (E  (Maybe_Ty RGB_Ty) (O_Just (E RGB_Ty (O_RGB (RGB r g b))))))
 		= do
-		newBoard <- newNumber
+--		newBoard <- newNumber
 		return [ Nested ("Const (Just a :: Maybe RGB)") $
 			  [ Splat (bcDest bc)
 			          Copy
@@ -328,6 +331,7 @@ compileBoardConst bc t constant = error $ show ("compileBoardConst",bc,t,constan
 data FmapArg where
 	FmapArg :: Board a -> ExprType -> Path -> FmapArg
 
+assignFrag :: ExprType -> String -> String
 assignFrag RGBA_Ty expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	-- TODO: assumes merging???
 assignFrag (Maybe_Ty RGB_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	
 assignFrag (Maybe_Ty UI_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"
@@ -340,6 +344,7 @@ assignFrag other expr = error $ show ("assignFrag",other,expr)
 -- then figuring out what the *code* is secondly.
 
 
+prelude :: String
 prelude = unlines
 	[ "vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }"
 	, "vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }" 
@@ -356,11 +361,11 @@ compileBoardFmap :: BoardContext -> Target -> E -> Board a -> [([Path],ExprType)
 --	| trace (show ("compileBoardFmap (RGBA->RGBA)",f,bc,t,other,argTypes,resTy)) False = undefined
 compileBoardFmap bc t (E _ty f) other argTypes resTy = do	
 	(insts,idMap) <- compileFmapArgs bc t other argTypes
-	let env = Map.fromList [ (path,"cb_sampler" ++ show n) | ((_,path),n) <- zip idMap [0..]]
+	let env = Map.fromList [ (path,"cb_sampler" ++ show n) | ((_,path),n) <- zip idMap [(0::Int)..]]
 	let expr = compileFmapFun env f resTy	
  	let (x0,x1,y0,y1) = (0,1,0,1) 
 	let fn = 
-		unlines [ "uniform sampler2D cb_sampler" ++ show n ++ ";" | (_,n) <- zip idMap [0..]] ++
+		unlines [ "uniform sampler2D cb_sampler" ++ show n ++ ";" | (_,n) <- zip idMap [(0::Int)..]] ++
 		prelude ++
 		"void main(void) {\n" ++
 		assignFrag resTy expr ++
@@ -383,7 +388,7 @@ compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 		 , Splat (bcDest bc)
 		         (bcBlend bc)
 		         (SplatFunction' newFrag 
-				[ ("cb_sampler" ++ show n,bid) | ((bid,_),n) <- zip idMap [0..]]
+				[ ("cb_sampler" ++ show n,bid) | ((bid,_),n) <- zip idMap [(0::Int)..]]
 				[]
 				[ (x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]])
 		 , Delete newFrag	-- really should cache these
@@ -411,7 +416,7 @@ compileBoardFmap bc t (E _ty f) other argTypes resTy = do
 	
 
 -- Abort!
-compileBoardFmap bc t f other argTy resTy = error $ show ("compileBoardFmap",bc,t,other,argTy,resTy)
+compileBoardFmap bc t _ other argTy resTy = error $ show ("compileBoardFmap",bc,t,other,argTy,resTy)
 
 
 pushBack :: E -> Maybe E

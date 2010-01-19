@@ -348,7 +348,7 @@ instance (Show var, Binary var) => Binary (Inst var) where
   put (AllocFragmentShader v txt args)  = put (9 :: Word8) >> put v >> put txt >> put args
   put (ShadeFragmentWith v args insts)  = put (10 :: Word8) >> put v >> put args >> put insts
   put (DeleteFragmentShader v)  = put (11 :: Word8) >> put v
-  put other			= error $ show ("put",other)
+  --put other			= error $ show ("put",other)
 
   get = do tag <- getWord8
 	   case tag of
