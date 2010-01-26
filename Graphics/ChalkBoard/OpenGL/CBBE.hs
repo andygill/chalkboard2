@@ -25,7 +25,9 @@ import Codec.Image.DevIL
 
 -- Base Packages
 import Prelude hiding ( lookup )
+import Control.Concurrent ( forkIO )
 import Control.Concurrent.MVar ( MVar, newEmptyMVar, tryTakeMVar, takeMVar, putMVar )
+import Control.Concurrent.Chan
 import Control.Monad ( when )
 import Foreign.Ptr ( Ptr, nullPtr, castPtr )
 import Foreign.C.Types ( CUChar )
@@ -129,7 +131,7 @@ startRendering board booted insts options = do
     -- Register the function called when the window is resized
     reshapeCallback $= Just resizeScene
     -- Register the function called when the keyboard is pressed.
-    keyboardMouseCallback $= Just (keyPressed debug)
+    keyboardMouseCallback $= Just (keyPressed (env {fboSupport = fboOn}))
     
     -- Start the main GLUT event loop after telling the front end that OpenGL has been booted
     flush
@@ -155,7 +157,8 @@ initCBMEnv options state = do
 	putMVar v state
 	ffi <- newIORef empty
 	prog <- newIORef Nothing
-        return $ CBenv debugFrames' debugAll' debugBoards' fboSupport' v ffi prog 
+	mouseChan <- newIORef Nothing
+        return $ CBenv debugFrames' debugAll' debugBoards' fboSupport' v ffi prog mouseChan
 
 
 
@@ -208,10 +211,20 @@ resizeScene (Size width height) = do
 
 -- Keyboard and Mouse callback function
 -- Right now just exits the program when the escape key is pressed.
-keyPressed :: Bool -> KeyboardMouseCallback
-keyPressed debug (Char '\27') Down _ _ = do
+keyPressed :: CBenv -> KeyboardMouseCallback
+keyPressed env (Char '\27') Down _ _ = do
+    debug <- getDebugFrames env
     when (debug) $ appendFile "./debug.html" "</HTML>"
     exitWith ExitSuccess -- 27 is ESCAPE
+keyPressed env (MouseButton LeftButton) Down _ (Position px py) = do
+        mbMouseChan <- get (mouseChan env)
+        case mbMouseChan of
+                Just chan -> do
+                                Size winW winH <- get windowSize
+                                let (w,h) = (fromIntegral winW, fromIntegral winH)
+                                let (x,y) = (fromIntegral px, fromIntegral py)
+                                writeChan chan (Callback (x/w, y/h))
+                Nothing   -> return ()
 keyPressed _     _            _    _ _ = return ()
 
 
@@ -405,8 +418,8 @@ displayBoard env = do
     Size winW2 winH2 <- get windowSize -- Get the size of the window    
     let minW = ((fromIntegral (fromIntegral winW2 -  w)) :: GLfloat) / 2.0
         minH = ((fromIntegral (fromIntegral winH2 - h)) :: GLfloat) / 2.0
-        maxW = (fromIntegral winW2 - minW) 
-        maxH = (fromIntegral winH2 - minH) 
+        maxW = (fromIntegral winW2 - minW)
+        maxH = (fromIntegral winH2 - minH)
     
     -- Bind the texture so that we can display it
     glBindTexture gl_TEXTURE_2D texId
@@ -453,6 +466,7 @@ drawInsts env (i:is) = do
             (Delete b) -> deleteBuffer env b
             (Nested _ insts') -> drawInsts env insts'
             (AllocFragmentShader f txt args) -> allocFragmentShader env f txt args
+            (ChangeMouseCallback fn) -> changeMouseCallback env fn
             (CBIR.Exit) -> exitWith ExitSuccess 
     drawInsts env is
 
@@ -1355,6 +1369,46 @@ splatPolygon2 env bS bD ps = do
 
             -- Unbind Texture until it is needed (may want to take this out depending on how we order instructions coming in)
   --          glBindTexture gl_TEXTURE_2D 0
+
+
+
+
+
+
+
+
+
+
+changeMouseCallback :: CBenv -> (UIPoint -> IO()) -> IO ()
+changeMouseCallback env fn = do
+        mbMouseChan <- get (mouseChan env)
+        
+        case mbMouseChan of
+                Just chan -> writeChan chan (ChangeFunc fn)
+                Nothing   -> do
+                        chan <- newChan
+                        (mouseChan env) $= Just chan
+                        
+                        let loop f c = do
+                                cmd <- readChan c
+                                case cmd of
+                                        (Callback pt)   -> f pt
+                                        (ChangeFunc f') -> loop f' c
+                                loop f c
+                        
+                        forkIO $ loop fn chan
+                        return ()
+
+
+
+
+
+
+
+
+
+
+
 
 
 

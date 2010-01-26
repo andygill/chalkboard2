@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Graphics.ChalkBoard.CBIR where
 
 
@@ -59,7 +61,10 @@ instance Show Background where
 	show (BackgroundRGBADepth c) = "(BackgroundRGBADepth $ " ++ show c ++ ")"
 	show (BackgroundByteString _) = "(BackgroundByteString ...)"
 	
-        
+
+instance Show (UIPoint -> IO()) where
+        show _ = "(Mouse Callback Function)"
+
 
 -- type RGBA = (UI,UI,UI,UI)
 
@@ -104,7 +109,6 @@ AG: other considerations include
 
         (KM: I would say not when printed onto the screen, at least. Maybe internally for 'from' CBBOs doing splats, but the 'to' board probably won't want it to wrap, just be off the edge.)
 -}
-
 
 
      | Splat var Blender (Splat var)
@@ -152,6 +156,9 @@ AG: other considerations include
     | ShadeFragmentWith var [(String,var)] [Inst var]	-- Use a specific object, in the context of the given framement function
 
     | DeleteFragmentShader var		-- TODO: write code for, and use
+    
+    
+    | ChangeMouseCallback (UIPoint -> IO())         -- TODO: binary instance
 
         deriving Show
 

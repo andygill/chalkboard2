@@ -8,6 +8,7 @@ module Graphics.ChalkBoard.Main
 	, startDefaultWriteStream
 	, endWriteStream
 	, updateChalkBoard
+	, mouseCallback
 	, drawRawChalkBoard
 	, exitChalkBoard
 	, startChalkBoard
@@ -52,6 +53,7 @@ data ChalkBoardCommand
 	| StartDefaultWriteStream FilePath (MVar StreamId)
 	| FrameChalkBoard StreamId
 	| EndWriteStream StreamId
+	| NewMouseCallback (UIPoint -> IO())
 	| ExitChalkBoard
 	| DrawRawChalkBoard [Inst BufferId]
 	
@@ -113,6 +115,19 @@ updateChalkBoard (ChalkBoard var _) brd = putMVar var (UpdateChalkBoard brd)
 frameChalkBoard :: ChalkBoard -> StreamHandle -> IO ()
 frameChalkBoard (ChalkBoard var _) (StreamHandle sid) = putMVar var (FrameChalkBoard sid)
 
+{-
+initMouseCallback
+	chan <- newChannel
+	
+	let loop fn chan = 
+	
+	putMVar v2 (InitMouseCallback chan)
+-}
+mouseCallback :: ChalkBoard -> (UIPoint -> IO ()) -> IO ()
+mouseCallback (ChalkBoard var _) fn = do
+        putMVar var (NewMouseCallback fn)
+
+
 -- | Debugging hook for writing raw CBIR code.
 drawRawChalkBoard :: ChalkBoard -> [Inst BufferId] -> IO ()
 drawRawChalkBoard (ChalkBoard var _) cmds = putMVar var (DrawRawChalkBoard cmds)
@@ -146,6 +161,7 @@ startChalkBoard options cont = do
 		cont (ChalkBoard v1 vEnd)
 		print "[Done]"
 	startRendering viewBoard v0 v2 options
+	
 	return ()	
 
 -- | Open, remotely, a ChalkBoard windown, and return a handle to it.
@@ -230,6 +246,9 @@ compiler options v1 v2 = do
 	        loop (n+1) old_brd (succ buffIds)
 	  FrameChalkBoard sid -> do
 	        putMVar v2 [WriteStream viewBoard sid]
+	        loop (n+1) old_brd buffIds
+	  NewMouseCallback fn -> do
+	        putMVar v2 [ChangeMouseCallback fn]
 	        loop (n+1) old_brd buffIds
 	  EndWriteStream sid -> do
 	        putMVar v2 [CloseStream sid]

@@ -6,7 +6,7 @@
 module Graphics.ChalkBoard.OpenGL.Env where
 
 import Prelude hiding ( lookup )
-import Graphics.ChalkBoard.CBIR( BufferId, StreamId, FragFunctionId )
+import Graphics.ChalkBoard.CBIR( BufferId, StreamId, FragFunctionId, UIPoint )
 import Graphics.ChalkBoard.Video ( OutPipe )
 import Graphics.Rendering.OpenGL.Raw.Core31 as GL ( GLint, GLuint, GLenum )
 import Graphics.Rendering.OpenGL
@@ -16,8 +16,13 @@ import Control.Concurrent.MVar ( MVar, takeMVar, putMVar )
 import Data.IORef
 import System.Exit ( exitWith, ExitCode(..) )
 import Control.Monad ( when )
+import Control.Concurrent.Chan
 
 
+
+data CBAcommands = Callback UIPoint
+                 | ChangeFunc (UIPoint -> IO())
+                 
 
 
 data CBenv = CBenv
@@ -29,6 +34,7 @@ data CBenv = CBenv
         -- the variables
         , fracFunctionInfo :: IORef (Map FragFunctionId FragFunctionInfo)
         , currentFunction  :: IORef (Maybe FragFunctionId)
+        , mouseChan :: IORef (Maybe (Chan CBAcommands))
 --        , currentStream    :: IORef (Maybe StreamId)
         }
 
