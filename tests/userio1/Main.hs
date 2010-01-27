@@ -34,6 +34,8 @@ brd2 a = {-unAlphaBoard (boardOf white)-} (move (ui/2,-ui/2) (rotate (4*(fromInt
 
 
 mouseCB :: IORef(Bool) -> (Float,Float) -> IO ()
-mouseCB switch _ = do
-        modifyIORef switch not
+mouseCB switch (x,y) = do
+        if (x < 0.2 && x > (-0.2) && y < 0.2 && y > (-0.2))
+                then modifyIORef switch not
+                else return ()
 

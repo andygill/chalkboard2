@@ -223,7 +223,8 @@ keyPressed env (MouseButton LeftButton) Down _ (Position px py) = do
                                 Size winW winH <- get windowSize
                                 let (w,h) = (fromIntegral winW, fromIntegral winH)
                                 let (x,y) = (fromIntegral px, fromIntegral py)
-                                writeChan chan (Callback (x/w, y/h))
+                                --print (x/w-0.5, -(y/h-0.5))
+                                writeChan chan (Callback (x/w-0.5, -(y/h-0.5)))
                 Nothing   -> return ()
 keyPressed _     _            _    _ _ = return ()
 
