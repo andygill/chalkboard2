@@ -9,6 +9,7 @@ module Graphics.ChalkBoard.Main
 	, endWriteStream
 	, updateChalkBoard
 	, mouseCallback
+	, keyboardCallback
 	, drawRawChalkBoard
 	, exitChalkBoard
 	, startChalkBoard
@@ -54,6 +55,7 @@ data ChalkBoardCommand
 	| FrameChalkBoard StreamId
 	| EndWriteStream StreamId
 	| NewMouseCallback (UIPoint -> IO())
+	| NewKeyboardCallback (Char -> IO())
 	| ExitChalkBoard
 	| DrawRawChalkBoard [Inst BufferId]
 	
@@ -115,17 +117,12 @@ updateChalkBoard (ChalkBoard var _) brd = putMVar var (UpdateChalkBoard brd)
 frameChalkBoard :: ChalkBoard -> StreamHandle -> IO ()
 frameChalkBoard (ChalkBoard var _) (StreamHandle sid) = putMVar var (FrameChalkBoard sid)
 
-{-
-initMouseCallback
-	chan <- newChannel
-	
-	let loop fn chan = 
-	
-	putMVar v2 (InitMouseCallback chan)
--}
+
 mouseCallback :: ChalkBoard -> (UIPoint -> IO ()) -> IO ()
-mouseCallback (ChalkBoard var _) fn = do
-        putMVar var (NewMouseCallback fn)
+mouseCallback (ChalkBoard var _) fn = putMVar var (NewMouseCallback fn)
+
+keyboardCallback :: ChalkBoard -> (Char -> IO()) -> IO ()
+keyboardCallback (ChalkBoard var _) fn = putMVar var (NewKeyboardCallback fn)
 
 
 -- | Debugging hook for writing raw CBIR code.
@@ -249,6 +246,9 @@ compiler options v1 v2 = do
 	        loop (n+1) old_brd buffIds
 	  NewMouseCallback fn -> do
 	        putMVar v2 [ChangeMouseCallback fn]
+	        loop (n+1) old_brd buffIds
+	  NewKeyboardCallback fn -> do
+	        putMVar v2 [ChangeKeyboardCallback fn]
 	        loop (n+1) old_brd buffIds
 	  EndWriteStream sid -> do
 	        putMVar v2 [CloseStream sid]

@@ -217,14 +217,19 @@ keyPressed env (Char '\27') Down _ _ = do
     when (debug) $ appendFile "./debug.html" "</HTML>"
     exitWith ExitSuccess -- 27 is ESCAPE
 keyPressed env (MouseButton LeftButton) Down _ (Position px py) = do
-        mbMouseChan <- get (mouseChan env)
-        case mbMouseChan of
+        mbChan <- get (callbackChan env)
+        case mbChan of
                 Just chan -> do
                                 Size winW winH <- get windowSize
                                 let (w,h) = (fromIntegral winW, fromIntegral winH)
                                 let (x,y) = (fromIntegral px, fromIntegral py)
                                 --print (x/w-0.5, -(y/h-0.5))
-                                writeChan chan (Callback (x/w-0.5, -(y/h-0.5)))
+                                writeChan chan (MouseCallback (x/w-0.5, -(y/h-0.5)))
+                Nothing   -> return ()
+keyPressed env (Char char) Down _ _ = do
+        mbChan <- get (callbackChan env)
+        case mbChan of
+                Just chan -> writeChan chan (KeyboardCallback char)
                 Nothing   -> return ()
 keyPressed _     _            _    _ _ = return ()
 
@@ -468,6 +473,7 @@ drawInsts env (i:is) = do
             (Nested _ insts') -> drawInsts env insts'
             (AllocFragmentShader f txt args) -> allocFragmentShader env f txt args
             (ChangeMouseCallback fn) -> changeMouseCallback env fn
+            (ChangeKeyboardCallback fn) -> changeKeyboardCallback env fn
             (CBIR.Exit) -> exitWith ExitSuccess 
     drawInsts env is
 
@@ -1378,32 +1384,46 @@ splatPolygon2 env bS bD ps = do
 
 
 
-
-
 changeMouseCallback :: CBenv -> (UIPoint -> IO()) -> IO ()
 changeMouseCallback env fn = do
-        mbMouseChan <- get (mouseChan env)
+        mbChan <- get (callbackChan env)
         
-        case mbMouseChan of
-                Just chan -> writeChan chan (ChangeFunc fn)
+        case mbChan of
+                Just chan -> writeChan chan (ChangeMouseFunc fn)
                 Nothing   -> do
                         chan <- newChan
-                        (mouseChan env) $= Just chan
+                        (callbackChan env) $= Just chan
                         
-                        let loop f c = do
-                                cmd <- readChan c
-                                case cmd of
-                                        (Callback pt)   -> f pt
-                                        (ChangeFunc f') -> loop f' c
-                                loop f c
-                        
-                        forkIO $ loop fn chan
+                        forkIO $ callbackAssistant fn (\x -> return ()) chan
                         return ()
 
 
+changeKeyboardCallback :: CBenv -> (Char -> IO()) -> IO ()
+changeKeyboardCallback env fn = do
+        mbChan <- get (callbackChan env)
+        
+        case mbChan of
+                Just chan -> writeChan chan (ChangeKeyboardFunc fn)
+                Nothing   -> do
+                        chan <- newChan
+                        (callbackChan env) $= Just chan
+                        
+                        forkIO $ callbackAssistant (\x -> return ()) fn chan
+                        return ()
 
 
-
+--callbackAssistant :: (UIPoint -> IO()) -> (Char -> IO()) -> Chan -> IO ()
+callbackAssistant mouseFn keyFn chan = do
+        cmd <- readChan chan
+        case cmd of
+                (MouseCallback pt)      -> do
+                                                mouseFn pt
+                                                callbackAssistant mouseFn keyFn chan
+                (KeyboardCallback char) -> do
+                                                keyFn char
+                                                callbackAssistant mouseFn keyFn chan
+                (ChangeMouseFunc fn)    -> callbackAssistant fn keyFn chan
+                (ChangeKeyboardFunc fn) -> callbackAssistant mouseFn fn chan
 
 
 

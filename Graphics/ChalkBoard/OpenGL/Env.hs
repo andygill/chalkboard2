@@ -20,8 +20,10 @@ import Control.Concurrent.Chan
 
 
 
-data CBAcommands = Callback UIPoint
-                 | ChangeFunc (UIPoint -> IO())
+data CBAcommands = MouseCallback UIPoint
+                 | KeyboardCallback Char
+                 | ChangeMouseFunc (UIPoint -> IO())
+                 | ChangeKeyboardFunc (Char -> IO())
                  
 
 
@@ -34,7 +36,7 @@ data CBenv = CBenv
         -- the variables
         , fracFunctionInfo :: IORef (Map FragFunctionId FragFunctionInfo)
         , currentFunction  :: IORef (Maybe FragFunctionId)
-        , mouseChan :: IORef (Maybe (Chan CBAcommands))
+        , callbackChan :: IORef (Maybe (Chan CBAcommands))
 --        , currentStream    :: IORef (Maybe StreamId)
         }
 

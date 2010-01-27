@@ -62,8 +62,8 @@ instance Show Background where
 	show (BackgroundByteString _) = "(BackgroundByteString ...)"
 	
 
-instance Show (UIPoint -> IO()) where
-        show _ = "(Mouse Callback Function)"
+instance Show (a -> IO()) where
+        show _ = "(Callback Function)"
 
 
 -- type RGBA = (UI,UI,UI,UI)
@@ -158,7 +158,9 @@ AG: other considerations include
     | DeleteFragmentShader var		-- TODO: write code for, and use
     
     
-    | ChangeMouseCallback (UIPoint -> IO())         -- TODO: binary instance
+    | ChangeMouseCallback (UIPoint -> IO())     -- TODO: binary instance
+    
+    | ChangeKeyboardCallback (Char -> IO())     -- TODO: binary instance
 
         deriving Show
 
