@@ -114,6 +114,16 @@ Executable chalkboard-tests-font1
   Ghc-Options:          -O2
   Main-Is:              Main.hs
 
+flag userio1 { Default: False }
+Executable chalkboard-tests-userio1
+  if flag(all) || flag(userio1)
+    buildable:            True
+  else
+    Buildable:           False
+  Hs-Source-Dirs:       .,tests/userio1
+  Ghc-Options:          -O2
+  Main-Is:              Main.hs
+
 
 flag gsi1 { Default: False }
 Executable chalkboard-tests-gsi1
