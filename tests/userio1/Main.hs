@@ -9,14 +9,20 @@ main = startChalkBoard [BoardSize 400 400] $ \ cb -> do
         switch <- newIORef True
         mouseCallback cb (mouseCB switch)
         
-	let loop ref x = do
-                bool <- readIORef ref
-                if bool
+        pause <- newIORef False
+        keyboardCallback cb (keyboardCB pause)
+        
+	let loop x = do
+	        pause' <- readIORef pause
+                switch' <- readIORef switch
+                if switch'
                         then drawChalkBoard cb (brd1 x)
                         else drawChalkBoard cb (brd2 x)
-                loop ref (x+1)
+                if pause'
+                        then loop x
+                        else loop (x+1)
 
-	loop switch 0
+	loop 0
 
 	exitChalkBoard cb
 
@@ -38,4 +44,10 @@ mouseCB switch (x,y) = do
         if (x < 0.2 && x > (-0.2) && y < 0.2 && y > (-0.2))
                 then modifyIORef switch not
                 else return ()
+
+keyboardCB :: IORef(Bool) -> Char -> IO ()
+keyboardCB pause 'p' = do
+        modifyIORef pause not
+keyboardCB _ _ = return ()
+
 
