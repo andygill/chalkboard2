@@ -45,23 +45,23 @@ videoMain cb = do
     closeVideoInPipe videoPipe
     
     
-    {-
+    
     -- Test Video Output
     (w,h,img) <- readNormalizedBoard ("lambda.png")
-    h <- startDefaultWriteStream cb "testOut.mp4"
+    h1 <- startDefaultWriteStream cb "testOut.mp4"
     
     let example x = unAlphaBoard (boardOf white) $ (rotate (4*x) (scale (abs x) img)) `over` (boardOf (alpha (o (RGB x x (abs x)))))
     sequence_ [ do drawChalkBoard cb (example (sin x))
-                   frameChalkBoard cb h | x <- [0,0.01..1] ]
+                   frameChalkBoard cb h1 | x <- [0,0.01..1] ]
     
-    endWriteStream cb h
+    endWriteStream cb h1
     
     
     
     -- Test Video End to End
     videoPipe2 <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm -"
 
-    h <- startMyWriteStream cb (ffOut "testBothOut.mp4")
+    h2 <- startMyWriteStream cb (ffOut "testBothOut.mp4")
     
     let endToEndTest = do
                 maybeBuffer <- nextPPMFrame videoPipe2
@@ -69,10 +69,11 @@ videoMain cb = do
                         (Nothing)     -> return ()
                         (Just buffer) -> do 
                                         drawChalkBuffer cb buffer
+                                        frameChalkBoard cb h2
                                         endToEndTest
     
     endToEndTest
-    endWriteStream cb h
+    endWriteStream cb h2
     closeVideoInPipe videoPipe2
     
     
@@ -81,7 +82,8 @@ videoMain cb = do
     vp1 <- openVideoInPipe (ffmpegInCmd "bigfoot.mpeg")
     vp2 <- openVideoInPipe "ffmpeg -i bigfoot.mpeg -f image2pipe -vcodec ppm -"
       
-    startMyWriteStream cb (ffOut "testMultipleInOut.mp4")
+    h3 <- startMyWriteStream cb (ffOut "test1MultipleInOut.mp4")
+    h4 <- startMyWriteStream cb (ffOut "test2MultipleInOut.mp4")
     
     let multInTest = do
             maybeBuffer1 <- nextPPMFrame vp1
@@ -93,12 +95,16 @@ videoMain cb = do
                                     (Nothing)      -> return ()
                                     (Just buffer2) -> do
                                             drawChalkBuffer cb buffer1
+                                            frameChalkBoard cb h3
+                                            frameChalkBoard cb h4
                                             drawChalkBuffer cb buffer2
+                                            frameChalkBoard cb h4
                                             multInTest
     
     multInTest
     
-    endWriteStream cb
+    endWriteStream cb h3
+    endWriteStream cb h4
     
     closeVideoInPipe vp1
     closeVideoInPipe vp2
