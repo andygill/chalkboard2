@@ -432,6 +432,7 @@ pushBack other = error $ show ("pushBack",other)
 -- use this to check if you can fmap over the Bool
 --goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E _ (O_RGBA (RGBA _ _ _ 1)))) (Just (E _ (O_RGBA (RGBA _ _ _ 0)))) = True -- to: RM
 --goodToFmapBool [([],BOOL_Ty)] (Target_RGB) (Just (E _ (O_RGB {}))) (Just (E _ (O_RGB (RGB {})))) = True
+goodToFmapBool :: t -> t1 -> t2 -> t3 -> Bool
 goodToFmapBool _ _ _ _ = False
 
 {-
@@ -458,14 +459,14 @@ compileBoardFmapBool bc t tr fa other argTypes resTy = do
 compileFmapArgs :: BoardContext -> Target -> Board a -> [([Path],ExprType)] -> IO ([Inst Int],[(BufferId,[Path])])
 --compileFmapArgs bc brd tyMap | trace (show ("compileFmapArgs",bc,brd,tyMap)) False = undefined
 compileFmapArgs bc t (Board _ (Zip b1 b2)) ty | not (null ty) = do
-	(insts1,mp1) <- compileFmapArgs bc t b1 [ (p,t) | (Expr.GoLeft:p,t) <- ty ]
-	(insts2,mp2) <- compileFmapArgs bc t b2 [ (p,t) | (Expr.GoRight:p,t) <- ty ]
+	(insts1,mp1) <- compileFmapArgs bc t b1 [ (p,t') | (Expr.GoLeft:p,t') <- ty ]
+	(insts2,mp2) <- compileFmapArgs bc t b2 [ (p,t') | (Expr.GoRight:p,t') <- ty ]
 	return $ (insts1 ++ insts2, 
 		  [ (bid,Expr.GoLeft:p) | (bid,p) <- mp1 ] ++
 		  [ (bid,Expr.GoRight:p) | (bid,p) <- mp2 ]
 		 )
-compileFmapArgs bc t (Board _ (Zip {})) ty = error $ "found zip of boards, without zip types" ++ show ty
-compileFmapArgs bc t brd [([],ty)] = do
+compileFmapArgs _ _ (Board _ (Zip {})) ty = error $ "found zip of boards, without zip types" ++ show ty
+compileFmapArgs bc _ brd [([],ty)] = do
 	-- Otherwise, we allocate a board, construct it, and pass it back.
 	(rest,bid) <- allocAndCompileBoard bc ty brd
 	return (rest,[(bid,[])])
@@ -566,10 +567,10 @@ compileFmapFun env v@(Var path) ty =
 		       UI_Ty   -> "(" ++ txt ++ ").r"
 		       RGB_Ty  ->  "(" ++ txt ++ ").rgb"
 --		       RGBA_Ty -> error "can not directly access RGBA"
-		       other   -> txt
-compileFmapFun env (O_Bool True) BOOL_Ty = "true";
-compileFmapFun env (O_Bool False) BOOL_Ty = "false";
-compileFmapFun env (O_RGB (RGB r g b)) RGB_Ty =
+		       _       -> txt
+compileFmapFun _ (O_Bool True) BOOL_Ty = "true";
+compileFmapFun _ (O_Bool False) BOOL_Ty = "false";
+compileFmapFun _ (O_RGB (RGB r g b)) RGB_Ty =
 		"vec3(" ++ show r ++ "," ++
 			   show g ++ "," ++
 			   show b ++ ")" 			   
@@ -583,7 +584,7 @@ compileFmapFun env (WithDefault e1 e2) RGB_Ty =
 	"cb_WithDefaultRGB(" ++ compileFmapFunE env e1 RGB_Ty  ++ "," ++ compileFmapFunE env e2 (Maybe_Ty RGB_Ty) ++ ")"
 compileFmapFun env (WithDefault e1 e2) UI_Ty =
 	"cb_WithDefaultUI(" ++ compileFmapFunE env e1 UI_Ty  ++ "," ++ compileFmapFunE env e2 (Maybe_Ty UI_Ty) ++ ")"
-compileFmapFun env (Lit v) UI_Ty = show v
+compileFmapFun _ (Lit v) UI_Ty = show v
 
 compileFmapFun env (NOT e) BOOL_Ty =
 		"!(" ++ compileFmapFunE env e BOOL_Ty ++ ")"
@@ -603,25 +604,30 @@ compileFmapFun env (O_Just e1) (Maybe_Ty UI_Ty) =
 		"vec4(" ++ compileFmapFunE' env e1 ++ ",0.0,0.0,1.0)"
 compileFmapFun env (O_Just e1) (Maybe_Ty RGB_Ty) =
 		"cb_Just_RGB(" ++ compileFmapFunE' env e1 ++ ")"
-compileFmapFun env (O_Nothing) (Maybe_Ty UI_Ty) = "vec4(0.0,0.0,0.0,0.0)"
-compileFmapFun env (O_Nothing) (Maybe_Ty RGB_Ty) = "vec4(0.0,0.0,0.0,0.0)"
+compileFmapFun _ (O_Nothing) (Maybe_Ty UI_Ty) = "vec4(0.0,0.0,0.0,0.0)"
+compileFmapFun _ (O_Nothing) (Maybe_Ty RGB_Ty) = "vec4(0.0,0.0,0.0,0.0)"
 
 compileFmapFun env e ty = error $ show ("compileFmapFun",env,e,ty)
 
 
 -- Ha! Can use internal ty.
-compileFmapFunE env (E ty' e) ty = compileFmapFun env e ty'
+compileFmapFunE :: Map [Path] String -> E -> t -> String
+compileFmapFunE env (E ty' e) _ = compileFmapFun env e ty'
+
+compileFmapFunE' :: Map [Path] String -> E -> String
 compileFmapFunE' env (E ty' e) = compileFmapFun env e ty'
 
-compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer) brd = do
+
+compileBufferOnBoard :: BoardContext -> Target -> Buffer t -> Board a -> IO [Inst Int]
+compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer') brd = do
 	insts1          <- compileBoard2 bc t brd
-	(insts2,buffId) <- compileBuffer2 t low high buffer
+	(insts2,buffId) <- compileBuffer2 t low high buffer'
 	
-	let (x,y) = bcSize bc
+--	let (x,y) = bcSize bc
 	-- TODO!
 	-- really, this is about 0 and 1, not x and y.
-	let mv0 = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,
-			fromIntegral (1 + y1-y0) / fromIntegral 1)
+	let mv0 = Scale (fromIntegral (1 + x1-x0) / 1,
+			fromIntegral (1 + y1-y0) / 1)
 	let mv1 = Move (fromIntegral x0,fromIntegral y0)			
 	let tr = bcTrans (updateTrans mv0 $ updateTrans mv1 bc)
 	
@@ -684,8 +690,8 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = do
 		         (SplatFunction' newFrag 
 				[ ("cb_sampler0",bId)]
 				[]
-				[ (x,y) | (x,y) <- let (x0,x1,y0,y1) = (0,1,0,1) 
-								 in [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
+				[ (x,y) | (x,y) <- let (x0',x1',y0',y1') = (0,1,0,1) 
+								 in [(x0',y0'),(x1',y0'),(x1',y1'),(x0',y1')]]
                          )
 		 , Delete newFrag	-- really should cache these
 		 , Delete bId 
@@ -694,8 +700,8 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = do
 
 
 	
-compileBuffer2 t low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
-	newBoard <- newNumber	
+compileBuffer2 t (x0,y0) (x1,y1) (BoardInBuffer brd) = do
+--	newBoard <- newNumber	
 	let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)
 	let mv = Move (fromIntegral x0,fromIntegral y0)
 	let sc = Scale (1 / fromIntegral sx,1 / fromIntegral sy)
@@ -735,9 +741,10 @@ compileBuffer2 t low@(x0,y0) high@(x1,y1) (BoardInBuffer brd) = do
 			]
 -}	
 	
-compileBuffer2 t low high buffer = error $ show ("compileBuffer2",t,(low,high),buffer)
+compileBuffer2 t low high buffer' = error $ show ("compileBuffer2",t,(low,high),buffer')
 	
 -- Allocate a buffer; we do not care about color
+allocateBuffer :: (Show var) => (Int, Int) -> var -> Target -> Inst var
 allocateBuffer (sx,sy) newBoard Target_RGB =
 		Allocate 
 			newBoard 	-- tag for this ChalkBoardBufferObject
@@ -820,7 +827,7 @@ compileBoardGSI bc Target_RGB fn bargs vargs = do
 	info <- sequence
 		   [ do let sz' = findSize sz
 			(brdId,argAlloc) <- create arg sz'
-			let bc' = bc { bcDest = brdId, bcSize = sz', bcBlend = Copy }
+--			let bc' = bc { bcDest = brdId, bcSize = sz', bcBlend = Copy }
 			fill <- case arg of
 				   BoardRGBArgument brd -> 
 					compileBoard2 (bc { bcDest = brdId, bcSize = sz', bcBlend = Copy }) Target_RGB brd
@@ -873,7 +880,7 @@ compileBuffer2
 	newFrag <- newNumber
  	let (x0,x1,y0,y1) = (0,1,0,1) 
 	return $ [ AllocFragmentShader newFrag fn [] ]
-		++ concat [ init | (init,_,_) <- info ]
+		++ concat [ init' | (init',_,_) <- info ]
 		++ [ Splat (bcDest bc)
 		         (bcBlend bc)
 		           (SplatFunction' newFrag 

@@ -425,8 +425,8 @@ displayBoard env = do
     
     -- Calculations to center the image in the window
     Size winW2 winH2 <- get windowSize -- Get the size of the window    
-    let minW = ((fromIntegral (fromIntegral winW2 -  w)) :: GLfloat) / 2.0
-        minH = ((fromIntegral (fromIntegral winH2 - h)) :: GLfloat) / 2.0
+    let minW = (fromIntegral winW2 - w) / 2.0
+        minH = (fromIntegral winH2 - h) / 2.0
         maxW = (fromIntegral winW2 - minW)
         maxH = (fromIntegral winH2 - minH)
     
@@ -440,13 +440,13 @@ displayBoard env = do
     -- Display the final board, making sure that it is drawn in the upper left corner of the window (for now)
     renderPrimitive Quads $ do
         texCoord (TexCoord2 0 (1::GL.GLfloat)) -- Top Left
-        vertex (Vertex3 minW maxH 0)
+        vertex (Vertex3 minW maxH (0::GL.GLfloat))
         texCoord (TexCoord2 0 (0::GL.GLfloat)) -- Bottom Left
-        vertex (Vertex3 minW minH 0) -- Used to be GL.GLsizei
+        vertex (Vertex3 minW minH (0::GL.GLfloat)) -- Used to be GL.GLsizei
         texCoord (TexCoord2 1 (0::GL.GLfloat)) -- Bottom Right
-        vertex (Vertex3 maxW minH 0)
+        vertex (Vertex3 maxW minH (0::GL.GLfloat))
         texCoord (TexCoord2 1 (1::GL.GLfloat)) -- Top Right
-        vertex (Vertex3 maxW maxH 0) 
+        vertex (Vertex3 maxW maxH (0::GL.GLfloat))
     
     -- Unbind the texture in case we need to keep writing to it later
     glBindTexture gl_TEXTURE_2D 0
@@ -464,8 +464,8 @@ drawInsts :: CBenv -> [Inst BufferId] -> IO ()
 drawInsts _   []     = return ()
 drawInsts env (i:is) = do 
     case i of
-            (Allocate b size depth (BackgroundByteString arr)) -> allocateArrBuffer env b size depth arr
-            (Allocate b size depth bgColor) -> allocateBuffer env b size depth bgColor
+            (Allocate b bsize depth (BackgroundByteString arr)) -> allocateArrBuffer env b bsize depth arr
+            (Allocate b bsize depth bgColor) -> allocateBuffer env b bsize depth bgColor
             (AllocateImage b imagePath) -> allocateImgBuffer env b imagePath
             (Splat target blender stype) -> splat env target blender stype
             (SaveImage b savePath) -> saveImage env b savePath
@@ -495,7 +495,7 @@ splat env target blender stype = do
         
         case stype of
                 (SplatPolygon' src ptMaps) -> splatPolygon env src target ptMaps
-                (SplatColor' color ptList) -> splatColor env color target ptList
+                (SplatColor' scolor ptList) -> splatColor env scolor target ptList
                 (SplatBuffer' src) -> splatPolygon env src target [ PointMap p p | p <- [(0,0),(0,1),(1,1),(1,0)] ]
                 (SplatFunction' fnId bargs uargs ptList) -> splatWithFunction env fnId bargs uargs target ptList
 
@@ -589,7 +589,7 @@ depthToBytes RGBADepth  = 4
 -- TODO: merge with function allocateArrBuffer, because allocateRawImgBuffer is only called in one place
 allocateRawImgBuffer :: CBenv -> BufferId -> (Int,Int) -> Depth -> Ptr CUChar -> IO ()
 allocateRawImgBuffer env board (w,h) depth imagePtr = do
-    fboSupp <- getFBOSupport env
+    --fboSupp <- getFBOSupport env
     texMap <- getTexMap env
     
     -- Just set the colorType to RGBA for now, this should maybe change so that they can use any format of image data 
@@ -651,7 +651,7 @@ allocateArrBuffer env board (w,h) depth bs = do
 --   * imagePath - The path to the image file being loading into this new buffer
 allocateImgBuffer :: CBenv -> BufferId -> FilePath -> IO ()
 allocateImgBuffer env board imagePath = do
-    fboSupp <- getFBOSupport env
+    --fboSupp <- getFBOSupport env
     texMap <- getTexMap env
     
     -- Just set the colorType to RGBA for now
@@ -1199,7 +1199,7 @@ writeStream env b streamID = do
 allocFragmentShader :: CBenv -> FragFunctionId -> String -> [String] -> IO ()
 allocFragmentShader env f txt args = do
 	[shader] <- genObjectNames 1
-	let types_ = (shader :: FragmentShader)
+--	let types_ = (shader :: FragmentShader)
         shaderSource shader $= [txt]
         compileShader shader
         reportErrors
@@ -1215,10 +1215,10 @@ allocFragmentShader env f txt args = do
         attachedShaders brickProg $= ([], [shader])
         linkProgram brickProg
         reportErrors
-        ok <- get (linkStatus brickProg)
-        infoLog <- get (programInfoLog brickProg)
+        ok' <- get (linkStatus brickProg)
+--        infoLog <- get (programInfoLog brickProg)
 --        mapM_ putStrLn ["Program info log:", infoLog, ""]
-        when (not ok) $ do
+        when (not ok') $ do
            deleteObjectNames [brickProg]
            ioError (userError "linking failed")
 
@@ -1229,6 +1229,8 @@ allocFragmentShader env f txt args = do
 	
         return ()
 
+
+splatWithFunction :: CBenv -> FragFunctionId -> [(String, BufferId)] -> [(String, CBI.UniformArgument)] -> BufferId -> [UIPoint] -> IO ()
 splatWithFunction env fnId args  uargs bDest ptList = do
         texMap <- getTexMap env
 	mp <- get (fracFunctionInfo env)
@@ -1237,7 +1239,7 @@ splatWithFunction env fnId args  uargs bDest ptList = do
 	   Just ffi -> do
 		currentProgram $= Just (ffProg ffi)
 
-		let badLocation loc = False -- show loc == "UniformLocation (-1)"
+		let badLocation _ = False -- show loc == "UniformLocation (-1)"
 
 {-
 		xx <- get (activeUniforms $ ffProg ffi)
@@ -1246,7 +1248,7 @@ splatWithFunction env fnId args  uargs bDest ptList = do
 		sequence 
 		   [ do texInfo <- case lookup bSrc texMap  of
 		     		   Nothing -> error $ " oops: can not find src buffer "
-		   		   Just i -> return i 
+		   		   Just b -> return b 
 			texIdS <- peek (texPtr texInfo)
 			glActiveTexture (gl_TEXTURE0 + i)
 			glBindTexture gl_TEXTURE_2D texIdS
@@ -1319,7 +1321,7 @@ splatWithFunction env fnId args  uargs bDest ptList = do
  		let (Just texInfoD) = lookup bDest texMap
         	    texIdPtrD = texPtr texInfoD
         	    (w,h) = texSize texInfoD
-        	    colorType = texFormat texInfoD
+        	    --colorType = texFormat texInfoD
 
     		texIdD <- peek texIdPtrD
 
@@ -1333,6 +1335,7 @@ splatWithFunction env fnId args  uargs bDest ptList = do
 		glActiveTexture (gl_TEXTURE0 + 0)
 		glBindTexture gl_TEXTURE_2D 0
 
+{-
 splatPolygon2 env bS bD ps = do
     fboSupp <- getFBOSupport env
     texMap <- getTexMap env
@@ -1379,7 +1382,7 @@ splatPolygon2 env bS bD ps = do
 
             -- Unbind Texture until it is needed (may want to take this out depending on how we order instructions coming in)
   --          glBindTexture gl_TEXTURE_2D 0
-
+-}
 
 
 
@@ -1397,7 +1400,7 @@ changeMouseCallback env fn = do
                         chan <- newChan
                         (callbackChan env) $= Just chan
                         
-                        forkIO $ callbackAssistant fn (\x -> return ()) chan
+                        forkIO $ callbackAssistant fn (\_ -> return ()) chan
                         return ()
 
 
@@ -1411,11 +1414,11 @@ changeKeyboardCallback env fn = do
                         chan <- newChan
                         (callbackChan env) $= Just chan
                         
-                        forkIO $ callbackAssistant (\x -> return ()) fn chan
+                        forkIO $ callbackAssistant (\_ -> return ()) fn chan
                         return ()
 
 
---callbackAssistant :: (UIPoint -> IO()) -> (Char -> IO()) -> Chan -> IO ()
+callbackAssistant :: (UIPoint -> IO ()) -> (Char -> IO ()) -> Chan CBAcommands -> IO ()
 callbackAssistant mouseFn keyFn chan = do
         cmd <- readChan chan
         case cmd of
@@ -1468,7 +1471,7 @@ bindFrameBufferToTexture env tex arg =
 
 
 bindFunctionToPipeline :: CBenv -> Maybe FragFunctionId -> IO ()
-bindFunctionToPipeline env Nothing = do
+bindFunctionToPipeline _ Nothing = do
 	currentProgram $= Nothing	
 	
 
