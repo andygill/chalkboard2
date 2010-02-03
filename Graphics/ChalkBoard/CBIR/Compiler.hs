@@ -882,6 +882,7 @@ compileBuffer2
 				[(x,y) | (x,y) <- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]
 			   )
 		   ]
+		++ [ Delete newFrag ]	-- really should cache these
 		++ [ del | (_,_,del) <- info ]
 
 

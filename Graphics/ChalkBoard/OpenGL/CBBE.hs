@@ -34,7 +34,7 @@ import Foreign.C.Types ( CUChar )
 import Foreign.Marshal.Alloc ( malloc, free )
 import Foreign.Storable ( peek )
 import Foreign.Marshal.Array (withArray )
-import Data.Map ( Map, empty, insert, delete, lookup, notMember, member )
+import Data.Map hiding ( null )
 import qualified Data.Map as Map
 import Data.Maybe ( fromMaybe )
 import Data.Array.Unboxed as U  
@@ -306,6 +306,9 @@ changeBoard' env next changes = do
     liftIO $ when (not (null changes)) $ do
         print (diffUTCTime tm' tm)
     --}
+    
+    --fragMap2 <- get (fracFunctionInfo env)
+    --print $ "After: " ++ (show $ size fragMap2)
     
     debug <- getDebugFrames env
     curBoard <- getCurrentBoard env
@@ -1070,7 +1073,7 @@ deleteBuffer env b = do
     	setTexMap env (delete b texMap)
 
       else if member b fragMap then do
-	return ()
+	--return ()
     	let (Just fragInfo) = lookup b fragMap
 
 	deleteObjectNames [ffProg fragInfo]
