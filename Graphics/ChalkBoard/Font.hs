@@ -7,18 +7,18 @@ module Graphics.ChalkBoard.Font
 	) where
 
 
-import Data.Boolean
+--import Data.Boolean
 
-import Data.Ix
+--import Data.Ix
 import Data.Array.Unboxed
 import Graphics.Rendering.TrueType.STB hiding (Font)
 import qualified Graphics.Rendering.TrueType.STB as STB
 --import Graphics.ChalkBoard
-import Graphics.ChalkBoard.Utils
+--import Graphics.ChalkBoard.Utils
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.Board
 import Graphics.ChalkBoard.Buffer
-import Graphics.ChalkBoard.O
+--import Graphics.ChalkBoard.O
 
 import qualified Data.ByteString as BS
 
@@ -52,8 +52,8 @@ label font sz str = do
 		| ch <- str
 		]
 
-	let lens :: [Float]
-	    lens = 0 : Prelude.zipWith (+) (map snd brds) lens
+--	let lens :: [Float]
+--	    lens = 0 : Prelude.zipWith (+) (map snd brds) lens
 	let brd1 :: Board UI
 	    brd1 = foldr (\ (buff,off) brd -> buff `bufferOnBoard` (move (off,0) brd)) brd0 
 			(Prelude.zip (map fst brds) (map id (map snd brds)))
@@ -71,8 +71,8 @@ letter (Font font ()) sz ch = do
                   case opt of
                         Just v -> return v
                         Nothing -> error $ "Cannot find: " ++ show ch
-    bb_K <- getGlyphBoundingBox font glyph_K
-    (bm_K,bo_K) <- newGlyphBitmap font glyph_K (sz,sz)
+--    bb_K <- getGlyphBoundingBox font glyph_K
+    (bm_K,_) <- newGlyphBitmap font glyph_K (sz,sz)
     m_K <- getGlyphHorizontalMetrics font glyph_K
     bma_K <- bitmapArray bm_K 
 
@@ -91,20 +91,20 @@ letter (Font font ()) sz ch = do
 		      , y <- [y0..y1']
 		      ]
 
-    let x1' = x1 
-    let y1' = y1
-    let (x1'',y1'') = (pot x1' - 1,pot y1' - 1)
+--    let x1' = x1 
+--    let y1' = y1
+--    let (x1'',y1'') = (pot x1' - 1,pot y1' - 1)
 
-    let (bo_x,bo_y) = bo_K
+--    let (bo_x,bo_y) = bo_K
 
-    let (BBox (a,b) (c,d)) = bb_K
+--    let (BBox (a,b) (c,d)) = bb_K
     xx <- getGlyphBitmapBox font glyph_K (sz,sz)
-    let (BBox (a,b) (c,d)) = xx
+    let (BBox (_,_) (_,d)) = xx
 
     return 
-	( moveBuffer (0 + ceiling (sz * fromIntegral (leftSideBearing m_K)),-d) $ newBufferUI bs' (y1''+1,x1''+1)
+	( moveBuffer (0 + ceiling (sz * fromIntegral (leftSideBearing m_K)),-d) $ newBufferUI bs' (y1'+1,x1'+1)
 	, sz * fromIntegral (advanceWidth m_K) -- + the remainer from the ceiling operation
 	)
 
-just :: O UI -> O (Maybe UI)
-just o = withMask o (o /=* 0)
+--just :: O UI -> O (Maybe UI)
+--just o = withMask o (o /=* 0)

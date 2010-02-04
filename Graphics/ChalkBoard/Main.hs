@@ -11,6 +11,7 @@ module Graphics.ChalkBoard.Main
 	, mouseCallback
 	, keyboardCallback
 	, drawRawChalkBoard
+	, pauseChalkBoard
 	, exitChalkBoard
 	, startChalkBoard
 	, openChalkBoard
@@ -20,10 +21,10 @@ module Graphics.ChalkBoard.Main
 import System.Process
 import System.Environment
 import System.IO
-import System.Exit
+--import System.Exit
 import Control.Concurrent 
 
-import Graphics.ChalkBoard.Core
+--import Graphics.ChalkBoard.Core
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.Board
 import Graphics.ChalkBoard.Buffer
@@ -35,11 +36,11 @@ import Graphics.ChalkBoard.Options
 import Graphics.ChalkBoard.Video ( ffmpegOutCmd )
 import Codec.Image.DevIL
 
-import Data.Word
-import Control.Concurrent.MVar
+--import Data.Word
+--import Control.Concurrent.MVar
 import Control.Concurrent
 import Control.Monad ( when )
-import System.Cmd
+--import System.Cmd
 import Data.Binary as Bin
 
 import qualified Data.ByteString.Lazy as B
@@ -168,12 +169,12 @@ openChalkBoard args = do
 	putStrLn "[Opening Channel to ChalkBoard Server]"
 	ilInit
 
-	v0 <- newEmptyMVar
+--	v0 <- newEmptyMVar
 	v1 <- newEmptyMVar 
 	v2 <- newEmptyMVar 
 	vEnd <- newEmptyMVar
 
-	(ein,eout,err,pid) <- openServerStream		
+	(ein,_,_,_) <- openServerStream          --(ein,eout,err,pid) <- openServerStream
 	
 	let options = encode (args :: [Options])
 	B.hPut ein (encode (fromIntegral (B.length options) :: Word32))
@@ -191,7 +192,7 @@ openChalkBoard args = do
 			case v of
 			  [Exit] -> putMVar vEnd ()
 			  _ -> loop $! (n+1)
-		loop 0
+		loop (0::Int)
 
 	return (ChalkBoard v1 vEnd)
 
@@ -204,7 +205,7 @@ compiler options v1 v2 = do
 	putMVar v2 [Allocate viewBoard (x,y) RGB24Depth (BackgroundRGB24Depth (RGB 1 1 1))]
 	loop (0::Integer) (boardOf (o (RGB 1 1 1))) (0 :: BufferId)
   where     
-     (x,y) = head ([ (x,y) | BoardSize x y <- options ] ++ [(400,400)])
+     (x,y) = head ([ (x',y') | BoardSize x' y' <- options ] ++ [(400,400)])
      loop n old_brd buffIds = do
 	cmd <- takeMVar v1
 	case cmd of
@@ -274,10 +275,10 @@ chalkBoardServer = do
 	options <- B.hGet stdin (fromIntegral n)
 	forkIO $ do
 		let loop = do
-			bs <- B.hGet stdin 4
-			let n :: Word32
-			    n = Bin.decode bs
-			packet <- B.hGet stdin (fromIntegral n)
+			bs' <- B.hGet stdin 4
+			let n' :: Word32
+			    n' = Bin.decode bs'
+			packet <- B.hGet stdin (fromIntegral n')
 			putMVar v2 (decode packet :: [Inst BufferId])
 			loop
 		loop
