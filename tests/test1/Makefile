@@ -6,6 +6,7 @@ CHALKBOARD_SERVER=$(wildcard ../../dist/build/chalkboard-server-*/chalkboard-ser
 
 test::
 	rm -fR *png testout serverout
+	(cd ../.. ; cabal configure -ftest1 ; cabal build )
 	../../dist/build/chalkboard-tests-test1/chalkboard-tests-test1
 	mkdir -p testout
 	mv *png testout
