@@ -1,7 +1,4 @@
-Running Nightly Tests:
-
-
-Initialized empty Git repository in /local/kmatlage/chalkboard/chalkboard/tests/nightly/chalkboard/.git/
+Initialized empty Git repository in /tmp/chalkboard/.git/
 rm -fR *png testout serverout
 (cd ../.. ; cabal configure -ftest1 ; cabal build )
 Resolving dependencies...
@@ -1068,7 +1065,3 @@ mv testIn1.jpeg testIn2.jpeg testIn3.jpeg testOut.mp4 testBothOut.mp4 test1Multi
 diff masters tests
 Binary files masters/testGLSLOut.mp4 and tests/testGLSLOut.mp4 differ
 make: *** [boot] Error 2
-
-
-Finished Nightly Tests.
-
