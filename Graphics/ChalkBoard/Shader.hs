@@ -11,7 +11,7 @@ module Graphics.ChalkBoard.Shader
 	) where
 	
 import Graphics.ChalkBoard.Internals
-import Graphics.ChalkBoard.Types
+--import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.O.Internals
 import Graphics.ChalkBoard.O
 

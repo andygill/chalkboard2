@@ -31,17 +31,17 @@ import Graphics.ChalkBoard.Internals
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.O as O
 import Graphics.ChalkBoard.O.Internals
-import Graphics.ChalkBoard.Core
-import Graphics.ChalkBoard.Utils
+--import Graphics.ChalkBoard.Core
+--import Graphics.ChalkBoard.Utils
 import Graphics.ChalkBoard.Expr
 import Graphics.ChalkBoard.Buffer
-import Graphics.ChalkBoard.IStorable as IS
+--import Graphics.ChalkBoard.IStorable as IS
 
-import Data.Array.Unboxed  as U
-import Data.Array.MArray
-import Data.Array.Storable
-import Data.Word
-import Codec.Image.DevIL
+--import Data.Array.Unboxed  as U
+--import Data.Array.MArray
+--import Data.Array.Storable
+--import Data.Word
+--import Codec.Image.DevIL
 import Prelude hiding (zip, zipWith, zipWith3,lookup)
 
 -- | 'fmap' like operator over a 'Board'.
@@ -52,22 +52,24 @@ instance OFunctor Board where
 
 -- | 'pure' like operator for 'Board'.	
 boardOf :: O a -> Board a
-boardOf o = Board (typeO o) (PrimConst o)
+boardOf ob = Board (typeO ob) (PrimConst ob)
 
 zip :: Board a -> Board b -> Board (a,b)
 zip b1 b2 = Board (Pair_Ty (typeOfBoard b1) (typeOfBoard b2)) $ Zip b1 b2
 
 zipWith :: (O a -> O b -> O c) -> Board a -> Board b -> Board c
-zipWith f b1 b2 = (\ o -> f (fstO o) (sndO o)) <$> (b1 `zip` b2)
+zipWith f b1 b2 = (\ o' -> f (fstO o') (sndO o')) <$> (b1 `zip` b2)
 
 zipWith3 :: (O a -> O b -> O c -> O d) -> Board a -> Board b -> Board c -> Board d
-zipWith3 f b1 b2 b3 = (\ o -> f (fstO o) (fstO (sndO o)) (sndO (sndO o))) <$> (b1 `zip` (b2 `zip` b3))
+zipWith3 f b1 b2 b3 = (\ o' -> f (fstO o') (fstO (sndO o')) (sndO (sndO o'))) <$> (b1 `zip` (b2 `zip` b3))
 
+{-
 transPoint :: Trans -> (R,R) -> (R,R)
 transPoint (Move (xd,yd)) 	(x,y) = (x - xd,y - yd)
 transPoint (Scale (xn,yn)) 	(x,y) = (x / xn,y / yn)
 transPoint (Rotate theta) 	(x,y) = (cos theta * x - sin theta * y,
 					 sin theta * x + cos theta * y)
+-}
 
 
 -- |  Generate a unit square (1 by 1 square) centered on origin
@@ -137,8 +139,10 @@ instance Over a => Over (Board a) where
 
 -- I would rather mask to be a Board Bool, and we could use <$>,
 -- to choose, but the Board transformer will do for now.
+{-
 mask :: ((R,R),(R,R)) -> Board a -> Board (Maybe a)
 mask = error "mask"
+-}
 
 -- | read a file containing a common image format (jpg, gif, etc.), 
 -- and create a 'Board RGBA', and the X and Y size of the image.

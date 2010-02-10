@@ -14,7 +14,7 @@ module Graphics.ChalkBoard.Core
 -- This provided the internal functions, many of which are reflected into the "Observable", O.
 
 import Graphics.ChalkBoard.Types
-import Graphics.ChalkBoard.Utils
+--import Graphics.ChalkBoard.Utils
 
 ------------------------------------------------------------------------------
 
@@ -40,9 +40,11 @@ withDefault a Nothing  = a
 withDefault _ (Just b) = b
 
 -- | 'choose' between two values.
+{-
 choose :: a -> a -> (Bool -> a)
 choose t  _f True  = t
 choose _t f  False = f
+-}
 
 ------------------------------------------------------------------------------------------
 -- Colors with alpha

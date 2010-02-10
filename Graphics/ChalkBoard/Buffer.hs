@@ -23,15 +23,15 @@ import Graphics.ChalkBoard.Internals
 import Graphics.ChalkBoard.Types
 import Graphics.ChalkBoard.O
 import Graphics.ChalkBoard.O.Internals
-import Graphics.ChalkBoard.Core
-import Graphics.ChalkBoard.Utils
+--import Graphics.ChalkBoard.Core
+--import Graphics.ChalkBoard.Utils
 import Graphics.ChalkBoard.Expr
-import Graphics.ChalkBoard.IStorable as IS
+--import Graphics.ChalkBoard.IStorable as IS
 
 import Data.Array.Unboxed  as U
-import Data.Array.MArray
-import Data.Array.Storable
-import Data.Word
+--import Data.Array.MArray
+--import Data.Array.Storable
+--import Data.Word
 import Data.ByteString as BS
 
 import Codec.Image.DevIL
@@ -48,7 +48,7 @@ newBufferOf low hi a = Buffer (typeO a) low hi (BoardInBuffer (Board (typeO a) (
 readBuffer :: String -> IO (Buffer (RGBA -> RGBA))
 readBuffer filename = do
   arr <- readImage filename 
-  let (low@(0,0,0), high@(h,w,3)) = U.bounds arr
+  let ((0,0,0), (h,w,3)) = U.bounds arr
   let bs = BS.pack [ arr U.! (x,y,z) | x <- [0..h], y <- [0..w], z <- [0..3]]
   return $ newBufferRGBA bs (w+1,h+1)
 

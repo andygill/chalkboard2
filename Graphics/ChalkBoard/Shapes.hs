@@ -66,7 +66,7 @@ straightline' ((x1,y1),(x2,y2)) width = (\ (x,y) ->
 -- | A straight line, of a given width, between two points.
 
 straightLine :: (Point,Point) -> R -> Board Bool
-straightLine (p1@(x1,y1),p2@(x2,y2)) w = 
+straightLine ((x1,y1),(x2,y2)) w = 
           move (x1,y1)
         $ rotate (pi /2 - th)
 	$ box ((-w/2,0),(w/2,len))

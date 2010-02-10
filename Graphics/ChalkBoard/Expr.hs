@@ -4,8 +4,8 @@ module Graphics.ChalkBoard.Expr where
 --import Control.Applicative
 import Graphics.ChalkBoard.Types -- hiding (Alpha)
 import qualified Graphics.ChalkBoard.Types as Ty
-import Graphics.ChalkBoard.Core as C
-import Data.Reify.Graph
+--import Graphics.ChalkBoard.Core as C
+--import Data.Reify.Graph
 import Data.Reify
 import Control.Applicative as AF
 import qualified Data.Traversable as T
@@ -137,25 +137,25 @@ evalExprE e@(Var {}) 		= return e
 evalExprE e@(O_Bool {}) 	= return e
 evalExprE e@(O_RGB {}) 		= return e
 evalExprE e@(O_RGBA {}) 	= return e
-evalExprE e@(Lit v)		= return e
+evalExprE e@(Lit _)		= return e
 -- try some evaluation, please.
 evalExprE (Choose a b c) = 
 	case liftM unE $ evalE c of
 	  Just (O_Bool True)  -> liftM unE $ evalE a
 	  Just (O_Bool False) -> liftM unE $ evalE b
-	  other -> Nothing
+	  _ -> Nothing
 evalExprE (Alpha n e) =
 	case liftM unE $ evalE e of
 	  Just (O_RGB (RGB r g b)) -> 
 	     case liftM unE $ evalE n of
 		Just (Lit n') -> return (O_RGBA (RGBA r g b n'))
-		_ ->  Nothing
+		_ -> Nothing
 	  Nothing -> Nothing
 evalExprE (O_Just e) =
 	case evalE e of
 	   Just e' -> return (O_Just e')
 	   Nothing -> fail "opps"
-evalExprE other = Nothing
+evalExprE _ = Nothing
 
 evalE :: E -> Maybe E
 evalE (E t e) = liftM (E t) (evalExprE e)
@@ -175,12 +175,12 @@ instance MuRef E where
 
 
 instance T.Traversable Expr where
-	traverse f (Var i)		= pure $ Var i
+	traverse _ (Var i)		= pure $ Var i
 
-	traverse f (O_Bool v)		= pure $ O_Bool v
-	traverse f (O_RGB v)		= pure $ O_RGB v
-	traverse f (O_RGBA v)		= pure $ O_RGBA v
-	traverse f (Lit r)		= pure $ Lit r
+	traverse _ (O_Bool v)		= pure $ O_Bool v
+	traverse _ (O_RGB v)		= pure $ O_RGB v
+	traverse _ (O_RGBA v)		= pure $ O_RGBA v
+	traverse _ (Lit r)		= pure $ Lit r
 
 --	traverse f (O_Fst a) 		= O_Fst <$> f a
 --	traverse f (O_Snd a) 		= O_Snd <$> f a
@@ -198,7 +198,7 @@ instance T.Traversable Expr where
 
 	traverse f (IsJust e) 		= IsJust <$> f e
 	traverse f (UnJust e) 		= UnJust <$> f e
-	traverse f (O_Nothing) 		= pure O_Nothing 
+	traverse _ (O_Nothing) 		= pure O_Nothing 
 	traverse f (O_Just e)	 	= O_Just <$> f e
 
 	-- TODO

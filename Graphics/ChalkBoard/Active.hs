@@ -36,18 +36,18 @@ simulate rate (Active start stop f) =  [ f step'
 				       | step <- outerSteps (ceiling (toRational rate * (stop - start)))
 				       , let step' = lerp step start stop
 				       ] 
-simulate rate (Pure a) 	        = [a]	-- need inf concept
+simulate _ (Pure a) 	        = [a]	-- need inf concept
 
 instance Scale (Active a) where
   scale u (Active start stop f) = Active (scale u start) (scale u stop) 
 				$ \ tm -> f (tm / toRational u)
-  scale u (Pure a) 		= Pure a
+  scale _ (Pure a) 		= Pure a
 
 
 actMove :: Float -> Active a -> Active a
 actMove d (Active start stop f) = Active (toRational d + start) (toRational d + stop) 
 				$ \ tm -> f (tm - toRational d)
-actMove d (Pure a) = Pure a
+actMove _ (Pure a) = Pure a
 
 instance Functor Active where
   fmap f (Active start stop g) = Active start stop (f . g)
@@ -124,10 +124,10 @@ duration a b = (const ()) `fmap` (a `both` b)
 -- Make the duration of the first argument
 -- the same as the duration of the second argument.
 streach :: Active a -> Active b -> Active a
-streach act@(Active low' high' f) aux@(Active low high _) =
+streach act@(Active _ _ f) aux@(Active low high _) =
 	Active low high $ \ tm -> f (toTime act (fromTime aux tm))
-streach act@(Pure a) aux@(Active low high _) =
-	Active low high $ \ tm -> a
+streach (Pure a) (Active low high _) =
+	Active low high $ \ _ -> a
 
 reverse :: Active a -> Active a
 reverse (Active low high f) = Active low high $ \ tm -> f $ (high - tm) + low
@@ -152,8 +152,8 @@ turnPages _ [x] = x
 
 -- Freeze an active value in time.
 snap :: UI -> Active a -> Active a
-snap ui (Pure a) 	      = Pure a
-snap ui a@(Active low high f) = Pure $ f (toTime a (toRational ui))
+snap _ (Pure a) 	      = Pure a
+snap ui a@(Active _ _ f) = Pure $ f (toTime a (toRational ui))
 
 transition :: Active (a -> a -> a) -> Active a -> Active a -> Active a
 transition merge s1 s2 = merge <*> (snap 1 s1) <*> (snap 0 s2)
@@ -174,7 +174,7 @@ fadein k = scale k age
 
 -- Take a movie of what an Active object does between two type stamps.
 movie :: R -> R -> Active a -> Active a
-movie start stop act@(Active start' stop' f) = Active (toRational start) (toRational stop) $ f . boundBy act
+movie start stop act@(Active _ _ f) = Active (toRational start) (toRational stop) $ f . boundBy act
 movie start stop (Pure a) 		     = Active (toRational start) (toRational stop) $ const a
 
 -- | 'for' takes short movie of the Active argument, assumping starting at zero.

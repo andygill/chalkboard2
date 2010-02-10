@@ -18,12 +18,12 @@ module Graphics.ChalkBoard.Internals
 	) where
 		
 import Graphics.ChalkBoard.Types
-import Graphics.ChalkBoard.O
+--import Graphics.ChalkBoard.O
 import Graphics.ChalkBoard.O.Internals
 import Graphics.ChalkBoard.Expr
 import Graphics.ChalkBoard.IStorable as IS
 import Data.ByteString
-import Graphics.Rendering.OpenGL.GL.Shaders (Uniform)
+--import Graphics.Rendering.OpenGL.GL.Shaders (Uniform)
 
 data Buffer a = Buffer ExprType (Int,Int) (Int,Int) (InsideBuffer a)
 
@@ -137,7 +137,7 @@ instance Show (InsideBoard a) where
 	show (Over _ brd1 brd2)   = "Over (..) (" ++ show brd1 ++ " " ++ show brd2 ++ ")"
 	show (BufferOnBoard buff brd)  = "BufferOnBoard (" ++ show buff ++ ") (" ++ show brd ++ ")"
 	show (BoardUnAlpha b1 b2)  = "BoardUnAlpha (" ++ show b1 ++ ") (" ++ show b2 ++ ")"
-	show (BoardGSI nm arg1 arg2) = "BoardGSI ffi " 
+	show (BoardGSI _ arg1 arg2) = "BoardGSI ffi " 
 				++ show (Prelude.map (\ (x,_,_) -> x) arg1) 
 				++ show (Prelude.map Prelude.fst arg2) 
 
@@ -146,10 +146,10 @@ instance Show (Buffer a) where
 
 instance Show (InsideBuffer a) where
 	show (BoardInBuffer brd) = "BoardInBuffer (" ++ show brd ++ ")"
-	show (FmapBuffer _ ty brd) = "FmapBuffer (..) (" ++ show brd ++ ")"
-	show (ImageRGB arr)        = "ImageRGB (..)"
-	show (ImageRGBA arr)        = "ImageRGBA (..)"
-	show (ImageUI arr)        = "ImageUI (..)"
+	show (FmapBuffer _ _ brd) = "FmapBuffer (..) (" ++ show brd ++ ")"
+	show (ImageRGB _)        = "ImageRGB (..)"
+	show (ImageRGBA _)        = "ImageRGBA (..)"
+	show (ImageUI _)        = "ImageUI (..)"
 	
 data Trans = Move (R,R)
 	   | Scale (R,R)

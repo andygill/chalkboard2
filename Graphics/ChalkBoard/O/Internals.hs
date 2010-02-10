@@ -12,12 +12,12 @@ module Graphics.ChalkBoard.O.Internals
 	) where
 	
 import Graphics.ChalkBoard.Expr as Expr
-import qualified Data.Traversable as T
-import qualified Data.Foldable as F
-import Data.Reify.Graph
+--import qualified Data.Traversable as T
+--import qualified Data.Foldable as F
+--import Data.Reify.Graph
 import Data.Reify
-import Data.List as L
-import Debug.Trace
+--import Data.List as L
+--import Debug.Trace
 import Graphics.ChalkBoard.Types  as Ty
 import Data.Ratio
 	
@@ -40,7 +40,7 @@ instance Show o => Show (O o) where
 
 -- showing structure, not the value
 showO :: O a -> String
-showO (O a e) = show e
+showO (O _ e) = show e
 
 reifyO :: O a -> IO (Graph Expr)
 reifyO (O _ e) = reifyGraph e
@@ -62,9 +62,9 @@ typeO1 f ty1 = ty2
 -- Given a function, and the *argument* (a) type, give types of the paths inside the argument.
 
 argTypeForOFun :: (O a -> O b) -> ExprType -> [([Path],ExprType)]
-argTypeForOFun f ty = error "(exprUnifyE e ty)"
+argTypeForOFun f _ = error "(exprUnifyE e ty)"
 	 where
-		(O _ e) = (f (O (error "typeOfO (should not be looking here!)") (E (error "type unknown") $ Var [])))
+		(O _ _) = (f (O (error "typeOfO (should not be looking here!)") (E (error "type unknown") $ Var [])))
 
 instance Eq (O UI) where
 	(O a _) == (O b _) = a == b

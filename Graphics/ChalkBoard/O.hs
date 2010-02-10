@@ -57,6 +57,7 @@ infixr 0 <$>
 infixr 0 .$
 --infixr 0 ..$
 
+(.$) :: (OFunctor f) => (O a -> O b) -> f a -> f b
 (.$) a b = (<$>) a b
 
 
@@ -70,7 +71,7 @@ class OFunctor f where
 
 -- | project into an unobservable version of O.
 unO :: O o -> o
-unO (O o _) = o
+unO (O ob _) = ob
 
 ------------------------------------------------------------------------------------------------
 -- Instances of Pure
@@ -115,8 +116,10 @@ withAlpha :: O UI -> O RGB -> O (RGBA -> RGBA)
 withAlpha (O n en) (O a e) = O (C.withAlpha n a) (E RGBA_Ty $ Expr.Alpha en e)
 
 -- | Observable function to remove the alpha channel.
+{-
 unAlpha :: O RGB -> O (RGBA -> RGBA) -> O RGB
 unAlpha (O a1 e1) (O a2 e2) = O (C.unAlpha a1 a2) (E RGB_Ty $ Expr.UnAlpha e1 e2)
+-}
 
 -- | Observable function to add a transparent alpha channel.
 transparent :: O (RGBA -> RGBA)
@@ -199,14 +202,14 @@ maybe :: (Maskable a) => O b ->  (O a -> O b) -> O (Maybe a) -> O b
 maybe d f m = choose (f $ unJust m) d (isJust m)
 
 isJust :: (Maskable a) => O (Maybe a) -> O Bool
-isJust o@(O a ea) = O (case a of
+isJust (O a ea) = O (case a of
 	     	         Nothing -> False
 		         Just {} -> True) (E BOOL_Ty $ IsJust ea)
 
 unJust :: (Maskable a) => O (Maybe a) -> O a
-unJust o@(O a ea) = O (case a of
+unJust ob@(O a ea) = O (case a of
 			Nothing -> error "bad unJust"
-			Just v -> v) (E (maskType $ getA o) $ UnJust ea)
+			Just v -> v) (E (maskType $ getA ob) $ UnJust ea)
 
 nothing :: (Maskable a) => O (Maybe a)
 nothing = res
