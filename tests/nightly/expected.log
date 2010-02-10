@@ -1064,4 +1064,115 @@ mkdir -p tests
 mv testIn1.jpeg testIn2.jpeg testIn3.jpeg testOut.mp4 testBothOut.mp4 test1MultipleInOut.mp4 test2MultipleInOut.mp4 testGLSLOut.mp4 tests
 diff masters tests
 Binary files masters/testGLSLOut.mp4 and tests/testGLSLOut.mp4 differ
-make: *** [boot] Error 2
+make: *** [test] Error 2
+( cd ../.. ; cabal configure -ffont1 ; cabal build )
+Resolving dependencies...
+Configuring chalkboard-1.9.0.19...
+Preprocessing library chalkboard-1.9.0.19...
+Preprocessing executables for chalkboard-1.9.0.19...
+Building chalkboard-1.9.0.19...
+/usr/bin/ar: creating dist/build/libHSchalkboard-1.9.0.19.a
+[ 1 of 23] Compiling Graphics.ChalkBoard.IStorable ( Graphics/ChalkBoard/IStorable.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/IStorable.o )
+
+Graphics/ChalkBoard/IStorable.hs:119:9:
+    Warning: No explicit method nor default method for `put'
+    In the instance declaration for `Binary ReadOnlyCByteArray'
+
+Graphics/ChalkBoard/IStorable.hs:119:9:
+    Warning: No explicit method nor default method for `get'
+    In the instance declaration for `Binary ReadOnlyCByteArray'
+[ 2 of 23] Compiling Graphics.ChalkBoard.Types ( Graphics/ChalkBoard/Types.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Types.o )
+[ 3 of 23] Compiling Graphics.ChalkBoard.Utils ( Graphics/ChalkBoard/Utils.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Utils.o )
+[ 4 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Active.o )
+[ 5 of 23] Compiling Graphics.ChalkBoard.Core ( Graphics/ChalkBoard/Core.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Core.o )
+[ 6 of 23] Compiling Graphics.ChalkBoard.Expr ( Graphics/ChalkBoard/Expr.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Expr.o )
+[ 7 of 23] Compiling Graphics.ChalkBoard.O.Internals ( Graphics/ChalkBoard/O/Internals.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/O/Internals.o )
+
+Graphics/ChalkBoard/O/Internals.hs:72:9:
+    Warning: No explicit method nor default method for `+'
+    In the instance declaration for `Num (O UI)'
+
+Graphics/ChalkBoard/O/Internals.hs:72:9:
+    Warning: No explicit method nor default method for `*'
+    In the instance declaration for `Num (O UI)'
+
+Graphics/ChalkBoard/O/Internals.hs:72:9:
+    Warning: No explicit method nor default method for `abs'
+    In the instance declaration for `Num (O UI)'
+
+Graphics/ChalkBoard/O/Internals.hs:72:9:
+    Warning: No explicit method nor default method for `signum'
+    In the instance declaration for `Num (O UI)'
+[ 8 of 23] Compiling Graphics.ChalkBoard.O ( Graphics/ChalkBoard/O.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/O.o )
+
+Graphics/ChalkBoard/O.hs:27:3:
+    Warning: `false' is exported by `Boolean(..)' and `false'
+
+Graphics/ChalkBoard/O.hs:27:3:
+    Warning: `true' is exported by `Boolean(..)' and `true'
+
+Graphics/ChalkBoard/O.hs:168:9:
+    Warning: No explicit method nor default method for `&&*'
+    In the instance declaration for `Boolean (O Bool)'
+
+Graphics/ChalkBoard/O.hs:168:9:
+    Warning: No explicit method nor default method for `||*'
+    In the instance declaration for `Boolean (O Bool)'
+[ 9 of 23] Compiling Graphics.ChalkBoard.Internals ( Graphics/ChalkBoard/Internals.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Internals.o )
+
+Graphics/ChalkBoard/Internals.hs:96:9:
+    Warning: No explicit method nor default method for `buffer'
+    In the instance declaration for `UniformBoard RGB'
+
+Graphics/ChalkBoard/Internals.hs:99:9:
+    Warning: No explicit method nor default method for `buffer'
+    In the instance declaration for `UniformBoard Bool'
+
+Graphics/ChalkBoard/Internals.hs:102:9:
+    Warning: No explicit method nor default method for `buffer'
+    In the instance declaration for `UniformBoard Float'
+
+Graphics/ChalkBoard/Internals.hs:105:9:
+    Warning: No explicit method nor default method for `buffer'
+    In the instance declaration for `UniformBoard (Maybe RGB)'
+[10 of 23] Compiling Graphics.ChalkBoard.Shader ( Graphics/ChalkBoard/Shader.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Shader.o )
+[11 of 23] Compiling Graphics.ChalkBoard.CBIR ( Graphics/ChalkBoard/CBIR.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/CBIR.o )
+[12 of 23] Compiling Graphics.ChalkBoard.Options ( Graphics/ChalkBoard/Options.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Options.o )
+
+Graphics/ChalkBoard/Options.hs:33:11:
+    Warning: Pattern match(es) are overlapped
+             In a case alternative: 5 -> ...
+[13 of 23] Compiling Graphics.ChalkBoard.Buffer ( Graphics/ChalkBoard/Buffer.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Buffer.o )
+[14 of 23] Compiling Graphics.ChalkBoard.Video ( Graphics/ChalkBoard/Video.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Video.o )
+[15 of 23] Compiling Graphics.ChalkBoard.OpenGL.Env ( Graphics/ChalkBoard/OpenGL/Env.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/OpenGL/Env.o )
+[16 of 23] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/OpenGL/CBBE.o )
+[17 of 23] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Board.o )
+[18 of 23] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Shapes.o )
+[19 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Font.o )
+[20 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
+
+Graphics/ChalkBoard/CBIR/Compiler.hs:177:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `targetType': targetType other = ...
+
+Graphics/ChalkBoard/CBIR/Compiler.hs:362:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `compileBoardFmap':
+                 compileBoardFmap bc t _ other argTy resTy = ...
+[21 of 23] Compiling Graphics.ChalkBoard.Main ( Graphics/ChalkBoard/Main.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Main.o )
+[22 of 23] Compiling Graphics.ChalkBoard ( Graphics/ChalkBoard.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard.o )
+
+Graphics/ChalkBoard.hs:15:3:
+    Warning: `<$>' is exported by `module Graphics.ChalkBoard.Buffer' and `module Graphics.ChalkBoard.Board'
+
+Graphics/ChalkBoard.hs:16:3:
+    Warning: `<$>' is exported by `module Graphics.ChalkBoard.O' and `module Graphics.ChalkBoard.Board'
+[23 of 23] Compiling Main             ( tests/font1/Main.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Main.o )
+Linking dist/build/chalkboard-tests-font1/chalkboard-tests-font1 ...
+rm -f testFont1.jpeg
+../../dist/build/chalkboard-tests-font1/chalkboard-tests-font1
+[Starting ChalkBoard]
+"OpenGL Version: 3.0"
+"FBO Unsupported?: False"
+"FBO Initialization Complete. Using FBOs."
+diff masterFont1.jpeg testFont1.jpeg
