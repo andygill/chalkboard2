@@ -1,24 +1,34 @@
-#nightlyTestDir=/local/kmatlage/chalkboard/chalkboard/tests/nightly/
+# Nightly Testing for ChalkBoard
+#  -  Can simply run this script manually or set it up as a cron job
+#  -  If running as a cron job, be sure to set "DISPLAY=:0.0" in the crontab and make sure the system has set "xhost +" to allow access to the display
+#  -  New recipients can be added by inserting additional email addresses into the string below, separated by a space.
 
-echo -e "Running Nightly Tests...\n\n" > /tmp/nightlyEmail
+
+recipients="kmatlage@ittc.ku.edu kmatlage@ku.edu"
+
+nightlyEmail=/tmp/nightlyEmail
+nightlyLog=/tmp/nightly.log
+nightlyDiff=/tmp/nightly.diff
+
+
+echo -e "Running Nightly Tests...\n\n" > $nightlyEmail
 
 cd /tmp
-git clone git://gitsldg.ittc.ku.edu/chalkboard/chalkboard.git
+git clone git://gitsldg.ittc.ku.edu/chalkboard/chalkboard.git > $nightlyLog
 cd chalkboard/tests/nightly
 
-rm -f nightly.log
-./testAll.sh >> nightly.log 2>&1
-cp nightly.log /tmp/nightly.log
+./testAll.sh >> $nightlyLog 2>&1
 
-echo -e "Diff:\n" >> /tmp/nightlyEmail
-diff expected.log nightly.log >> /tmp/nightlyEmail
+echo -e "Diff:\n" >> $nightlyEmail
+diff expected.log $nightlyLog > $nightlyDiff
+cat $nightlyDiff >> $nightlyEmail
 
 cd ../../..
 rm -rf chalkboard
 
-echo -e "\n\nFinished Nightly Tests.\n" >> /tmp/nightlyEmail
+echo -e "\n\nFinished Nightly Tests.\n" >> $nightlyEmail
 
-mutt -s "ChalkBoard Nightly Test" -a /tmp/nightly.log -- kmatlage@ittc.ku.edu < /tmp/nightlyEmail
+mutt -s "ChalkBoard Nightly Test" -a $nightlyLog $nightlyDiff -- $recipients < $nightlyEmail
 
-rm -f /tmp/nightlyEmail /tmp/nightly.log
+rm -f $nightlyEmail $nightlyLog $nightlyDiff
 
