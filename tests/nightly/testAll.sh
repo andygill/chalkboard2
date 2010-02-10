@@ -5,4 +5,5 @@
 
 ( cd ../test1 ; make )
 ( cd ../video1 ; make )
+( cd ../font1 ; make )
 

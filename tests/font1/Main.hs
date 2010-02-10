@@ -111,6 +111,9 @@ main2 cb font sz (w,h) = do
                               else scaleXY (1,1.0/scaling) $ slide
         
 	drawChalkBoard cb scaledSlide
+	writeChalkBoard cb "testFont1.jpeg"
+	
+	exitChalkBoard cb
 
 
         
