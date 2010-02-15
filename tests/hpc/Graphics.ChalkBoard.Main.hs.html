@@ -1,0 +1,304 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>module Graphics.ChalkBoard.Main 
+<span class="lineno">    2 </span>        ( ChalkBoard
+<span class="lineno">    3 </span>        , drawChalkBoard
+<span class="lineno">    4 </span>        , drawChalkBuffer
+<span class="lineno">    5 </span>        , writeChalkBoard
+<span class="lineno">    6 </span>        , startMyWriteStream
+<span class="lineno">    7 </span>        , frameChalkBoard
+<span class="lineno">    8 </span>        , startDefaultWriteStream
+<span class="lineno">    9 </span>        , endWriteStream
+<span class="lineno">   10 </span>        , updateChalkBoard
+<span class="lineno">   11 </span>        , mouseCallback
+<span class="lineno">   12 </span>        , keyboardCallback
+<span class="lineno">   13 </span>        , drawRawChalkBoard
+<span class="lineno">   14 </span>        , pauseChalkBoard
+<span class="lineno">   15 </span>        , exitChalkBoard
+<span class="lineno">   16 </span>        , startChalkBoard
+<span class="lineno">   17 </span>        , openChalkBoard
+<span class="lineno">   18 </span>        , chalkBoardServer
+<span class="lineno">   19 </span>        ) where
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>import System.Process
+<span class="lineno">   22 </span>import System.Environment
+<span class="lineno">   23 </span>import System.IO
+<span class="lineno">   24 </span>--import System.Exit
+<span class="lineno">   25 </span>import Control.Concurrent 
+<span class="lineno">   26 </span>
+<span class="lineno">   27 </span>--import Graphics.ChalkBoard.Core
+<span class="lineno">   28 </span>import Graphics.ChalkBoard.Types
+<span class="lineno">   29 </span>import Graphics.ChalkBoard.Board
+<span class="lineno">   30 </span>import Graphics.ChalkBoard.Buffer
+<span class="lineno">   31 </span>import Graphics.ChalkBoard.CBIR
+<span class="lineno">   32 </span>import Graphics.ChalkBoard.CBIR.Compiler
+<span class="lineno">   33 </span>import Graphics.ChalkBoard.OpenGL.CBBE
+<span class="lineno">   34 </span>import Graphics.ChalkBoard.O
+<span class="lineno">   35 </span>import Graphics.ChalkBoard.Options
+<span class="lineno">   36 </span>import Graphics.ChalkBoard.Video ( ffmpegOutCmd )
+<span class="lineno">   37 </span>import Codec.Image.DevIL
+<span class="lineno">   38 </span>
+<span class="lineno">   39 </span>--import Data.Word
+<span class="lineno">   40 </span>--import Control.Concurrent.MVar
+<span class="lineno">   41 </span>import Control.Concurrent
+<span class="lineno">   42 </span>import Control.Monad ( when )
+<span class="lineno">   43 </span>--import System.Cmd
+<span class="lineno">   44 </span>import Data.Binary as Bin
+<span class="lineno">   45 </span>
+<span class="lineno">   46 </span>import qualified Data.ByteString.Lazy as B
+<span class="lineno">   47 </span>        
+<span class="lineno">   48 </span>        
+<span class="lineno">   49 </span>data ChalkBoardCommand
+<span class="lineno">   50 </span>        = DrawChalkBoard (Board RGB)
+<span class="lineno">   51 </span>        | DrawChalkBuffer (Buffer RGB)
+<span class="lineno">   52 </span>        | UpdateChalkBoard (Board RGB -&gt; Board RGB)
+<span class="lineno">   53 </span>        | WriteChalkBoard FilePath
+<span class="lineno">   54 </span>        | StartMyWriteStream String (MVar StreamId)
+<span class="lineno">   55 </span>        | StartDefaultWriteStream FilePath (MVar StreamId)
+<span class="lineno">   56 </span>        | FrameChalkBoard StreamId
+<span class="lineno">   57 </span>        | EndWriteStream StreamId
+<span class="lineno">   58 </span>        | NewMouseCallback (UIPoint -&gt; IO())
+<span class="lineno">   59 </span>        | NewKeyboardCallback (Char -&gt; IO())
+<span class="lineno">   60 </span>        | ExitChalkBoard
+<span class="lineno">   61 </span>        | DrawRawChalkBoard [Inst BufferId]
+<span class="lineno">   62 </span>        
+<span class="lineno">   63 </span>{-
+<span class="lineno">   64 </span>        | OpenStream String (MVar Int)
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>openStream (.. var) str = do
+<span class="lineno">   67 </span>        ref &lt;- newEmptyMVar
+<span class="lineno">   68 </span>        putMVar var (OpenStream str ref)
+<span class="lineno">   69 </span>        ans &lt;- takeMVar ref
+<span class="lineno">   70 </span>        return $ HOut ans
+<span class="lineno">   71 </span>-}
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>data ChalkBoard = ChalkBoard (MVar ChalkBoardCommand) (MVar ())
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>data StreamHandle = StreamHandle StreamId
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>-- | Draw a board onto the ChalkBoard.
+<span class="lineno">   78 </span>drawChalkBoard :: ChalkBoard -&gt; Board RGB -&gt; IO ()
+<span class="lineno">   79 </span><span class="decl"><span class="istickedoff">drawChalkBoard (ChalkBoard var _) brd = putMVar var (DrawChalkBoard brd)</span></span>
+<span class="lineno">   80 </span>
+<span class="lineno">   81 </span>-- | Draw a chalkbuffer onto the ChalkBoard.
+<span class="lineno">   82 </span>-- Internally, this is stored in the buffer size,
+<span class="lineno">   83 </span>-- regardless of the size of the viewers screen.
+<span class="lineno">   84 </span>-- updateChalkBoard does not work after drawChalkBoard.
+<span class="lineno">   85 </span>drawChalkBuffer :: ChalkBoard -&gt; Buffer RGB -&gt; IO ()
+<span class="lineno">   86 </span><span class="decl"><span class="istickedoff">drawChalkBuffer (ChalkBoard var _) buff = putMVar var (DrawChalkBuffer buff)</span></span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>-- | Write the contents of a ChalkBoard into a File.
+<span class="lineno">   89 </span>writeChalkBoard :: ChalkBoard -&gt; FilePath -&gt; IO ()
+<span class="lineno">   90 </span><span class="decl"><span class="istickedoff">writeChalkBoard (ChalkBoard var _) nm = putMVar var (WriteChalkBoard nm)</span></span>
+<span class="lineno">   91 </span>
+<span class="lineno">   92 </span>-- | Start streaming the contents of a ChalkBoard buffer into a File.
+<span class="lineno">   93 </span>startMyWriteStream :: ChalkBoard -&gt; String -&gt; IO StreamHandle
+<span class="lineno">   94 </span><span class="decl"><span class="istickedoff">startMyWriteStream (ChalkBoard var _) cmd = do</span>
+<span class="lineno">   95 </span><span class="spaces">                </span><span class="istickedoff">res &lt;- newEmptyMVar</span>
+<span class="lineno">   96 </span><span class="spaces">                </span><span class="istickedoff">putMVar var (StartMyWriteStream cmd res)</span>
+<span class="lineno">   97 </span><span class="spaces">                </span><span class="istickedoff">sid &lt;- takeMVar res</span>
+<span class="lineno">   98 </span><span class="spaces">                </span><span class="istickedoff">return $ StreamHandle sid</span></span>
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>-- | Start streaming the contents of a ChalkBoard buffer into a File, with given ffmpeg command
+<span class="lineno">  101 </span>startDefaultWriteStream :: ChalkBoard -&gt; FilePath -&gt; IO StreamHandle
+<span class="lineno">  102 </span><span class="decl"><span class="istickedoff">startDefaultWriteStream (ChalkBoard var _) nm = do</span>
+<span class="lineno">  103 </span><span class="spaces">                </span><span class="istickedoff">res &lt;- newEmptyMVar</span>
+<span class="lineno">  104 </span><span class="spaces">                </span><span class="istickedoff">putMVar var (StartDefaultWriteStream nm res)</span>
+<span class="lineno">  105 </span><span class="spaces">                </span><span class="istickedoff">sid &lt;- takeMVar res</span>
+<span class="lineno">  106 </span><span class="spaces">                </span><span class="istickedoff">return $ StreamHandle sid</span></span>
+<span class="lineno">  107 </span>
+<span class="lineno">  108 </span>--doWriteFrame :: ChalkBoard -&gt; 
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>-- | End streaming the contents of a ChalkBoard buffer into a File.
+<span class="lineno">  111 </span>endWriteStream :: ChalkBoard -&gt; StreamHandle -&gt; IO ()
+<span class="lineno">  112 </span><span class="decl"><span class="istickedoff">endWriteStream (ChalkBoard var _) (StreamHandle sid) = putMVar var (EndWriteStream sid)</span></span>
+<span class="lineno">  113 </span>
+<span class="lineno">  114 </span>-- | modify the current ChalkBoard.
+<span class="lineno">  115 </span>updateChalkBoard :: ChalkBoard -&gt; (Board RGB -&gt; Board RGB) -&gt; IO ()
+<span class="lineno">  116 </span><span class="decl"><span class="nottickedoff">updateChalkBoard (ChalkBoard var _) brd = putMVar var (UpdateChalkBoard brd)</span></span>
+<span class="lineno">  117 </span>
+<span class="lineno">  118 </span>frameChalkBoard :: ChalkBoard -&gt; StreamHandle -&gt; IO ()
+<span class="lineno">  119 </span><span class="decl"><span class="istickedoff">frameChalkBoard (ChalkBoard var _) (StreamHandle sid) = putMVar var (FrameChalkBoard sid)</span></span>
+<span class="lineno">  120 </span>
+<span class="lineno">  121 </span>
+<span class="lineno">  122 </span>mouseCallback :: ChalkBoard -&gt; (UIPoint -&gt; IO ()) -&gt; IO ()
+<span class="lineno">  123 </span><span class="decl"><span class="nottickedoff">mouseCallback (ChalkBoard var _) fn = putMVar var (NewMouseCallback fn)</span></span>
+<span class="lineno">  124 </span>
+<span class="lineno">  125 </span>keyboardCallback :: ChalkBoard -&gt; (Char -&gt; IO()) -&gt; IO ()
+<span class="lineno">  126 </span><span class="decl"><span class="nottickedoff">keyboardCallback (ChalkBoard var _) fn = putMVar var (NewKeyboardCallback fn)</span></span>
+<span class="lineno">  127 </span>
+<span class="lineno">  128 </span>
+<span class="lineno">  129 </span>-- | Debugging hook for writing raw CBIR code.
+<span class="lineno">  130 </span>drawRawChalkBoard :: ChalkBoard -&gt; [Inst BufferId] -&gt; IO ()
+<span class="lineno">  131 </span><span class="decl"><span class="nottickedoff">drawRawChalkBoard (ChalkBoard var _) cmds = putMVar var (DrawRawChalkBoard cmds)</span></span>
+<span class="lineno">  132 </span>
+<span class="lineno">  133 </span>-- | pause for this many seconds, since the last redraw *started*.
+<span class="lineno">  134 </span>pauseChalkBoard :: ChalkBoard -&gt; Double -&gt; IO ()
+<span class="lineno">  135 </span><span class="decl"><span class="nottickedoff">pauseChalkBoard _ n = do</span>
+<span class="lineno">  136 </span><span class="spaces">        </span><span class="nottickedoff">threadDelay (fromInteger (floor (n * 1000000)))</span></span>
+<span class="lineno">  137 </span>        
+<span class="lineno">  138 </span>-- | quit ChalkBoard.
+<span class="lineno">  139 </span>exitChalkBoard :: ChalkBoard -&gt; IO ()
+<span class="lineno">  140 </span><span class="decl"><span class="istickedoff">exitChalkBoard (ChalkBoard var end) = do</span>
+<span class="lineno">  141 </span><span class="spaces">        </span><span class="istickedoff">putMVar var ExitChalkBoard</span>
+<span class="lineno">  142 </span><span class="spaces">        </span><span class="istickedoff">takeMVar end </span>
+<span class="lineno">  143 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">return ()</span></span></span>
+<span class="lineno">  144 </span>
+<span class="lineno">  145 </span>-- | Start, in this process, a ChalkBoard window, and run some commands on it.
+<span class="lineno">  146 </span>startChalkBoard :: [Options] -&gt; (ChalkBoard -&gt; IO ()) -&gt; IO ()
+<span class="lineno">  147 </span><span class="decl"><span class="istickedoff">startChalkBoard options cont = do</span>
+<span class="lineno">  148 </span><span class="spaces">        </span><span class="istickedoff">putStrLn  &quot;[Starting ChalkBoard]&quot;</span>
+<span class="lineno">  149 </span><span class="spaces">        </span><span class="istickedoff">ilInit</span>
+<span class="lineno">  150 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  151 </span><span class="spaces">        </span><span class="istickedoff">v0 &lt;- newEmptyMVar</span>
+<span class="lineno">  152 </span><span class="spaces">        </span><span class="istickedoff">v1 &lt;- newEmptyMVar </span>
+<span class="lineno">  153 </span><span class="spaces">        </span><span class="istickedoff">v2 &lt;- newEmptyMVar </span>
+<span class="lineno">  154 </span><span class="spaces">        </span><span class="istickedoff">vEnd &lt;- newEmptyMVar</span>
+<span class="lineno">  155 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  156 </span><span class="spaces">        </span><span class="istickedoff">forkIO $ compiler options v1 v2 </span>
+<span class="lineno">  157 </span><span class="spaces">        </span><span class="istickedoff">forkIO $ do</span>
+<span class="lineno">  158 </span><span class="spaces">                </span><span class="istickedoff">() &lt;- takeMVar v0</span>
+<span class="lineno">  159 </span><span class="spaces">                </span><span class="istickedoff">cont (ChalkBoard v1 vEnd)</span>
+<span class="lineno">  160 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">print &quot;[Done]&quot;</span></span>
+<span class="lineno">  161 </span><span class="spaces">        </span><span class="istickedoff">startRendering viewBoard v0 v2 options</span>
+<span class="lineno">  162 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  163 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">return ()</span></span></span>      
+<span class="lineno">  164 </span>
+<span class="lineno">  165 </span>-- | Open, remotely, a ChalkBoard windown, and return a handle to it.
+<span class="lineno">  166 </span>-- Needs &quot;CHALKBOARD_SERVER&quot; set to the location of the ChalkBoard server.
+<span class="lineno">  167 </span>openChalkBoard :: [Options] -&gt; IO ChalkBoard
+<span class="lineno">  168 </span><span class="decl"><span class="nottickedoff">openChalkBoard args = do</span>
+<span class="lineno">  169 </span><span class="spaces">        </span><span class="nottickedoff">putStrLn &quot;[Opening Channel to ChalkBoard Server]&quot;</span>
+<span class="lineno">  170 </span><span class="spaces">        </span><span class="nottickedoff">ilInit</span>
+<span class="lineno">  171 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  172 </span><span class="spaces"></span><span class="nottickedoff">--      v0 &lt;- newEmptyMVar</span>
+<span class="lineno">  173 </span><span class="spaces">        </span><span class="nottickedoff">v1 &lt;- newEmptyMVar </span>
+<span class="lineno">  174 </span><span class="spaces">        </span><span class="nottickedoff">v2 &lt;- newEmptyMVar </span>
+<span class="lineno">  175 </span><span class="spaces">        </span><span class="nottickedoff">vEnd &lt;- newEmptyMVar</span>
+<span class="lineno">  176 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  177 </span><span class="spaces">        </span><span class="nottickedoff">(ein,_,_,_) &lt;- openServerStream          --(ein,eout,err,pid) &lt;- openServerStream</span>
+<span class="lineno">  178 </span><span class="spaces">        </span><span class="nottickedoff"></span>
+<span class="lineno">  179 </span><span class="spaces">        </span><span class="nottickedoff">let options = encode (args :: [Options])</span>
+<span class="lineno">  180 </span><span class="spaces">        </span><span class="nottickedoff">B.hPut ein (encode (fromIntegral (B.length options) :: Word32))</span>
+<span class="lineno">  181 </span><span class="spaces">        </span><span class="nottickedoff">B.hPut ein options</span>
+<span class="lineno">  182 </span><span class="spaces">        </span><span class="nottickedoff">hFlush ein</span>
+<span class="lineno">  183 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  184 </span><span class="spaces">        </span><span class="nottickedoff">forkIO $ compiler args v1 v2</span>
+<span class="lineno">  185 </span><span class="spaces">        </span><span class="nottickedoff">forkIO $ do</span>
+<span class="lineno">  186 </span><span class="spaces">                </span><span class="nottickedoff">let loop n = do</span>
+<span class="lineno">  187 </span><span class="spaces">                        </span><span class="nottickedoff">v &lt;- takeMVar v2</span>
+<span class="lineno">  188 </span><span class="spaces">                        </span><span class="nottickedoff">let code = encode v</span>
+<span class="lineno">  189 </span><span class="spaces">                        </span><span class="nottickedoff">B.hPut ein (encode (fromIntegral (B.length code) :: Word32))</span>
+<span class="lineno">  190 </span><span class="spaces">                        </span><span class="nottickedoff">B.hPut ein code</span>
+<span class="lineno">  191 </span><span class="spaces">                        </span><span class="nottickedoff">hFlush ein</span>
+<span class="lineno">  192 </span><span class="spaces">                        </span><span class="nottickedoff">case v of</span>
+<span class="lineno">  193 </span><span class="spaces">                          </span><span class="nottickedoff">[Exit] -&gt; putMVar vEnd ()</span>
+<span class="lineno">  194 </span><span class="spaces">                          </span><span class="nottickedoff">_ -&gt; loop $! (n+1)</span>
+<span class="lineno">  195 </span><span class="spaces">                </span><span class="nottickedoff">loop (0::Int)</span>
+<span class="lineno">  196 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  197 </span><span class="spaces">        </span><span class="nottickedoff">return (ChalkBoard v1 vEnd)</span></span>
+<span class="lineno">  198 </span>
+<span class="lineno">  199 </span>viewBoard :: Int
+<span class="lineno">  200 </span><span class="decl"><span class="istickedoff">viewBoard = 0</span></span>
+<span class="lineno">  201 </span>
+<span class="lineno">  202 </span>
+<span class="lineno">  203 </span>compiler :: [Options] -&gt; MVar ChalkBoardCommand -&gt; MVar [Inst Int] -&gt; IO ()
+<span class="lineno">  204 </span><span class="decl"><span class="istickedoff">compiler options v1 v2 = do</span>
+<span class="lineno">  205 </span><span class="spaces">        </span><span class="istickedoff">putMVar v2 [Allocate viewBoard (x,y) RGB24Depth (BackgroundRGB24Depth (RGB 1 1 1))]</span>
+<span class="lineno">  206 </span><span class="spaces">        </span><span class="istickedoff">loop <span class="nottickedoff">(0::Integer)</span> <span class="nottickedoff">(boardOf (o (RGB 1 1 1)))</span> (0 :: BufferId)</span>
+<span class="lineno">  207 </span><span class="spaces">  </span><span class="istickedoff">where     </span>
+<span class="lineno">  208 </span><span class="spaces">     </span><span class="istickedoff">(x,y) = head ([ (x',y') | BoardSize x' y' &lt;- options ] ++ <span class="nottickedoff">[(400,400)]</span>)</span>
+<span class="lineno">  209 </span><span class="spaces">     </span><span class="istickedoff">loop n old_brd buffIds = do</span>
+<span class="lineno">  210 </span><span class="spaces">        </span><span class="istickedoff">cmd &lt;- takeMVar v1</span>
+<span class="lineno">  211 </span><span class="spaces">        </span><span class="istickedoff">case cmd of</span>
+<span class="lineno">  212 </span><span class="spaces">          </span><span class="istickedoff">DrawChalkBoard brd -&gt; do</span>
+<span class="lineno">  213 </span><span class="spaces">                </span><span class="istickedoff">cmds &lt;- compile (x,y) viewBoard (move (0.5,0.5) brd)</span>
+<span class="lineno">  214 </span><span class="spaces">                </span><span class="istickedoff">when (elem DebugCBIR options) $ <span class="nottickedoff">do</span></span>
+<span class="lineno">  215 </span><span class="spaces">                        </span><span class="istickedoff"><span class="nottickedoff">putStrLn $ showCBIRs cmds</span></span>
+<span class="lineno">  216 </span><span class="spaces">                </span><span class="istickedoff">putMVar v2 cmds</span>
+<span class="lineno">  217 </span><span class="spaces">                </span><span class="istickedoff">loop <span class="nottickedoff">(n+1)</span> <span class="nottickedoff">brd</span> buffIds</span>
+<span class="lineno">  218 </span><span class="spaces">          </span><span class="istickedoff">DrawChalkBuffer buff -&gt; do</span>
+<span class="lineno">  219 </span><span class="spaces">                </span><span class="istickedoff">cmds &lt;- compileB (x,y) viewBoard buff</span>
+<span class="lineno">  220 </span><span class="spaces">                </span><span class="istickedoff">when (elem DebugCBIR options) $ <span class="nottickedoff">do</span></span>
+<span class="lineno">  221 </span><span class="spaces">                        </span><span class="istickedoff"><span class="nottickedoff">putStrLn $ showCBIRs cmds</span></span>
+<span class="lineno">  222 </span><span class="spaces"></span><span class="istickedoff">--           putStrLn $ showCBIRs cmds</span>
+<span class="lineno">  223 </span><span class="spaces">                </span><span class="istickedoff">putMVar v2 cmds</span>
+<span class="lineno">  224 </span><span class="spaces">                </span><span class="istickedoff">loop <span class="nottickedoff">(n+1)</span> <span class="nottickedoff">(error &quot;no ChalkBoard&quot;)</span> buffIds</span>
+<span class="lineno">  225 </span><span class="spaces">          </span><span class="istickedoff">UpdateChalkBoard fn -&gt; <span class="nottickedoff">do</span></span>
+<span class="lineno">  226 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">let brd = fn old_brd</span></span>
+<span class="lineno">  227 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">cmds &lt;- compile (x,y) viewBoard (move (0.5,0.5) brd)</span></span>
+<span class="lineno">  228 </span><span class="spaces"></span><span class="istickedoff"><span class="nottickedoff">--           putStrLn $ showCBIRs cmds</span></span>
+<span class="lineno">  229 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">putMVar v2 cmds</span></span>
+<span class="lineno">  230 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">loop (n+1) brd buffIds</span></span>
+<span class="lineno">  231 </span><span class="spaces">          </span><span class="istickedoff">DrawRawChalkBoard cmds -&gt; <span class="nottickedoff">do</span></span>
+<span class="lineno">  232 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">putMVar v2 cmds</span></span>
+<span class="lineno">  233 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">loop (n+1) (error &quot;Board in an unknown state&quot;) buffIds</span></span>
+<span class="lineno">  234 </span><span class="spaces">          </span><span class="istickedoff">WriteChalkBoard filename -&gt; do</span>
+<span class="lineno">  235 </span><span class="spaces">                </span><span class="istickedoff">putMVar v2 [SaveImage viewBoard filename]</span>
+<span class="lineno">  236 </span><span class="spaces">                </span><span class="istickedoff">loop <span class="nottickedoff">(n+1)</span> <span class="nottickedoff">old_brd</span> buffIds</span>
+<span class="lineno">  237 </span><span class="spaces">          </span><span class="istickedoff">StartMyWriteStream openCmd v0 -&gt; do</span>
+<span class="lineno">  238 </span><span class="spaces">                </span><span class="istickedoff">putMVar v2 [OpenStream buffIds openCmd (elem VerboseVideo options)]</span>
+<span class="lineno">  239 </span><span class="spaces">                </span><span class="istickedoff">putMVar v0 buffIds</span>
+<span class="lineno">  240 </span><span class="spaces">                </span><span class="istickedoff">loop <span class="nottickedoff">(n+1)</span> <span class="nottickedoff">old_brd</span> (succ buffIds)</span>
+<span class="lineno">  241 </span><span class="spaces">          </span><span class="istickedoff">StartDefaultWriteStream filename v0 -&gt; do</span>
+<span class="lineno">  242 </span><span class="spaces">                </span><span class="istickedoff">putMVar v2 [OpenStream buffIds (ffmpegOutCmd filename) (elem VerboseVideo options)]</span>
+<span class="lineno">  243 </span><span class="spaces">                </span><span class="istickedoff">putMVar v0 buffIds</span>
+<span class="lineno">  244 </span><span class="spaces">                </span><span class="istickedoff">loop <span class="nottickedoff">(n+1)</span> <span class="nottickedoff">old_brd</span> (succ buffIds)</span>
+<span class="lineno">  245 </span><span class="spaces">          </span><span class="istickedoff">FrameChalkBoard sid -&gt; do</span>
+<span class="lineno">  246 </span><span class="spaces">                </span><span class="istickedoff">putMVar v2 [WriteStream viewBoard sid]</span>
+<span class="lineno">  247 </span><span class="spaces">                </span><span class="istickedoff">loop <span class="nottickedoff">(n+1)</span> <span class="nottickedoff">old_brd</span> buffIds</span>
+<span class="lineno">  248 </span><span class="spaces">          </span><span class="istickedoff">NewMouseCallback fn -&gt; <span class="nottickedoff">do</span></span>
+<span class="lineno">  249 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">putMVar v2 [ChangeMouseCallback fn]</span></span>
+<span class="lineno">  250 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">loop (n+1) old_brd buffIds</span></span>
+<span class="lineno">  251 </span><span class="spaces">          </span><span class="istickedoff">NewKeyboardCallback fn -&gt; <span class="nottickedoff">do</span></span>
+<span class="lineno">  252 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">putMVar v2 [ChangeKeyboardCallback fn]</span></span>
+<span class="lineno">  253 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">loop (n+1) old_brd buffIds</span></span>
+<span class="lineno">  254 </span><span class="spaces">          </span><span class="istickedoff">EndWriteStream sid -&gt; do</span>
+<span class="lineno">  255 </span><span class="spaces">                </span><span class="istickedoff">putMVar v2 [CloseStream sid]</span>
+<span class="lineno">  256 </span><span class="spaces">                </span><span class="istickedoff">loop <span class="nottickedoff">(n+1)</span> <span class="nottickedoff">old_brd</span> buffIds</span>
+<span class="lineno">  257 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  258 </span><span class="spaces">          </span><span class="istickedoff">ExitChalkBoard -&gt; putMVar v2 [Exit]</span></span>
+<span class="lineno">  259 </span>
+<span class="lineno">  260 </span>
+<span class="lineno">  261 </span>openServerStream :: IO (Handle,Handle,Handle,ProcessHandle)
+<span class="lineno">  262 </span><span class="decl"><span class="nottickedoff">openServerStream = do</span>
+<span class="lineno">  263 </span><span class="spaces">        </span><span class="nottickedoff">server &lt;- getEnv &quot;CHALKBOARD_SERVER&quot; `catch` (\ _ -&gt; return &quot;chalkboard-server-1_9_0_19&quot;)</span>
+<span class="lineno">  264 </span><span class="spaces">        </span><span class="nottickedoff">runInteractiveProcess server [] Nothing Nothing `catch` (\ _ -&gt; do print &quot;DOOL&quot; ; error &quot;&quot;)</span></span>
+<span class="lineno">  265 </span>
+<span class="lineno">  266 </span>
+<span class="lineno">  267 </span>-- | create an instance of the ChalkBoard. Only used by the server binary.
+<span class="lineno">  268 </span>chalkBoardServer :: IO ()
+<span class="lineno">  269 </span><span class="decl"><span class="nottickedoff">chalkBoardServer = do</span>
+<span class="lineno">  270 </span><span class="spaces">        </span><span class="nottickedoff">v0 &lt;- newEmptyMVar</span>
+<span class="lineno">  271 </span><span class="spaces">        </span><span class="nottickedoff">v2 &lt;- newEmptyMVar </span>
+<span class="lineno">  272 </span><span class="spaces">        </span><span class="nottickedoff">bs &lt;- B.hGet stdin 4</span>
+<span class="lineno">  273 </span><span class="spaces">        </span><span class="nottickedoff">let n :: Word32</span>
+<span class="lineno">  274 </span><span class="spaces">            </span><span class="nottickedoff">n = Bin.decode bs</span>
+<span class="lineno">  275 </span><span class="spaces">        </span><span class="nottickedoff">options &lt;- B.hGet stdin (fromIntegral n)</span>
+<span class="lineno">  276 </span><span class="spaces">        </span><span class="nottickedoff">forkIO $ do</span>
+<span class="lineno">  277 </span><span class="spaces">                </span><span class="nottickedoff">let loop = do</span>
+<span class="lineno">  278 </span><span class="spaces">                        </span><span class="nottickedoff">bs' &lt;- B.hGet stdin 4</span>
+<span class="lineno">  279 </span><span class="spaces">                        </span><span class="nottickedoff">let n' :: Word32</span>
+<span class="lineno">  280 </span><span class="spaces">                            </span><span class="nottickedoff">n' = Bin.decode bs'</span>
+<span class="lineno">  281 </span><span class="spaces">                        </span><span class="nottickedoff">packet &lt;- B.hGet stdin (fromIntegral n')</span>
+<span class="lineno">  282 </span><span class="spaces">                        </span><span class="nottickedoff">putMVar v2 (decode packet :: [Inst BufferId])</span>
+<span class="lineno">  283 </span><span class="spaces">                        </span><span class="nottickedoff">loop</span>
+<span class="lineno">  284 </span><span class="spaces">                </span><span class="nottickedoff">loop</span>
+<span class="lineno">  285 </span><span class="spaces">        </span><span class="nottickedoff">startRendering viewBoard v0 v2 (decode options :: [Options])</span>
+<span class="lineno">  286 </span><span class="spaces">        </span><span class="nottickedoff">return ()</span></span>      
+<span class="lineno">  287 </span>
+<span class="lineno">  288 </span>
+<span class="lineno">  289 </span>
+<span class="lineno">  290 </span>        
+
+</pre>
+</html>

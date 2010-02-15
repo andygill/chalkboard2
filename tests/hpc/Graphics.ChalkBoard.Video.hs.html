@@ -1,0 +1,115 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>module Graphics.ChalkBoard.Video where
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>import Graphics.ChalkBoard.Types
+<span class="lineno">    5 </span>import Graphics.ChalkBoard.Buffer
+<span class="lineno">    6 </span>import qualified Data.ByteString.Internal as BSI
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import System.Process
+<span class="lineno">    9 </span>import System.IO
+<span class="lineno">   10 </span>import Foreign.Ptr ( Ptr )
+<span class="lineno">   11 </span>import Data.Word ( Word8 )
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>newtype InPipe = InPipe Handle
+<span class="lineno">   16 </span>newtype OutPipe = OutPipe Handle
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>openVideoInPipe :: String -&gt; IO (InPipe)
+<span class="lineno">   21 </span><span class="decl"><span class="istickedoff">openVideoInPipe ffmpegCmd = do</span>
+<span class="lineno">   22 </span><span class="spaces">    </span><span class="istickedoff">(Just hin, Just hout, Just herr, _) &lt;- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }</span>
+<span class="lineno">   23 </span><span class="spaces">    </span><span class="istickedoff">--(Just hin, Just hout, _, _) &lt;- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = Inherit, close_fds = True }</span>
+<span class="lineno">   24 </span><span class="spaces">    </span><span class="istickedoff">hClose hin</span>
+<span class="lineno">   25 </span><span class="spaces">    </span><span class="istickedoff">hClose herr</span>
+<span class="lineno">   26 </span><span class="spaces">    </span><span class="istickedoff">return (InPipe hout)</span></span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>{- It would be nice to do this... but doesn't seem to work.
+<span class="lineno">   29 </span>openVideoWithInPipe :: String -&gt; InPipe -&gt; IO ()
+<span class="lineno">   30 </span>openVideoWithInPipe ffmpegCmd (InPipe h) = do
+<span class="lineno">   31 </span>    (Just hin, Nothing, Just herr, _) &lt;- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = UseHandle h, std_err = CreatePipe, close_fds = True }
+<span class="lineno">   32 </span>    hClose hin
+<span class="lineno">   33 </span>    hClose herr
+<span class="lineno">   34 </span>-}
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>nextPPMFrame :: InPipe -&gt; IO (Maybe (Buffer RGB))
+<span class="lineno">   37 </span><span class="decl"><span class="istickedoff">nextPPMFrame (InPipe hIn) = do</span>
+<span class="lineno">   38 </span><span class="spaces">    </span><span class="istickedoff">eof &lt;- hIsEOF hIn</span>
+<span class="lineno">   39 </span><span class="spaces">    </span><span class="istickedoff">if (eof)</span>
+<span class="lineno">   40 </span><span class="spaces">        </span><span class="istickedoff">then return Nothing</span>
+<span class="lineno">   41 </span><span class="spaces">        </span><span class="istickedoff">else do</span>
+<span class="lineno">   42 </span><span class="spaces">            </span><span class="istickedoff">ty &lt;- hGetLine hIn</span>
+<span class="lineno">   43 </span><span class="spaces">            </span><span class="istickedoff">_ &lt;- case ty of</span>
+<span class="lineno">   44 </span><span class="spaces">                </span><span class="istickedoff">&quot;P6&quot; -&gt; return <span class="nottickedoff">True</span></span>
+<span class="lineno">   45 </span><span class="spaces">                </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">error $ &quot;bad PPM format: &quot; ++ ty</span></span>
+<span class="lineno">   46 </span><span class="spaces">            </span><span class="istickedoff">szs &lt;- hGetLine hIn</span>
+<span class="lineno">   47 </span><span class="spaces">            </span><span class="istickedoff">let [width,height] = (map read (words szs) :: [Int])</span>
+<span class="lineno">   48 </span><span class="spaces">            </span><span class="istickedoff">--print width</span>
+<span class="lineno">   49 </span><span class="spaces">            </span><span class="istickedoff">--print height   </span>
+<span class="lineno">   50 </span><span class="spaces">            </span><span class="istickedoff">mx &lt;- hGetLine hIn</span>
+<span class="lineno">   51 </span><span class="spaces">            </span><span class="istickedoff">let <span class="nottickedoff">mxs = (map read (words mx) :: [Int])</span> -- TODO: Get the max easier somehow?</span>
+<span class="lineno">   52 </span><span class="spaces">            </span><span class="istickedoff">--print (head mxs)</span>
+<span class="lineno">   53 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">   54 </span><span class="spaces">            </span><span class="istickedoff">bs &lt;- BSI.create (width * height * 3) (fn hIn width height <span class="nottickedoff">(head mxs)</span>)</span>
+<span class="lineno">   55 </span><span class="spaces">            </span><span class="istickedoff"></span>
+<span class="lineno">   56 </span><span class="spaces">            </span><span class="istickedoff">return (Just (newBufferRGB bs (width,height)))</span>
+<span class="lineno">   57 </span><span class="spaces">            </span><span class="istickedoff"></span>
+<span class="lineno">   58 </span><span class="spaces">            </span><span class="istickedoff">where fn handle w h _ ptr = do</span>
+<span class="lineno">   59 </span><span class="spaces">                    </span><span class="istickedoff">_ &lt;- hGetBuf handle ptr (w*h*3)</span>
+<span class="lineno">   60 </span><span class="spaces">                    </span><span class="istickedoff">return <span class="nottickedoff">()</span></span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>closeVideoInPipe :: InPipe -&gt; IO ()
+<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">closeVideoInPipe (InPipe hin) = do</span>
+<span class="lineno">   64 </span><span class="spaces">    </span><span class="istickedoff">hClose hin</span></span>
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>openVideoOutPipe :: Bool -&gt; String -&gt; IO (OutPipe)
+<span class="lineno">   67 </span><span class="decl"><span class="istickedoff">openVideoOutPipe True ffmpegCmd = <span class="nottickedoff">do</span></span>
+<span class="lineno">   68 </span><span class="spaces">    </span><span class="istickedoff"><span class="nottickedoff">(Just hin, _, _, _) &lt;- createProcess (shell ffmpegCmd){ std_in = CreatePipe, close_fds = True }</span></span>
+<span class="lineno">   69 </span><span class="spaces">    </span><span class="istickedoff"><span class="nottickedoff">return (OutPipe hin)</span></span>
+<span class="lineno">   70 </span><span class="spaces"></span><span class="istickedoff">openVideoOutPipe False ffmpegCmd = do</span>
+<span class="lineno">   71 </span><span class="spaces">    </span><span class="istickedoff">(Just hin, Just hout, Just herr, _) &lt;- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }</span>
+<span class="lineno">   72 </span><span class="spaces">    </span><span class="istickedoff">--(Just hin, Just hout, _, _) &lt;- createProcess (shell ffmpegCmd){ std_in = CreatePipe, std_out = CreatePipe, std_err = Inherit, close_fds = True }</span>
+<span class="lineno">   73 </span><span class="spaces">    </span><span class="istickedoff">hClose hout</span>
+<span class="lineno">   74 </span><span class="spaces">    </span><span class="istickedoff">hClose herr</span>
+<span class="lineno">   75 </span><span class="spaces">    </span><span class="istickedoff">return (OutPipe hin)</span></span>
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>writeNextFrame :: OutPipe -&gt; (Int, Int) -&gt; Ptr Word8 -&gt; IO ()
+<span class="lineno">   78 </span><span class="decl"><span class="istickedoff">writeNextFrame (OutPipe hout) (w,h) buffer = do</span>
+<span class="lineno">   79 </span><span class="spaces">    </span><span class="istickedoff">hPutStrLn hout &quot;P6&quot;</span>
+<span class="lineno">   80 </span><span class="spaces">    </span><span class="istickedoff">hPutStrLn hout (show w ++ &quot; &quot; ++ show h)</span>
+<span class="lineno">   81 </span><span class="spaces">    </span><span class="istickedoff">hPutStrLn hout &quot;255&quot;</span>
+<span class="lineno">   82 </span><span class="spaces">    </span><span class="istickedoff">hPutBuf hout buffer (w*h*3)</span>
+<span class="lineno">   83 </span><span class="spaces">    </span><span class="istickedoff">hPutStrLn hout &quot;&quot;</span></span>
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>closeVideoOutPipe :: OutPipe -&gt; IO ()
+<span class="lineno">   86 </span><span class="decl"><span class="istickedoff">closeVideoOutPipe (OutPipe hout) = do</span>
+<span class="lineno">   87 </span><span class="spaces">    </span><span class="istickedoff">hClose hout</span></span>
+<span class="lineno">   88 </span>
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>
+<span class="lineno">   91 </span>
+<span class="lineno">   92 </span>
+<span class="lineno">   93 </span>ffmpegOutCmd :: String -&gt; String
+<span class="lineno">   94 </span><span class="decl"><span class="istickedoff">ffmpegOutCmd filename = &quot;ffmpeg -f image2pipe -vcodec ppm -i - -vcodec libx264 -b 500k -vpre hq -vpre main &quot; ++ filename</span></span>
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>ffmpegInCmd :: String -&gt; String
+<span class="lineno">   97 </span><span class="decl"><span class="istickedoff">ffmpegInCmd filename = &quot;ffmpeg -i &quot; ++ filename ++ &quot; -f image2pipe -vcodec ppm -&quot;</span></span>
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>
+<span class="lineno">  101 </span>
+
+</pre>
+</html>

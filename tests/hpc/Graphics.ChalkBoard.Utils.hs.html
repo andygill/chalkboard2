@@ -1,0 +1,134 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>-- |
+<span class="lineno">    2 </span>-- Module: Graphics.Chalkboard.Utils
+<span class="lineno">    3 </span>-- Copyright: (c) 2009 The University of Kansas
+<span class="lineno">    4 </span>-- License: BSD3
+<span class="lineno">    5 </span>--
+<span class="lineno">    6 </span>-- Maintainer: Andy Gill &lt;andygill@ku.edu&gt;
+<span class="lineno">    7 </span>-- Stability: unstable
+<span class="lineno">    8 </span>-- Portability: ghc
+<span class="lineno">    9 </span>--
+<span class="lineno">   10 </span>-- This module has some basic, externally visable, definitions.
+<span class="lineno">   11 </span>
+<span class="lineno">   12 </span>module Graphics.ChalkBoard.Utils 
+<span class="lineno">   13 </span>        ( -- * Point Utilties.
+<span class="lineno">   14 </span>          insideRegion
+<span class="lineno">   15 </span>        , insideCircle
+<span class="lineno">   16 </span>        , distance
+<span class="lineno">   17 </span>        , intervalOnLine
+<span class="lineno">   18 </span>        , circleOfDots
+<span class="lineno">   19 </span>        , insidePoly
+<span class="lineno">   20 </span>          -- * Utilties for @R@.
+<span class="lineno">   21 </span>        , innerSteps, outerSteps, fracPart
+<span class="lineno">   22 </span>        , fromPolar
+<span class="lineno">   23 </span>        , toPolar
+<span class="lineno">   24 </span>        , angleOfLine
+<span class="lineno">   25 </span>        , 
+<span class="lineno">   26 </span>        ) where
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>--      , red, green, blue, white, black, cyan, purple, yellow
+<span class="lineno">   29 </span>import Graphics.ChalkBoard.Types
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>-- | innerSteps takes n even steps from 0 .. 1, by not actually touching 0 or 1.
+<span class="lineno">   32 </span>-- The first and last step are 1/2 the size of the others, so that repeated innerSteps
+<span class="lineno">   33 </span>-- can be tiled neatly.
+<span class="lineno">   34 </span>innerSteps :: Int -&gt; [R]
+<span class="lineno">   35 </span><span class="decl"><span class="nottickedoff">innerSteps n = map (/ fromIntegral (n * 2)) (map fromIntegral (take n [1::Int,3..]))</span></span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | outerSteps takes n even steps from 0 .. 1, starting with 0, and ending with 1,
+<span class="lineno">   38 </span>--  returning n+1 elements.
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>outerSteps :: Int -&gt; [R]
+<span class="lineno">   41 </span><span class="decl"><span class="nottickedoff">outerSteps n = map (/ fromIntegral n) (map fromIntegral (take (n + 1) [(0::Int)..]))</span></span>
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>-- | Extract the fractional part of an @R@.
+<span class="lineno">   44 </span>fracPart :: R -&gt; R
+<span class="lineno">   45 </span><span class="decl"><span class="nottickedoff">fracPart x = x - fromIntegral ((floor x) :: Integer)</span></span>
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>-- Point operations
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>-- | is a @Point@ inside a region?
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>insideRegion :: (Point,Point) -&gt; Point -&gt; Bool
+<span class="lineno">   52 </span><span class="decl"><span class="nottickedoff">insideRegion ((x1,y1),(x2,y2)) (x,y) = x1 &lt;= x &amp;&amp; x &lt;= x2</span>
+<span class="lineno">   53 </span><span class="spaces">                                   </span><span class="nottickedoff">&amp;&amp; y1 &lt;= y &amp;&amp; y &lt;= y2</span></span> 
+<span class="lineno">   54 </span>
+<span class="lineno">   55 </span>-- | is a @Point@ inside a circle, where the first two arguments are the center of the circle,
+<span class="lineno">   56 </span>-- and the radius.
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>insideCircle :: Point -&gt; R -&gt; Point -&gt; Bool
+<span class="lineno">   60 </span><span class="decl"><span class="nottickedoff">insideCircle (x1,y1) r (x,y) = distance (x1,y1) (x,y) &lt;= r</span></span>
+<span class="lineno">   61 </span>
+<span class="lineno">   62 </span>
+<span class="lineno">   63 </span>-- | What is the 'distance' between two points in R2?
+<span class="lineno">   64 </span>-- This is optimised for the normal form @distance p1 p2 &lt;= v@, which avoids using @sqrt@.
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>distance :: Point -&gt; Point -&gt; R
+<span class="lineno">   67 </span><span class="decl"><span class="nottickedoff">distance (x,y) (x',y') = sqrt (xd * xd + yd * yd)</span>
+<span class="lineno">   68 </span><span class="spaces">  </span><span class="nottickedoff">where</span>
+<span class="lineno">   69 </span><span class="spaces">        </span><span class="nottickedoff">xd = x - x'</span>
+<span class="lineno">   70 </span><span class="spaces">        </span><span class="nottickedoff">yd = y - y'</span></span>
+<span class="lineno">   71 </span>
+<span class="lineno">   72 </span>{-# INLINE distance #-}
+<span class="lineno">   73 </span>-- The obvious sqrt (x * x) ==&gt; x does not fire.        
+<span class="lineno">   74 </span>{-# RULES &quot;distance &lt;= w&quot; forall t u w . distance t u &lt;= w = distanceLe t u w #-}
+<span class="lineno">   75 </span>{-# INLINE distanceLe #-}
+<span class="lineno">   76 </span>distanceLe :: Point -&gt; Point -&gt; R -&gt; Bool
+<span class="lineno">   77 </span><span class="decl"><span class="nottickedoff">distanceLe (x,y) (x',y') w = (xd * xd + yd * yd) &lt;= w * w</span>
+<span class="lineno">   78 </span><span class="spaces">  </span><span class="nottickedoff">where</span>
+<span class="lineno">   79 </span><span class="spaces">        </span><span class="nottickedoff">xd = x - x'</span>
+<span class="lineno">   80 </span><span class="spaces">        </span><span class="nottickedoff">yd = y - y'</span></span>
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>
+<span class="lineno">   83 </span>-- | 'intervalOnLine' find the place on a line (between 0 and 1) that is closest to the given point.
+<span class="lineno">   84 </span>intervalOnLine :: (Point,Point) -&gt; Point -&gt; R 
+<span class="lineno">   85 </span><span class="decl"><span class="nottickedoff">intervalOnLine  ((x1,y1),(x2,y2)) (x0,y0) =</span>
+<span class="lineno">   86 </span><span class="spaces">        </span><span class="nottickedoff">((x0-x1)*(x2-x1)+(y0-y1)*(y2-y1))/(xd * xd + yd * yd)   </span>
+<span class="lineno">   87 </span><span class="spaces">  </span><span class="nottickedoff">where</span>
+<span class="lineno">   88 </span><span class="spaces">                </span><span class="nottickedoff">xd = x2-x1</span>
+<span class="lineno">   89 </span><span class="spaces">                </span><span class="nottickedoff">yd = y2-y1</span></span>
+<span class="lineno">   90 </span>
+<span class="lineno">   91 </span>fromPolar :: (R,Radian) -&gt; Point 
+<span class="lineno">   92 </span><span class="decl"><span class="nottickedoff">fromPolar (p, phi) = (p * cos phi, p * sin phi)</span></span> 
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>toPolar :: Point -&gt; (R,Radian)
+<span class="lineno">   95 </span><span class="decl"><span class="nottickedoff">toPolar (x, y) = (sqrt (x * x + y * y), atan2 y x)</span></span>
+<span class="lineno">   96 </span>
+<span class="lineno">   97 </span>angleOfLine :: (Point,Point) -&gt; Radian
+<span class="lineno">   98 </span><span class="decl"><span class="nottickedoff">angleOfLine ((x1,y1),(x2,y2)) = atan2 (x2 - x1) (y2 - y1)</span></span>
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>
+<span class="lineno">  101 </span>-- | circleOfDots generates a set of points between (-1..1,-1..1), inside a circle.
+<span class="lineno">  102 </span>circleOfDots :: Int -&gt; [Point]
+<span class="lineno">  103 </span><span class="decl"><span class="nottickedoff">circleOfDots 0 = error &quot;circleOfDots 0&quot;</span>
+<span class="lineno">  104 </span><span class="spaces"></span><span class="nottickedoff">circleOfDots n = [ (x,y)</span>
+<span class="lineno">  105 </span><span class="spaces">                 </span><span class="nottickedoff">| x &lt;- map (\ t -&gt; t * 2 - 1) $ outerSteps n</span>
+<span class="lineno">  106 </span><span class="spaces">                 </span><span class="nottickedoff">, y &lt;- map (\ t -&gt; t * 2 - 1) $ outerSteps n</span>
+<span class="lineno">  107 </span><span class="spaces">                 </span><span class="nottickedoff">, (x * x + y * y) &lt;= 1.0 </span>
+<span class="lineno">  108 </span><span class="spaces">                 </span><span class="nottickedoff">]</span></span>
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>insidePoly :: [Point] -&gt; Point -&gt; Bool
+<span class="lineno">  111 </span><span class="decl"><span class="nottickedoff">insidePoly nodes (x,y) </span>
+<span class="lineno">  112 </span><span class="spaces">          </span><span class="nottickedoff">-- no numbers above 0, or no numbers below zero</span>
+<span class="lineno">  113 </span><span class="spaces">          </span><span class="nottickedoff">-- means that the numbers we the *same* sign (or zero)&gt;</span>
+<span class="lineno">  114 </span><span class="spaces">        </span><span class="nottickedoff">| null (filter (&gt; 0) vals) ||  null (filter (&lt; 0) vals) = True</span>
+<span class="lineno">  115 </span><span class="spaces">        </span><span class="nottickedoff">| otherwise                                = False</span>
+<span class="lineno">  116 </span><span class="spaces">  </span><span class="nottickedoff">where</span>
+<span class="lineno">  117 </span><span class="spaces">        </span><span class="nottickedoff">vals = [ (y - y0) * (x1 - x0) - (x - x0) * (y1 - y0)</span>
+<span class="lineno">  118 </span><span class="spaces">               </span><span class="nottickedoff">| ((x0,y0),(x1,y1)) &lt;- zip nodes (tail nodes ++ [head nodes]) </span>
+<span class="lineno">  119 </span><span class="spaces">               </span><span class="nottickedoff">]</span></span>
+<span class="lineno">  120 </span>
+
+</pre>
+</html>

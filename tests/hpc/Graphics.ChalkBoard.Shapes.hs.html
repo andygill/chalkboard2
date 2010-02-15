@@ -1,0 +1,153 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>-- |
+<span class="lineno">    2 </span>-- Module: Graphics.ChalkBoard.Shapes
+<span class="lineno">    3 </span>-- Copyright: (c) 2009 Andy Gill
+<span class="lineno">    4 </span>-- License: BSD3
+<span class="lineno">    5 </span>--
+<span class="lineno">    6 </span>-- Maintainer: Andy Gill &lt;andygill@ku.edu&gt;
+<span class="lineno">    7 </span>-- Stability: unstable
+<span class="lineno">    8 </span>-- Portability: ghc
+<span class="lineno">    9 </span>--
+<span class="lineno">   10 </span>-- This module contains some basic shape generators, expressed as @Board Bool@.
+<span class="lineno">   11 </span>--
+<span class="lineno">   12 </span>-- TODO: Bad name for this module! Should be a Utils style module.
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>module Graphics.ChalkBoard.Shapes where
+<span class="lineno">   15 </span>
+<span class="lineno">   16 </span>import Graphics.ChalkBoard.Board hiding (zip)
+<span class="lineno">   17 </span>import Graphics.ChalkBoard.Shader
+<span class="lineno">   18 </span>import Graphics.ChalkBoard.Types
+<span class="lineno">   19 </span>import Graphics.ChalkBoard.O
+<span class="lineno">   20 </span>import Graphics.ChalkBoard.Utils
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>-- import Control.Applicative
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>{-
+<span class="lineno">   25 </span>-- | unit circle, radius 0.5, over origin.
+<span class="lineno">   26 </span>circle :: Board Bool
+<span class="lineno">   27 </span>circle =  Cond (InsideCircle (0,0) 0.5 1 0) (Pure True) (Pure False)
+<span class="lineno">   28 </span>circle' = (\ (x,y) -&gt; x*x + y*y &lt;= 0.5 * 0.5) &lt;$&gt; coord
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>-- | unit vertical bar,  1 wide over origin.
+<span class="lineno">   31 </span>vbar :: Board Bool
+<span class="lineno">   32 </span>vbar =  (\ (_x,y) -&gt; y &lt;= 0.5 &amp;&amp; y &gt;= -0.5) &lt;$&gt; coord
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>-- | unit horizontal bar, 1 high over origin.
+<span class="lineno">   35 </span>hbar :: Board Bool
+<span class="lineno">   36 </span>hbar =  (\ (x,_y) -&gt; x &lt;= 0.5 &amp;&amp; x &gt;= -0.5) &lt;$&gt; coord
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>-- | unit square, 1x1 over origin.
+<span class="lineno">   39 </span>square   = Cond (InsideBox (-0.5,-0.5) 1 1 0) (Pure True) (Pure False)
+<span class="lineno">   40 </span>square' = liftA2 (&amp;&amp;) vbar hbar
+<span class="lineno">   41 </span>-}
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>{-
+<span class="lineno">   44 </span>--squareO :: Board (O Bool)
+<span class="lineno">   45 </span>-- squareO = Polygon [(-0.5,-0.5),(-0.5,0.5),(0.5,0.5),(0.5,-0.5)]
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>-- | cheacker board, with squares 1x1.
+<span class="lineno">   48 </span>checker :: Board Bool
+<span class="lineno">   49 </span>checker = (\ (x,y) -&gt; even ((floor x + floor y) :: Int)) &lt;$&gt; coord
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>-- | Given two @Point@s, and a thickness, draw a line between the points.
+<span class="lineno">   52 </span>-- line :: Line -&gt; Double -&gt; Board Bool
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>-}
+<span class="lineno">   55 </span>{-
+<span class="lineno">   56 </span>straightline' ((x1,y1),(x2,y2)) width = (\ (x,y) -&gt;
+<span class="lineno">   57 </span>---     distance (x1,y1) (x,y) &lt;= width ||
+<span class="lineno">   58 </span>--      distance (x2,y2) (x,y) &lt;= width ||
+<span class="lineno">   59 </span>        (  let         u = intervalOnLine ((x1,y1),(x2,y2))  (x,y)
+<span class="lineno">   60 </span>           in u &gt;= 0 
+<span class="lineno">   61 </span>           &amp;&amp; u &lt;= 1 
+<span class="lineno">   62 </span>           &amp;&amp; distance (lerp (x1,y1) (x2,y2) u) (x,y) &lt;= width
+<span class="lineno">   63 </span>        )) &lt;$&gt; coord
+<span class="lineno">   64 </span>-}
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>-- | A straight line, of a given width, between two points.
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>straightLine :: (Point,Point) -&gt; R -&gt; Board Bool
+<span class="lineno">   69 </span><span class="decl"><span class="nottickedoff">straightLine ((x1,y1),(x2,y2)) w = </span>
+<span class="lineno">   70 </span><span class="spaces">          </span><span class="nottickedoff">move (x1,y1)</span>
+<span class="lineno">   71 </span><span class="spaces">        </span><span class="nottickedoff">$ rotate (pi /2 - th)</span>
+<span class="lineno">   72 </span><span class="spaces">        </span><span class="nottickedoff">$ box ((-w/2,0),(w/2,len))</span>
+<span class="lineno">   73 </span><span class="spaces">  </span><span class="nottickedoff">where</span>
+<span class="lineno">   74 </span><span class="spaces">          </span><span class="nottickedoff">(xd,yd)  = (x2 - x1,y2 - y1)</span>
+<span class="lineno">   75 </span><span class="spaces">          </span><span class="nottickedoff">(len,th) = toPolar (xd,yd)</span></span>
+<span class="lineno">   76 </span>
+<span class="lineno">   77 </span>pointsToLine :: [Point] -&gt; R -&gt; Board Bool
+<span class="lineno">   78 </span><span class="decl"><span class="nottickedoff">pointsToLine points width = stack</span>
+<span class="lineno">   79 </span><span class="spaces">        </span><span class="nottickedoff">[ straightLine (p1,p2) width</span>
+<span class="lineno">   80 </span><span class="spaces">        </span><span class="nottickedoff">| (p1,p2) &lt;- zip points (tail points)</span>
+<span class="lineno">   81 </span><span class="spaces">        </span><span class="nottickedoff">] `over` stack </span>
+<span class="lineno">   82 </span><span class="spaces">        </span><span class="nottickedoff">[ dotAt p width | p &lt;- tail (init points) ]</span></span>
+<span class="lineno">   83 </span>
+<span class="lineno">   84 </span>-- | place dot at this location, with given diameter.
+<span class="lineno">   85 </span>dotAt :: Point -&gt; R -&gt; Board Bool
+<span class="lineno">   86 </span><span class="decl"><span class="nottickedoff">dotAt p w = move p $ scale w circle</span></span>
+<span class="lineno">   87 </span>          
+<span class="lineno">   88 </span>-- | A line generated by sampling a function from @R@ to @Point@s,
+<span class="lineno">   89 </span>-- with a specific width. There needs to be at least 2 sample points.
+<span class="lineno">   90 </span>
+<span class="lineno">   91 </span>functionLine :: (R -&gt; Point) -&gt; R -&gt; Int -&gt; Board Bool
+<span class="lineno">   92 </span><span class="decl"><span class="nottickedoff">functionLine line width steps = pointsToLine samples width</span>
+<span class="lineno">   93 </span><span class="spaces">    </span><span class="nottickedoff">where</span>
+<span class="lineno">   94 </span><span class="spaces">        </span><span class="nottickedoff">samples = map line (outerSteps steps)</span></span>
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>-- | arrowhead is a triangle, pointing straight up, height 1, width 1, with the (0,0) at the center of the base.
+<span class="lineno">   97 </span>--arrowhead :: Point -&gt; Radian -&gt; R -&gt; Board Bool
+<span class="lineno">   98 </span>--arrowhead p rad sz = move p $ rotate rad $ scale sz $ (\ (x,y) -&gt; y &gt;= 0 &amp;&amp; y &lt;= 1 &amp;&amp; abs x * 2 &lt;= 1 - y) &lt;$&gt; coord     
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>class LerpBoard a where
+<span class="lineno">  101 </span> lerpBoard :: Board a -&gt; Board a -&gt; Board UI -&gt; Board a
+<span class="lineno">  102 </span>
+<span class="lineno">  103 </span>instance LerpBoard RGB where
+<span class="lineno">  104 </span>  <span class="decl"><span class="nottickedoff">lerpBoard b1 b2 bU = </span>
+<span class="lineno">  105 </span><span class="spaces">        </span><span class="nottickedoff">gslBoard fn</span>
+<span class="lineno">  106 </span><span class="spaces">                </span><span class="nottickedoff">[ (&quot;b1&quot;,ResultSize,board b1)</span>
+<span class="lineno">  107 </span><span class="spaces">                </span><span class="nottickedoff">, (&quot;b2&quot;,ResultSize,board b2)</span>
+<span class="lineno">  108 </span><span class="spaces">                </span><span class="nottickedoff">, (&quot;bU&quot;,ResultSize,board bU)</span>
+<span class="lineno">  109 </span><span class="spaces">                </span><span class="nottickedoff">]</span>
+<span class="lineno">  110 </span><span class="spaces">                </span><span class="nottickedoff">[]</span>
+<span class="lineno">  111 </span><span class="spaces">    </span><span class="nottickedoff">where </span>
+<span class="lineno">  112 </span><span class="spaces">      </span><span class="nottickedoff">fn = unlines [</span>
+<span class="lineno">  113 </span><span class="spaces">        </span><span class="nottickedoff">&quot;uniform sampler2D b1;&quot;,</span>
+<span class="lineno">  114 </span><span class="spaces">        </span><span class="nottickedoff">&quot;uniform sampler2D b2;&quot;,</span>
+<span class="lineno">  115 </span><span class="spaces">        </span><span class="nottickedoff">&quot;uniform sampler2D bU;&quot;,</span>
+<span class="lineno">  116 </span><span class="spaces">        </span><span class="nottickedoff">&quot;void main (void) {&quot;,</span>
+<span class="lineno">  117 </span><span class="spaces">        </span><span class="nottickedoff">&quot; gl_FragColor.rgb = &quot;,</span>
+<span class="lineno">  118 </span><span class="spaces">        </span><span class="nottickedoff">&quot;   mix(&quot;,</span>
+<span class="lineno">  119 </span><span class="spaces">        </span><span class="nottickedoff">&quot;    texture2D(b1,gl_TexCoord[0].st).rgb,&quot;,</span>
+<span class="lineno">  120 </span><span class="spaces">        </span><span class="nottickedoff">&quot;    texture2D(b2,gl_TexCoord[0].st).rgb,&quot;,</span>
+<span class="lineno">  121 </span><span class="spaces">        </span><span class="nottickedoff">&quot;    texture2D(bU,gl_TexCoord[0].st).r);&quot;,</span>
+<span class="lineno">  122 </span><span class="spaces">        </span><span class="nottickedoff">&quot; gl_FragColor.a = 1.0;&quot;,</span>
+<span class="lineno">  123 </span><span class="spaces">        </span><span class="nottickedoff">&quot;}&quot; ]</span></span>
+<span class="lineno">  124 </span>        
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>instance (LerpBoard a) =&gt; Lerp (Board a) where
+<span class="lineno">  127 </span>   <span class="decl"><span class="nottickedoff">lerp ui b1 b2  = lerpBoard b1 b2 (boardOf (o ui))</span></span>
+<span class="lineno">  128 </span>
+<span class="lineno">  129 </span>class ChooseBoard a where
+<span class="lineno">  130 </span> chooseBoard :: Board a -&gt; Board a -&gt; Board Bool -&gt; Board a
+<span class="lineno">  131 </span>
+<span class="lineno">  132 </span>-- anti-aliasing support
+<span class="lineno">  133 </span>class SuperSample a where
+<span class="lineno">  134 </span>  superSample :: Int -&gt; Board a -&gt; Board a
+<span class="lineno">  135 </span>
+<span class="lineno">  136 </span>
+<span class="lineno">  137 </span>--class MulBoard a where
+<span class="lineno">  138 </span>--  mulBoard :: Float -&gt; Board a -&gt; Board a
+<span class="lineno">  139 </span>
+
+</pre>
+</html>

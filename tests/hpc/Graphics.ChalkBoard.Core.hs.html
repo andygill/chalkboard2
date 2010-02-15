@@ -1,0 +1,78 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE TypeSynonymInstances #-}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>module Graphics.ChalkBoard.Core 
+<span class="lineno">    4 </span>        ( -- * Pointwise operators.
+<span class="lineno">    5 </span>          interpBool 
+<span class="lineno">    6 </span>        , sampleUI
+<span class="lineno">    7 </span>        , withMask
+<span class="lineno">    8 </span>        , withDefault
+<span class="lineno">    9 </span>--      , choose
+<span class="lineno">   10 </span>          -- * Colors
+<span class="lineno">   11 </span>        , alpha, withAlpha, unAlpha, transparent
+<span class="lineno">   12 </span>        ) where
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>-- This provided the internal functions, many of which are reflected into the &quot;Observable&quot;, O.
+<span class="lineno">   15 </span>
+<span class="lineno">   16 </span>import Graphics.ChalkBoard.Types
+<span class="lineno">   17 </span>--import Graphics.ChalkBoard.Utils
+<span class="lineno">   18 </span>
+<span class="lineno">   19 </span>------------------------------------------------------------------------------
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>-- Pointwise operators
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>-- | Covert a Bool (mask point) into a unit interval.
+<span class="lineno">   24 </span>interpBool :: Bool -&gt; UI
+<span class="lineno">   25 </span><span class="decl"><span class="nottickedoff">interpBool True  = 1.0</span>
+<span class="lineno">   26 </span><span class="spaces"></span><span class="nottickedoff">interpBool False = 0.0</span></span>
+<span class="lineno">   27 </span>
+<span class="lineno">   28 </span>-- | sample a UI, giving a point of a mask.
+<span class="lineno">   29 </span>sampleUI :: UI -&gt; Bool
+<span class="lineno">   30 </span><span class="decl"><span class="nottickedoff">sampleUI n = n &gt;= 0.5</span></span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>-- | Use a mask to create a Just value, or Nothing.
+<span class="lineno">   33 </span>withMask :: a -&gt; (Bool -&gt; Maybe a)
+<span class="lineno">   34 </span><span class="decl"><span class="nottickedoff">withMask a True  = Just a</span>
+<span class="lineno">   35 </span><span class="spaces"></span><span class="nottickedoff">withMask _ False = Nothing</span></span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- | With a default if you do not have a Just.
+<span class="lineno">   38 </span>withDefault :: a -&gt; (Maybe a -&gt; a)
+<span class="lineno">   39 </span><span class="decl"><span class="nottickedoff">withDefault a Nothing  = a</span>
+<span class="lineno">   40 </span><span class="spaces"></span><span class="nottickedoff">withDefault _ (Just b) = b</span></span>
+<span class="lineno">   41 </span>
+<span class="lineno">   42 </span>-- | 'choose' between two values.
+<span class="lineno">   43 </span>{-
+<span class="lineno">   44 </span>choose :: a -&gt; a -&gt; (Bool -&gt; a)
+<span class="lineno">   45 </span>choose t  _f True  = t
+<span class="lineno">   46 </span>choose _t f  False = f
+<span class="lineno">   47 </span>-}
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>------------------------------------------------------------------------------------------
+<span class="lineno">   50 </span>-- Colors with alpha
+<span class="lineno">   51 </span>
+<span class="lineno">   52 </span>alpha :: RGB -&gt; (RGBA -&gt; RGBA)
+<span class="lineno">   53 </span><span class="decl"><span class="nottickedoff">alpha (RGB r g b) _ = RGBA r g b 1</span></span>
+<span class="lineno">   54 </span>
+<span class="lineno">   55 </span>withAlpha :: UI -&gt; RGB -&gt; (RGBA -&gt; RGBA)
+<span class="lineno">   56 </span><span class="decl"><span class="nottickedoff">withAlpha a (RGB r g b) rgba = (RGBA r g b a) `over` rgba</span></span>
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span>unAlpha :: RGB -&gt; (RGBA -&gt; RGBA) -&gt; RGB
+<span class="lineno">   59 </span><span class="decl"><span class="nottickedoff">unAlpha (RGB r g b) f = RGB (r' * a') (g' * a') (b' * a')</span>
+<span class="lineno">   60 </span><span class="spaces">  </span><span class="nottickedoff">where</span>
+<span class="lineno">   61 </span><span class="spaces">        </span><span class="nottickedoff">(RGBA r' g' b' a') = f (RGBA r g b 1)</span></span>
+<span class="lineno">   62 </span>
+<span class="lineno">   63 </span>transparent :: RGBA -&gt; RGBA
+<span class="lineno">   64 </span><span class="decl"><span class="nottickedoff">transparent = id</span></span>
+
+</pre>
+</html>

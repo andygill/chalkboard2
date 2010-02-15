@@ -8,7 +8,7 @@ import System.Environment
 import Graphics.ChalkBoard
 --	(white,  black,  red,   green,  blue,  cyan,  purple,  yellow, RGB(..), RGBA(..))
 
-import Graphics.ChalkBoard.CBIR as CBIR
+--import Graphics.ChalkBoard.CBIR as CBIR
 
 -- A rather messy test, tries out various aspects of our compiler and render engine.
 
@@ -281,6 +281,7 @@ permute (x:xs) = concat (map (insert x) (permute xs))
 	insert x (y:ys) = (x:y:ys) : map (\z -> y:z) (insert x ys)
 
 
+{-
 example = 
  [ Nested "alloc BOOL_Ty"
      [ Allocate 1001 (100,100) RGB24Depth (BackgroundRGB24Depth $ RGB 0.0 0.0 0.0)
@@ -293,6 +294,7 @@ example =
  , Delete 1002
  , Delete 1001
  ]
+-}
 	
 {-
 	test "test9" [ do

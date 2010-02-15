@@ -1,0 +1,932 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE TypeFamilies, FlexibleInstances, ExistentialQuantification, RankNTypes, GADTs
+<span class="lineno">    2 </span>  #-}
+<span class="lineno">    3 </span>module Graphics.ChalkBoard.CBIR.Compiler where
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>-- The idea is to compiler ChalkBoard specs into CBIR instructions.
+<span class="lineno">    6 </span>-- No idea how it will work, only that it will work. So here goes...
+<span class="lineno">    7 </span>-- Quite scrappy, but will clean up.
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>import Graphics.ChalkBoard.Types as Ty
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>import Graphics.ChalkBoard.O as O
+<span class="lineno">   12 </span>import Graphics.ChalkBoard.O.Internals as OI
+<span class="lineno">   13 </span>--import Graphics.ChalkBoard.Core as C
+<span class="lineno">   14 </span>import Graphics.ChalkBoard.Board as B hiding (zip)
+<span class="lineno">   15 </span>import Graphics.ChalkBoard.Internals as BI
+<span class="lineno">   16 </span>import Graphics.ChalkBoard.CBIR as CBIR
+<span class="lineno">   17 </span>import Data.Unique
+<span class="lineno">   18 </span>--import Data.Reify.Graph
+<span class="lineno">   19 </span>import Graphics.ChalkBoard.Expr as Expr
+<span class="lineno">   20 </span>--import Data.Array.Unboxed
+<span class="lineno">   21 </span>--import Data.Array.MArray
+<span class="lineno">   22 </span>--import Data.Array.IO
+<span class="lineno">   23 </span>import Control.Monad
+<span class="lineno">   24 </span>--import Graphics.ChalkBoard.IStorable as IS
+<span class="lineno">   25 </span>import Data.ByteString(ByteString)
+<span class="lineno">   26 </span>import qualified Data.Map as Map
+<span class="lineno">   27 </span>import Data.Map (Map)
+<span class="lineno">   28 </span>import qualified Data.List as List
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>import qualified Data.ByteString as BS
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>--import Unsafe.Coerce
+<span class="lineno">   34 </span>--import Debug.Trace
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>-- We always compile  a RGB board.
+<span class="lineno">   37 </span>compile :: (Int,Int) -&gt; BufferId -&gt; Board RGB -&gt; IO [CBIR.Inst Int]
+<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">compile (x,y) bufferId brd = </span>
+<span class="lineno">   39 </span><span class="spaces">        </span><span class="istickedoff">compileBoard2 (initBoardContext (x,y) bufferId) Target_RGB brd</span></span> 
+<span class="lineno">   40 </span>--      compileBoard compileBoardRGB (initBoardContext (x,y) bufferId) brd
+<span class="lineno">   41 </span>
+<span class="lineno">   42 </span>-- Unless we are compiling a Buffer :-)
+<span class="lineno">   43 </span>-- (Make this call compile)
+<span class="lineno">   44 </span>
+<span class="lineno">   45 </span>compileB :: (Int,Int) -&gt; BufferId -&gt; Buffer RGB -&gt; IO [CBIR.Inst Int]
+<span class="lineno">   46 </span><span class="decl"><span class="istickedoff">compileB (x,y) bufferId buff = do</span>
+<span class="lineno">   47 </span><span class="spaces">        </span><span class="istickedoff">compileBoard2 (initBoardContext (<span class="nottickedoff">x</span>,<span class="nottickedoff">y</span>) bufferId) Target_RGB </span>
+<span class="lineno">   48 </span><span class="spaces">                </span><span class="istickedoff">(scaleXY (1/fromIntegral x,1/fromIntegral y) (Board <span class="nottickedoff">RGB_Ty</span> (BufferOnBoard buff (boardOf white))))</span></span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>
+<span class="lineno">   51 </span>mapPoint :: [Trans] -&gt; (R,R) -&gt; (R,R)
+<span class="lineno">   52 </span><span class="decl"><span class="istickedoff">mapPoint []          (x,y) = (x,y)</span>
+<span class="lineno">   53 </span><span class="spaces"></span><span class="istickedoff">mapPoint (Move (xd,yd) : r)     (x,y) = mapPoint r (x + xd,y + yd)</span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff">mapPoint (Scale (xn,yn) : r)    (x,y) = mapPoint r (x * xn,y * yn)</span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">mapPoint (Rotate theta : r)     (x,y) = mapPoint r ( cos (-theta) * x - sin (-theta) * y</span>
+<span class="lineno">   56 </span><span class="spaces">                                                   </span><span class="istickedoff">, sin (-theta) * x + cos (-theta) * y</span>
+<span class="lineno">   57 </span><span class="spaces">                                                   </span><span class="istickedoff">)</span></span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>-- Assumping that the init board is RGB.
+<span class="lineno">   60 </span>initBoardContext :: (Int, Int) -&gt; BufferId -&gt; BoardContext
+<span class="lineno">   61 </span><span class="decl"><span class="istickedoff">initBoardContext (x,y) i = BoardContext [] (x,y) i Copy</span></span>
+<span class="lineno">   62 </span>
+<span class="lineno">   63 </span>data BoardContext = BoardContext 
+<span class="lineno">   64 </span>        { bcTrans :: [Trans]     -- movement of board
+<span class="lineno">   65 </span>        , bcSize :: (Int,Int)   -- approx size of resolution required for final board
+<span class="lineno">   66 </span>        , bcDest :: BufferId     -- board to draw onto
+<span class="lineno">   67 </span>        , bcBlend :: Blender     -- how to draw onto the board
+<span class="lineno">   68 </span>        }
+<span class="lineno">   69 </span>        deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
+<span class="lineno">   70 </span>        
+<span class="lineno">   71 </span>updateTrans :: Trans -&gt; BoardContext -&gt; BoardContext 
+<span class="lineno">   72 </span><span class="decl"><span class="istickedoff">updateTrans mv bc = bc { bcTrans = mv : bcTrans bc }</span></span>
+<span class="lineno">   73 </span>
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>-- compile image copies the relevent part of an image onto 
+<span class="lineno">   76 </span>-- the back buffer, 1 pixel for 1 pixel, after applying transformations.
+<span class="lineno">   77 </span>-- The first pixel inside an image array is the top-left pixel on the
+<span class="lineno">   78 </span>-- screen (hence the 1-y, below).
+<span class="lineno">   79 </span>
+<span class="lineno">   80 </span>compileByteStringImage 
+<span class="lineno">   81 </span>        :: (Int,Int) -&gt; (Int,Int) -&gt; ByteString
+<span class="lineno">   82 </span>        -&gt; Depth 
+<span class="lineno">   83 </span>        -&gt; IO ([CBIR.Inst BufferId],BufferId)
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span><span class="decl"><span class="istickedoff">compileByteStringImage low@(x0,y0) high@(x1,y1) bs depth = do</span>
+<span class="lineno">   86 </span><span class="spaces">        </span><span class="istickedoff">newBoard &lt;- newNumber</span>
+<span class="lineno">   87 </span><span class="spaces">        </span><span class="istickedoff">let (maxx,maxy) = (1 + x1 - x0, 1 + y1 - y0)</span>
+<span class="lineno">   88 </span><span class="spaces">        </span><span class="istickedoff">-- scale to fit</span>
+<span class="lineno">   89 </span><span class="spaces"></span><span class="istickedoff">{-</span>
+<span class="lineno">   90 </span><span class="spaces">        </span><span class="istickedoff">let mv = Scale (fromIntegral maxx / fromIntegral tx,</span>
+<span class="lineno">   91 </span><span class="spaces">                       </span><span class="istickedoff">(fromIntegral maxy / fromIntegral ty))</span>
+<span class="lineno">   92 </span><span class="spaces"></span><span class="istickedoff">-}</span>
+<span class="lineno">   93 </span><span class="spaces">        </span><span class="istickedoff">return $ ([ Nested <span class="nottickedoff">(&quot;Image RGB create &quot; ++ show (low,high))</span> </span>
+<span class="lineno">   94 </span><span class="spaces">                   </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">   95 </span><span class="spaces">                        </span><span class="istickedoff">newBoard        -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">   96 </span><span class="spaces">                        </span><span class="istickedoff">(maxx,maxy)        -- we know size</span>
+<span class="lineno">   97 </span><span class="spaces">                        </span><span class="istickedoff">depth           -- depth of buffer</span>
+<span class="lineno">   98 </span><span class="spaces">                        </span><span class="istickedoff">(BackgroundByteString bs)</span>
+<span class="lineno">   99 </span><span class="spaces"></span><span class="istickedoff">{-</span>
+<span class="lineno">  100 </span><span class="spaces">                   </span><span class="istickedoff">, SplatPolygon newBoard (bcDest bc) </span>
+<span class="lineno">  101 </span><span class="spaces">                                </span><span class="istickedoff">[ PointMap (x,1-y) (mapPoint (bcTrans (updateTrans mv bc)) (x,y))</span>
+<span class="lineno">  102 </span><span class="spaces">                                </span><span class="istickedoff">| (x,y) &lt;- [(0,0),(1,0),(1,1),(0,1)]</span>
+<span class="lineno">  103 </span><span class="spaces">                                </span><span class="istickedoff">]</span>
+<span class="lineno">  104 </span><span class="spaces"></span><span class="istickedoff">-}</span>
+<span class="lineno">  105 </span><span class="spaces">                   </span><span class="istickedoff">]</span>
+<span class="lineno">  106 </span><span class="spaces">                 </span><span class="istickedoff">], newBoard)</span></span>
+<span class="lineno">  107 </span>
+<span class="lineno">  108 </span>-- Do you have overlapping shapes? Default to True, to be safe if do not know.  
+<span class="lineno">  109 </span>perhapsOverlapBoardBool :: Board a -&gt; Bool
+<span class="lineno">  110 </span><span class="decl"><span class="nottickedoff">perhapsOverlapBoardBool (Board _ (Trans _ brd)) = perhapsOverlapBoardBool brd</span>
+<span class="lineno">  111 </span><span class="spaces"></span><span class="nottickedoff">perhapsOverlapBoardBool (Board _ (Polygon _))    = False        -- single polygon; no overlap</span>
+<span class="lineno">  112 </span><span class="spaces"></span><span class="nottickedoff">perhapsOverlapBoardBool _                        = True</span></span>
+<span class="lineno">  113 </span>
+<span class="lineno">  114 </span>
+<span class="lineno">  115 </span>-- choice
+<span class="lineno">  116 </span>--patternOf :: (O a -&gt; O b) -&gt; IO (Graph Expr)
+<span class="lineno">  117 </span>--patternOf f = reifyO $ f (O (error &quot;undefined shallow value&quot;) (E $ Var []))
+<span class="lineno">  118 </span>
+<span class="lineno">  119 </span>-- Notice the lower case 'bool', because we are untyped in the compiler.
+<span class="lineno">  120 </span>--applyBool :: (O bool -&gt; O a) -&gt; Bool -&gt; Maybe (Expr E)
+<span class="lineno">  121 </span>--applyBool f b = liftM unE (evalE (runO1 f (E $ O_Bool b)))
+<span class="lineno">  122 </span>
+<span class="lineno">  123 </span>--applyVar :: (O a -&gt; O b) -&gt; Expr E
+<span class="lineno">  124 </span>--applyVar f = unE (runO1 f (E $ Var []))
+<span class="lineno">  125 </span>
+<span class="lineno">  126 </span>
+<span class="lineno">  127 </span>newNumber :: IO Int
+<span class="lineno">  128 </span><span class="decl"><span class="istickedoff">newNumber = do</span>
+<span class="lineno">  129 </span><span class="spaces">        </span><span class="istickedoff">u &lt;- newUnique</span>
+<span class="lineno">  130 </span><span class="spaces">        </span><span class="istickedoff">return $ hashUnique u + 1000</span></span>
+<span class="lineno">  131 </span>        
+<span class="lineno">  132 </span>        
+<span class="lineno">  133 </span>        
+<span class="lineno">  134 </span>------------------------------------------------------------------------------------------
+<span class="lineno">  135 </span>-- Another attempt to unify the compiler.
+<span class="lineno">  136 </span>
+<span class="lineno">  137 </span>--      Data               Alpha?        Notes
+<span class="lineno">  138 </span>
+<span class="lineno">  139 </span>data Target 
+<span class="lineno">  140 </span> = Target_RGBA     --     Write =&gt; the type of blending writing to a board does
+<span class="lineno">  141 </span> | Target_RGB      --   N A = 1
+<span class="lineno">  142 </span> | Target_Bool RGB --   N Arg is what do we draw for *True*
+<span class="lineno">  143 </span> | Target_Maybe_RGB --  Y        Nothing =&gt; transparent &lt;ANY&gt;
+<span class="lineno">  144 </span>                  --               works if * All transparent boards are considered equal
+<span class="lineno">  145 </span>                  --                 * RGBA 0 0 0 0 is the unit
+<span class="lineno">  146 </span> | Target_UI
+<span class="lineno">  147 </span> | Target_Maybe_UI      --   use r and a{0,1}.
+<span class="lineno">  148 </span>        deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
+<span class="lineno">  149 </span>
+<span class="lineno">  150 </span>
+<span class="lineno">  151 </span>-- What 'over' do with the forground and background?
+<span class="lineno">  152 </span>targetOverBlend :: Target -&gt; Blender -&gt; ( Blender, Maybe Blender )
+<span class="lineno">  153 </span><span class="decl"><span class="istickedoff">targetOverBlend (Target_UI)  Copy     = ( Max, Just $ Copy )</span>
+<span class="lineno">  154 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_UI)  Max      = ( Max, <span class="nottickedoff">Just $ Max</span> ) </span>
+<span class="lineno">  155 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_UI)  Blend    = <span class="nottickedoff">( Max, Just $ Max )</span>     -- Err, should never happen</span>
+<span class="lineno">  156 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_RGB) Copy       = ( Copy, Nothing )</span>
+<span class="lineno">  157 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_RGBA) Copy    = ( Blend, <span class="nottickedoff">Just $ Copy</span> ) </span>
+<span class="lineno">  158 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_RGBA) Blend   = ( Blend, Just $ Blend ) </span>
+<span class="lineno">  159 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_Bool _) Blend = ( <span class="nottickedoff">Blend</span>, Just $ Blend )</span>
+<span class="lineno">  160 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_Bool _) Copy  = <span class="nottickedoff">( Blend, Just $ Copy )</span></span>
+<span class="lineno">  161 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_Bool _) Max   = <span class="nottickedoff">( Blend, Just $ Max )</span></span>
+<span class="lineno">  162 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_Maybe_RGB) Blend = <span class="nottickedoff">( Blend, Just $ Blend )</span></span>
+<span class="lineno">  163 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_Maybe_RGB) Copy  = ( Blend, Just $ Copy )</span>
+<span class="lineno">  164 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_Maybe_UI) Blend  = <span class="nottickedoff">( Blend, Just $ Blend )</span></span>
+<span class="lineno">  165 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend (Target_Maybe_UI) Copy   = ( Blend, Just $ Copy )</span>
+<span class="lineno">  166 </span><span class="spaces"></span><span class="istickedoff">targetOverBlend other b = <span class="nottickedoff">error $ show (&quot;targetOverBlend&quot;,other,b)</span></span></span>
+<span class="lineno">  167 </span>
+<span class="lineno">  168 </span>targetRep :: Target -&gt; Depth
+<span class="lineno">  169 </span><span class="decl"><span class="nottickedoff">targetRep (Target_RGBA)                = RGBADepth</span>
+<span class="lineno">  170 </span><span class="spaces"></span><span class="nottickedoff">targetRep Target_RGB             = RGB24Depth</span>
+<span class="lineno">  171 </span><span class="spaces"></span><span class="nottickedoff">targetRep (Target_Bool {})          = RGB24Depth</span>
+<span class="lineno">  172 </span><span class="spaces"></span><span class="nottickedoff">targetRep (Target_Maybe_RGB)       = RGBADepth</span>
+<span class="lineno">  173 </span><span class="spaces"></span><span class="nottickedoff">targetRep (Target_Maybe_UI)         = RGBADepth</span></span>
+<span class="lineno">  174 </span>
+<span class="lineno">  175 </span>-- TODO: rename as targetToType 
+<span class="lineno">  176 </span>targetType :: Target -&gt; ExprType
+<span class="lineno">  177 </span><span class="decl"><span class="istickedoff">targetType (Target_RGBA)               = RGBA_Ty</span>
+<span class="lineno">  178 </span><span class="spaces"></span><span class="istickedoff">targetType Target_RGB                  = RGB_Ty </span>
+<span class="lineno">  179 </span><span class="spaces"></span><span class="istickedoff">targetType (Target_Bool {})        = <span class="nottickedoff">BOOL_Ty</span></span>
+<span class="lineno">  180 </span><span class="spaces"></span><span class="istickedoff">targetType (Target_Maybe_RGB)     = Maybe_Ty RGB_Ty</span>
+<span class="lineno">  181 </span><span class="spaces"></span><span class="istickedoff">targetType (Target_Maybe_UI)       = Maybe_Ty UI_Ty</span>
+<span class="lineno">  182 </span><span class="spaces"></span><span class="istickedoff">targetType (Target_UI)           = UI_Ty</span>
+<span class="lineno">  183 </span><span class="spaces"></span><span class="istickedoff">targetType other                     = <span class="nottickedoff">error $ show (&quot;targetType&quot;,other)</span></span></span>
+<span class="lineno">  184 </span>
+<span class="lineno">  185 </span>
+<span class="lineno">  186 </span>-- not used yet!
+<span class="lineno">  187 </span>targetFromType :: ExprType -&gt; Target
+<span class="lineno">  188 </span><span class="decl"><span class="nottickedoff">targetFromType RGBA_Ty                 = Target_RGBA         -- only because this is the only case</span>
+<span class="lineno">  189 </span><span class="spaces">                                                                </span><span class="nottickedoff">-- used, aka buffer fmap.</span>
+<span class="lineno">  190 </span><span class="spaces"></span><span class="nottickedoff">targetFromType RGB_Ty            = Target_RGB</span>
+<span class="lineno">  191 </span><span class="spaces"></span><span class="nottickedoff">targetFromType UI_Ty       = Target_UI</span>
+<span class="lineno">  192 </span><span class="spaces"></span><span class="nottickedoff">targetFromType (Maybe_Ty UI_Ty)         = Target_Maybe_UI</span>
+<span class="lineno">  193 </span><span class="spaces"></span><span class="nottickedoff">targetFromType other         = error $ show (&quot;targetFromType&quot;,other)</span></span>
+<span class="lineno">  194 </span>
+<span class="lineno">  195 </span>compileBoard2 
+<span class="lineno">  196 </span>        :: BoardContext
+<span class="lineno">  197 </span>        -&gt; Target               -- merge with board context
+<span class="lineno">  198 </span>        -&gt; Board a
+<span class="lineno">  199 </span>        -&gt; IO [CBIR.Inst Int]
+<span class="lineno">  200 </span>
+<span class="lineno">  201 </span>-- compileBoard _ _ brd | trace (show (&quot;compileBoard&quot;,brd)) False = undefined
+<span class="lineno">  202 </span><span class="decl"><span class="istickedoff">compileBoard2 bc t (Board _ (Trans mv brd))        = compileBoard2 (updateTrans mv bc) t brd</span>
+<span class="lineno">  203 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board ty (Fmap g (Board _ (Fmap h brd))))   </span>
+<span class="lineno">  204 </span><span class="spaces">                                                        </span><span class="istickedoff">= compileBoard2 bc t (Board <span class="nottickedoff">ty</span> (Fmap (g . h) brd))</span>
+<span class="lineno">  205 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board ty (Fmap g (Board _ (Trans mv brd))))         </span>
+<span class="lineno">  206 </span><span class="spaces">                                                        </span><span class="istickedoff">= <span class="nottickedoff">compileBoard2 bc t (Board ty (Trans mv (Board ty (Fmap g brd))))</span></span>
+<span class="lineno">  207 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board _ (Over _ above below))       = compileBoardOver bc t above below (targetOverBlend t (bcBlend bc))</span>
+<span class="lineno">  208 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board _ (Polygon nodes))      = compileBoardPolygon bc t nodes</span>
+<span class="lineno">  209 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board _ (PrimConst o'))        = do</span>
+<span class="lineno">  210 </span><span class="spaces"></span><span class="istickedoff">--      print (show (&quot;const&quot;,runO0 o'))</span>
+<span class="lineno">  211 </span><span class="spaces">        </span><span class="istickedoff">compileBoardConst bc t (evalE $ runO0 o')</span>
+<span class="lineno">  212 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board _ (Fmap f other))</span>
+<span class="lineno">  213 </span><span class="spaces"></span><span class="istickedoff">--      | trace (show (bc,t,(runO1 f (E $ Var [])),ty)) False = undefined</span>
+<span class="lineno">  214 </span><span class="spaces">                </span><span class="istickedoff">-- special optimization: fmap (...) (xxx :: Board Bool) can often be optimized</span>
+<span class="lineno">  215 </span><span class="spaces"></span><span class="istickedoff">{- TODO</span>
+<span class="lineno">  216 </span><span class="spaces">        </span><span class="istickedoff">|  goodToFmapBool argTy t tr fa</span>
+<span class="lineno">  217 </span><span class="spaces">                        </span><span class="istickedoff">= compileBoardFmapBool bc t </span>
+<span class="lineno">  218 </span><span class="spaces">                                </span><span class="istickedoff">tr</span>
+<span class="lineno">  219 </span><span class="spaces">                                </span><span class="istickedoff">fa</span>
+<span class="lineno">  220 </span><span class="spaces">                                </span><span class="istickedoff">other (argTypeForOFun f ty) ty</span>
+<span class="lineno">  221 </span><span class="spaces"></span><span class="istickedoff">-}</span>
+<span class="lineno">  222 </span><span class="spaces"></span><span class="istickedoff">--      | argTy == [([],BOOL_Ty)] &amp;&amp; trace (&quot;fmap reject &quot; ++ show (argTy,t,tr,fa)) False = undefined</span>
+<span class="lineno">  223 </span><span class="spaces">        </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = compileBoardFmap bc <span class="nottickedoff">t</span> (runO1 f (E brdTy $ Var [])) other argTy tyX</span>
+<span class="lineno">  224 </span><span class="spaces">        </span><span class="istickedoff">where tyX    = targetType t</span>
+<span class="lineno">  225 </span><span class="spaces">              </span><span class="istickedoff">brdTy = typeOfBoard other</span>
+<span class="lineno">  226 </span><span class="spaces">              </span><span class="istickedoff">argTy = ff brdTy</span>
+<span class="lineno">  227 </span><span class="spaces">              </span><span class="istickedoff">ff (Pair_Ty t1 t2) = </span>
+<span class="lineno">  228 </span><span class="spaces">                        </span><span class="istickedoff">[ (GoLeft  : p,t')  | (p,t') &lt;- ff t1 ] ++</span>
+<span class="lineno">  229 </span><span class="spaces">                        </span><span class="istickedoff">[ (GoRight : p,t')  | (p,t') &lt;- ff t2 ] </span>
+<span class="lineno">  230 </span><span class="spaces">              </span><span class="istickedoff">ff other' = [([],other')]</span>
+<span class="lineno">  231 </span><span class="spaces">                        </span><span class="istickedoff"></span>
+<span class="lineno">  232 </span><span class="spaces"></span><span class="istickedoff">--            tr = evalE $ runO1 f (E BOOL_Ty $ O_Bool True)</span>
+<span class="lineno">  233 </span><span class="spaces"></span><span class="istickedoff">--            fa = evalE $ runO1 f (E BOOL_Ty $ O_Bool False)</span>
+<span class="lineno">  234 </span><span class="spaces">                </span><span class="istickedoff"></span>
+<span class="lineno">  235 </span><span class="spaces">                </span><span class="istickedoff"></span>
+<span class="lineno">  236 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board _ (BufferOnBoard buffer' brd))        = compileBufferOnBoard bc t buffer' brd</span>
+<span class="lineno">  237 </span><span class="spaces"></span><span class="istickedoff">--      where ty = targetType t</span>
+<span class="lineno">  238 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board _ (BoardGSI fn bargs vargs))  = compileBoardGSI bc t fn bargs vargs</span>
+<span class="lineno">  239 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t@(Target_RGB) (Board _ (BoardUnAlpha back fn)) = do</span>
+<span class="lineno">  240 </span><span class="spaces">        </span><span class="istickedoff">inst1 &lt;- compileBoard2 bc t back</span>
+<span class="lineno">  241 </span><span class="spaces">        </span><span class="istickedoff">newBoard &lt;- newNumber</span>
+<span class="lineno">  242 </span><span class="spaces">        </span><span class="istickedoff">inst2 &lt;- compileBoard2 (bc { bcDest = newBoard, bcBlend = Blend }) (Target_RGBA) fn</span>
+<span class="lineno">  243 </span><span class="spaces">        </span><span class="istickedoff">return $ [ Nested <span class="nottickedoff">(&quot;BoardUnAlpha&quot;)</span> $</span>
+<span class="lineno">  244 </span><span class="spaces">                    </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">  245 </span><span class="spaces">                        </span><span class="istickedoff">newBoard </span>
+<span class="lineno">  246 </span><span class="spaces">                        </span><span class="istickedoff">(bcSize bc)</span>
+<span class="lineno">  247 </span><span class="spaces">                        </span><span class="istickedoff">RGBADepth          -- depth of buffer </span>
+<span class="lineno">  248 </span><span class="spaces">                        </span><span class="istickedoff">(BackgroundRGBADepth (RGBA 0 0 0 0))</span>
+<span class="lineno">  249 </span><span class="spaces">                    </span><span class="istickedoff">] ++ inst1</span>
+<span class="lineno">  250 </span><span class="spaces">                      </span><span class="istickedoff">++ [ copyBoard (bcDest bc) newBoard ]</span>
+<span class="lineno">  251 </span><span class="spaces">                      </span><span class="istickedoff">++ inst2</span>
+<span class="lineno">  252 </span><span class="spaces">                      </span><span class="istickedoff">++ [ copyBoard newBoard (bcDest bc) ]</span>
+<span class="lineno">  253 </span><span class="spaces">                      </span><span class="istickedoff">++ [ Delete newBoard ]</span>
+<span class="lineno">  254 </span><span class="spaces">                 </span><span class="istickedoff">]</span>
+<span class="lineno">  255 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t other                     = <span class="nottickedoff">error $ show (&quot;compileBoard2&quot;,bc,t,other)</span></span></span>
+<span class="lineno">  256 </span>
+<span class="lineno">  257 </span>-- Drawing something *over* something.
+<span class="lineno">  258 </span>compileBoardOver :: BoardContext -&gt; Target -&gt; Board a -&gt; Board b -&gt; (Blender, Maybe Blender) -&gt; IO [Inst Int] -- Inferred Type
+<span class="lineno">  259 </span><span class="decl"><span class="istickedoff">compileBoardOver bc t above _ (b1,Nothing) = compileBoard2 (bc { bcBlend = <span class="nottickedoff">b1</span>})  t above</span>
+<span class="lineno">  260 </span><span class="spaces"></span><span class="istickedoff">compileBoardOver bc t above below (b1,Just b2) = do</span>
+<span class="lineno">  261 </span><span class="spaces">        </span><span class="istickedoff">-- not quite right; assumes that the backing board is white.</span>
+<span class="lineno">  262 </span><span class="spaces">        </span><span class="istickedoff">before &lt;- compileBoard2 (bc { bcBlend = b2}) t below</span>
+<span class="lineno">  263 </span><span class="spaces">        </span><span class="istickedoff">after  &lt;- compileBoard2 (bc { bcBlend = b1}) t above</span>
+<span class="lineno">  264 </span><span class="spaces">        </span><span class="istickedoff">return   [ Nested <span class="nottickedoff">(&quot;over: &quot; ++ show t)</span></span>
+<span class="lineno">  265 </span><span class="spaces">                   </span><span class="istickedoff">( before ++</span>
+<span class="lineno">  266 </span><span class="spaces">                     </span><span class="istickedoff">[Nested <span class="nottickedoff">&quot;`over`&quot;</span> []] ++</span>
+<span class="lineno">  267 </span><span class="spaces">                     </span><span class="istickedoff">after </span>
+<span class="lineno">  268 </span><span class="spaces">                   </span><span class="istickedoff">)</span>
+<span class="lineno">  269 </span><span class="spaces">                 </span><span class="istickedoff">]</span></span>
+<span class="lineno">  270 </span>
+<span class="lineno">  271 </span>-- Drawing something onto the screen
+<span class="lineno">  272 </span>compileBoardPolygon :: (Monad m) =&gt; BoardContext -&gt; Target -&gt; (R -&gt; [(R, R)]) -&gt; m [Inst BufferId]
+<span class="lineno">  273 </span><span class="decl"><span class="istickedoff">compileBoardPolygon bc (Target_Bool (RGB r g b)) nodes = do</span>
+<span class="lineno">  274 </span><span class="spaces">        </span><span class="istickedoff">return $ [ Nested <span class="nottickedoff">(&quot;precision factor = &quot; ++ show res)</span></span>
+<span class="lineno">  275 </span><span class="spaces">                     </span><span class="istickedoff">[ Splat (bcDest bc) </span>
+<span class="lineno">  276 </span><span class="spaces">                             </span><span class="istickedoff">Copy</span>
+<span class="lineno">  277 </span><span class="spaces">                             </span><span class="istickedoff">(SplatColor' (RGBA r g b 1)  (map (mapPoint (bcTrans bc)) (nodes res)))</span>
+<span class="lineno">  278 </span><span class="spaces">                     </span><span class="istickedoff">]</span>
+<span class="lineno">  279 </span><span class="spaces">                </span><span class="istickedoff">]</span>
+<span class="lineno">  280 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">  281 </span><span class="spaces">        </span><span class="istickedoff">[(x0,y0),(x1,_),(_,y2)] = map (mapPoint [ Scale (a,b') | Scale (a,b') &lt;- bcTrans bc]) [(0,0),(1,<span class="nottickedoff">0</span>),(<span class="nottickedoff">0</span>,1)]</span>
+<span class="lineno">  282 </span><span class="spaces">        </span><span class="istickedoff">res   = 1 + max (abs (fromIntegral x * (x0 - x1))) (abs (fromIntegral y * (y0 - y2)))</span>
+<span class="lineno">  283 </span><span class="spaces">        </span><span class="istickedoff">(x,y)  = bcSize bc</span></span>
+<span class="lineno">  284 </span>
+<span class="lineno">  285 </span>-- draw a constant board.
+<span class="lineno">  286 </span>compileBoardConst :: BoardContext -&gt; Target -&gt; Maybe E -&gt; IO [Inst BufferId]
+<span class="lineno">  287 </span><span class="decl"><span class="istickedoff">compileBoardConst bc t@(Target_Bool rgb) (Just (E _ (O_Bool True)))</span>
+<span class="lineno">  288 </span><span class="spaces">                </span><span class="istickedoff">| <span class="nottickedoff">targetRep t == targetRep Target_RGB</span> </span>
+<span class="lineno">  289 </span><span class="spaces">                        </span><span class="istickedoff">-- sanity check, then use the RGB drawing</span>
+<span class="lineno">  290 </span><span class="spaces">                </span><span class="istickedoff">= <span class="nottickedoff">compileBoardConst bc (Target_RGB) (Just (E RGB_Ty (O_RGB rgb)))</span></span>
+<span class="lineno">  291 </span><span class="spaces"></span><span class="istickedoff">compileBoardConst _ (Target_Bool _) (Just (E _ (O_Bool False)))</span>
+<span class="lineno">  292 </span><span class="spaces">                </span><span class="istickedoff">-- background *is* false</span>
+<span class="lineno">  293 </span><span class="spaces">                </span><span class="istickedoff">= <span class="nottickedoff">return []</span></span>
+<span class="lineno">  294 </span><span class="spaces"></span><span class="istickedoff">compileBoardConst bc (Target_RGB) (Just (E _ (O_RGB (RGB r g b))))</span>
+<span class="lineno">  295 </span><span class="spaces">                </span><span class="istickedoff">= return [</span>
+<span class="lineno">  296 </span><span class="spaces">                        </span><span class="istickedoff">(Splat (bcDest bc)</span>
+<span class="lineno">  297 </span><span class="spaces">                               </span><span class="istickedoff">Copy </span>
+<span class="lineno">  298 </span><span class="spaces">                               </span><span class="istickedoff">(SplatColor' (RGBA r g b 1) [(0,0),(1,0),(1,1),(0,1)])</span>
+<span class="lineno">  299 </span><span class="spaces">                        </span><span class="istickedoff">)</span>
+<span class="lineno">  300 </span><span class="spaces">                        </span><span class="istickedoff">]</span>
+<span class="lineno">  301 </span><span class="spaces"></span><span class="istickedoff">compileBoardConst bc (Target_UI) (Just (E _ (Lit r)))</span>
+<span class="lineno">  302 </span><span class="spaces">                </span><span class="istickedoff">= return [</span>
+<span class="lineno">  303 </span><span class="spaces">                        </span><span class="istickedoff">(Splat (bcDest bc)</span>
+<span class="lineno">  304 </span><span class="spaces">                               </span><span class="istickedoff">(bcBlend bc) </span>
+<span class="lineno">  305 </span><span class="spaces">                               </span><span class="istickedoff">(SplatColor' (RGBA r 0 0 1) [(0,0),(1,0),(1,1),(0,1)])</span>
+<span class="lineno">  306 </span><span class="spaces">                        </span><span class="istickedoff">)</span>
+<span class="lineno">  307 </span><span class="spaces">                        </span><span class="istickedoff">]</span>
+<span class="lineno">  308 </span><span class="spaces"></span><span class="istickedoff">compileBoardConst bc (Target_RGBA) (Just (E _ (O_RGBA rgba)))</span>
+<span class="lineno">  309 </span><span class="spaces">                </span><span class="istickedoff">= do</span>
+<span class="lineno">  310 </span><span class="spaces"></span><span class="istickedoff">--           newBoard &lt;- newNumber</span>
+<span class="lineno">  311 </span><span class="spaces">                </span><span class="istickedoff">return [ Nested <span class="nottickedoff">(&quot;Const (a :: RGBA)&quot;)</span> $</span>
+<span class="lineno">  312 </span><span class="spaces">                          </span><span class="istickedoff">[ Splat (bcDest bc)</span>
+<span class="lineno">  313 </span><span class="spaces">                                  </span><span class="istickedoff">(bcBlend bc)</span>
+<span class="lineno">  314 </span><span class="spaces">                                  </span><span class="istickedoff">(SplatColor' rgba [(0,0),(1,0),(1,1),(0,1)])</span>
+<span class="lineno">  315 </span><span class="spaces">                          </span><span class="istickedoff">]</span>
+<span class="lineno">  316 </span><span class="spaces">                        </span><span class="istickedoff">]</span>
+<span class="lineno">  317 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  318 </span><span class="spaces"></span><span class="istickedoff">compileBoardConst bc (Target_Maybe_RGB) (Just (E  (Maybe_Ty RGB_Ty) (O_Just (E RGB_Ty (O_RGB (RGB r g b))))))</span>
+<span class="lineno">  319 </span><span class="spaces">                </span><span class="istickedoff">= <span class="nottickedoff">do</span></span>
+<span class="lineno">  320 </span><span class="spaces"></span><span class="istickedoff"><span class="nottickedoff">--           newBoard &lt;- newNumber</span></span>
+<span class="lineno">  321 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">return [ Nested (&quot;Const (Just a :: Maybe RGB)&quot;) $</span></span>
+<span class="lineno">  322 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">[ Splat (bcDest bc)</span></span>
+<span class="lineno">  323 </span><span class="spaces">                                  </span><span class="istickedoff"><span class="nottickedoff">Copy</span></span>
+<span class="lineno">  324 </span><span class="spaces">                                  </span><span class="istickedoff"><span class="nottickedoff">(SplatColor' (RGBA r g b 1) [(0,0),(1,0),(1,1),(0,1)])</span></span>
+<span class="lineno">  325 </span><span class="spaces">                          </span><span class="istickedoff"><span class="nottickedoff">]</span></span>
+<span class="lineno">  326 </span><span class="spaces">                        </span><span class="istickedoff"><span class="nottickedoff">]</span></span>
+<span class="lineno">  327 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  328 </span><span class="spaces"></span><span class="istickedoff">compileBoardConst bc t constant = <span class="nottickedoff">error $ show (&quot;compileBoardConst&quot;,bc,t,constant)</span></span></span>
+<span class="lineno">  329 </span>
+<span class="lineno">  330 </span>
+<span class="lineno">  331 </span>data FmapArg where
+<span class="lineno">  332 </span>        FmapArg :: Board a -&gt; ExprType -&gt; Path -&gt; FmapArg
+<span class="lineno">  333 </span>
+<span class="lineno">  334 </span>assignFrag :: ExprType -&gt; String -&gt; String
+<span class="lineno">  335 </span><span class="decl"><span class="istickedoff">assignFrag RGBA_Ty expr = &quot;  gl_FragColor.rgba = &quot; ++ expr ++ &quot;;\n&quot;     -- TODO: assumes merging???</span>
+<span class="lineno">  336 </span><span class="spaces"></span><span class="istickedoff">assignFrag (Maybe_Ty RGB_Ty) expr = &quot;  gl_FragColor.rgba = &quot; ++ expr ++ &quot;;\n&quot;   </span>
+<span class="lineno">  337 </span><span class="spaces"></span><span class="istickedoff">assignFrag (Maybe_Ty UI_Ty) expr = &quot;  gl_FragColor.rgba = &quot; ++ expr ++ &quot;;\n&quot;</span>
+<span class="lineno">  338 </span><span class="spaces"></span><span class="istickedoff">assignFrag RGB_Ty expr = &quot;  gl_FragColor.rgb = &quot; ++ expr ++ &quot;;\n  gl_FragColor.a = 1.0;\n&quot;</span>
+<span class="lineno">  339 </span><span class="spaces"></span><span class="istickedoff">assignFrag BOOL_Ty expr = <span class="nottickedoff">&quot;  gl_FragColor.rgb = &quot; ++ expr ++ &quot;;\n  gl_FragColor.a = 1.0;\n&quot;</span></span>
+<span class="lineno">  340 </span><span class="spaces"></span><span class="istickedoff">assignFrag UI_Ty expr = &quot;  gl_FragColor.r = &quot; ++ expr ++ &quot;;\n  gl_FragColor.a = 1.0;\n&quot;</span>
+<span class="lineno">  341 </span><span class="spaces"></span><span class="istickedoff">assignFrag other expr = <span class="nottickedoff">error $ show (&quot;assignFrag&quot;,other,expr)</span></span></span>
+<span class="lineno">  342 </span>--
+<span class="lineno">  343 </span>-- Fmap works by basically handling conversions between all the supported types
+<span class="lineno">  344 </span>-- then figuring out what the *code* is secondly.
+<span class="lineno">  345 </span>
+<span class="lineno">  346 </span>
+<span class="lineno">  347 </span>prelude :: String
+<span class="lineno">  348 </span><span class="decl"><span class="istickedoff">prelude = unlines</span>
+<span class="lineno">  349 </span><span class="spaces">        </span><span class="istickedoff">[ &quot;vec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }&quot;</span>
+<span class="lineno">  350 </span><span class="spaces">        </span><span class="istickedoff">, &quot;vec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * x.a; }&quot; </span>
+<span class="lineno">  351 </span><span class="spaces">        </span><span class="istickedoff">, &quot;vec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }&quot; </span>
+<span class="lineno">  352 </span><span class="spaces">        </span><span class="istickedoff">, &quot;vec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }&quot;</span>
+<span class="lineno">  353 </span><span class="spaces">        </span><span class="istickedoff">, &quot;vec4 cb_WithMaskUI(float c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 0.0); }&quot; </span>
+<span class="lineno">  354 </span><span class="spaces">        </span><span class="istickedoff">, &quot;float cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }&quot;</span>
+<span class="lineno">  355 </span><span class="spaces">        </span><span class="istickedoff">, &quot;vec4 cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }&quot; -- could reuse cb_WithMaskRGB</span>
+<span class="lineno">  356 </span><span class="spaces">        </span><span class="istickedoff">]</span></span>
+<span class="lineno">  357 </span>
+<span class="lineno">  358 </span>-- TODO: The good thing about a boolean argument is that it can only have two possible values.
+<span class="lineno">  359 </span>compileBoardFmap :: BoardContext -&gt; Target -&gt; E -&gt; Board a -&gt; [([Path],ExprType)] -&gt; ExprType -&gt; IO [Inst Int]
+<span class="lineno">  360 </span>--compileBoardFmap bc t (E RGBA_Ty f) other argTypes resTy 
+<span class="lineno">  361 </span>--      | trace (show (&quot;compileBoardFmap (RGBA-&gt;RGBA)&quot;,f,bc,t,other,argTypes,resTy)) False = undefined
+<span class="lineno">  362 </span><span class="decl"><span class="istickedoff">compileBoardFmap bc t (E _ty f) other argTypes resTy = do       </span>
+<span class="lineno">  363 </span><span class="spaces">        </span><span class="istickedoff">(insts,idMap) &lt;- compileFmapArgs bc <span class="nottickedoff">t</span> other argTypes</span>
+<span class="lineno">  364 </span><span class="spaces">        </span><span class="istickedoff">let env = Map.fromList [ (path,&quot;cb_sampler&quot; ++ show n) | ((_,path),n) &lt;- zip idMap [(0::Int)..]]</span>
+<span class="lineno">  365 </span><span class="spaces">        </span><span class="istickedoff">let expr = compileFmapFun env f resTy  </span>
+<span class="lineno">  366 </span><span class="spaces">        </span><span class="istickedoff">let (x0,x1,y0,y1) = (0,1,0,1) </span>
+<span class="lineno">  367 </span><span class="spaces">        </span><span class="istickedoff">let fn = </span>
+<span class="lineno">  368 </span><span class="spaces">                </span><span class="istickedoff">unlines [ &quot;uniform sampler2D cb_sampler&quot; ++ show n ++ &quot;;&quot; | (_,n) &lt;- zip idMap [(0::Int)..]] ++</span>
+<span class="lineno">  369 </span><span class="spaces">                </span><span class="istickedoff">prelude ++</span>
+<span class="lineno">  370 </span><span class="spaces">                </span><span class="istickedoff">&quot;void main(void) {\n&quot; ++</span>
+<span class="lineno">  371 </span><span class="spaces">                </span><span class="istickedoff">assignFrag resTy expr ++</span>
+<span class="lineno">  372 </span><span class="spaces">                </span><span class="istickedoff">&quot;}\n&quot;</span>
+<span class="lineno">  373 </span><span class="spaces"></span><span class="istickedoff">{-</span>
+<span class="lineno">  374 </span><span class="spaces">        </span><span class="istickedoff">fn' &lt;- if length fn == 1688 then do</span>
+<span class="lineno">  375 </span><span class="spaces">                   </span><span class="istickedoff">print &quot;replacing ...&quot;</span>
+<span class="lineno">  376 </span><span class="spaces">                   </span><span class="istickedoff">fn &lt;- readFile &quot;XX&quot; </span>
+<span class="lineno">  377 </span><span class="spaces">                   </span><span class="istickedoff">print fn</span>
+<span class="lineno">  378 </span><span class="spaces">                   </span><span class="istickedoff">return fn</span>
+<span class="lineno">  379 </span><span class="spaces">                 </span><span class="istickedoff">else return $ fn</span>
+<span class="lineno">  380 </span><span class="spaces">        </span><span class="istickedoff">let fn = fn'</span>
+<span class="lineno">  381 </span><span class="spaces"></span><span class="istickedoff">-}</span>
+<span class="lineno">  382 </span><span class="spaces"></span><span class="istickedoff">--      putStrLn &quot;----------&quot;</span>
+<span class="lineno">  383 </span><span class="spaces"></span><span class="istickedoff">--      putStrLn fn</span>
+<span class="lineno">  384 </span><span class="spaces"></span><span class="istickedoff">--      putStrLn &quot;----------&quot;</span>
+<span class="lineno">  385 </span><span class="spaces">        </span><span class="istickedoff">newFrag &lt;- newNumber</span>
+<span class="lineno">  386 </span><span class="spaces">        </span><span class="istickedoff">return $ insts ++</span>
+<span class="lineno">  387 </span><span class="spaces">                 </span><span class="istickedoff">[ AllocFragmentShader newFrag fn <span class="nottickedoff">[]</span></span>
+<span class="lineno">  388 </span><span class="spaces">                 </span><span class="istickedoff">, Splat (bcDest bc)</span>
+<span class="lineno">  389 </span><span class="spaces">                         </span><span class="istickedoff">(bcBlend bc)</span>
+<span class="lineno">  390 </span><span class="spaces">                         </span><span class="istickedoff">(SplatFunction' newFrag </span>
+<span class="lineno">  391 </span><span class="spaces">                                </span><span class="istickedoff">[ (&quot;cb_sampler&quot; ++ show n,bid) | ((bid,_),n) &lt;- zip idMap [(0::Int)..]]</span>
+<span class="lineno">  392 </span><span class="spaces">                                </span><span class="istickedoff">[]</span>
+<span class="lineno">  393 </span><span class="spaces">                                </span><span class="istickedoff">[ (x,y) | (x,y) &lt;- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]])</span>
+<span class="lineno">  394 </span><span class="spaces">                 </span><span class="istickedoff">, Delete newFrag     -- really should cache these</span>
+<span class="lineno">  395 </span><span class="spaces">                 </span><span class="istickedoff">] ++</span>
+<span class="lineno">  396 </span><span class="spaces">                 </span><span class="istickedoff">[ Delete bId | bId &lt;- List.nub (map fst idMap) ]</span>
+<span class="lineno">  397 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  398 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  399 </span><span class="spaces"></span><span class="istickedoff">{-</span>
+<span class="lineno">  400 </span><span class="spaces">                </span><span class="istickedoff">++ create_Boards</span>
+<span class="lineno">  401 </span><span class="spaces">                </span><span class="istickedoff">++ concat fill_Boards_RGB</span>
+<span class="lineno">  402 </span><span class="spaces">                </span><span class="istickedoff">++ concat fill_Boards_Bool</span>
+<span class="lineno">  403 </span><span class="spaces">                </span><span class="istickedoff">++ concat fill_Boards_UI</span>
+<span class="lineno">  404 </span><span class="spaces">                </span><span class="istickedoff">++ [ SplatWithFunction newFrag </span>
+<span class="lineno">  405 </span><span class="spaces">                                </span><span class="istickedoff">[ (nm,brdId) </span>
+<span class="lineno">  406 </span><span class="spaces">                                </span><span class="istickedoff">| (nm,brdId) &lt;- zip (map Prelude.fst boards_RGB ++ map Prelude.fst boards_Bool  ++ map Prelude.fst boards_UI)</span>
+<span class="lineno">  407 </span><span class="spaces">                                                    </span><span class="istickedoff">(num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI)</span>
+<span class="lineno">  408 </span><span class="spaces">                                </span><span class="istickedoff">]</span>
+<span class="lineno">  409 </span><span class="spaces">                                </span><span class="istickedoff">vargs</span>
+<span class="lineno">  410 </span><span class="spaces">                                </span><span class="istickedoff">(bcDest bc) </span>
+<span class="lineno">  411 </span><span class="spaces">                                </span><span class="istickedoff">[PointMap (x,y) (x,y) | (x,y) &lt;- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]</span>
+<span class="lineno">  412 </span><span class="spaces">                   </span><span class="istickedoff">]</span>
+<span class="lineno">  413 </span><span class="spaces">                </span><span class="istickedoff">++ delete_Boards</span>
+<span class="lineno">  414 </span><span class="spaces"></span><span class="istickedoff">-}</span>
+<span class="lineno">  415 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  416 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  417 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  418 </span><span class="spaces"></span><span class="istickedoff">-- Abort!</span>
+<span class="lineno">  419 </span><span class="spaces"></span><span class="istickedoff">compileBoardFmap bc t _ other argTy resTy = <span class="nottickedoff">error $ show (&quot;compileBoardFmap&quot;,bc,t,other,argTy,resTy)</span></span></span>
+<span class="lineno">  420 </span>
+<span class="lineno">  421 </span>
+<span class="lineno">  422 </span>pushBack :: E -&gt; Maybe E
+<span class="lineno">  423 </span><span class="decl"><span class="nottickedoff">pushBack (E RGBA_Ty (Choose a b c)) = do</span>
+<span class="lineno">  424 </span><span class="spaces">        </span><span class="nottickedoff">a' &lt;- pushBack a</span>
+<span class="lineno">  425 </span><span class="spaces">        </span><span class="nottickedoff">b' &lt;- pushBack b</span>
+<span class="lineno">  426 </span><span class="spaces">        </span><span class="nottickedoff">return $ E RGBA_Ty $ Choose a' b' c</span>
+<span class="lineno">  427 </span><span class="spaces"></span><span class="nottickedoff">--pushBack </span>
+<span class="lineno">  428 </span><span class="spaces"></span><span class="nottickedoff">pushBack other = error $ show (&quot;pushBack&quot;,other)</span></span>
+<span class="lineno">  429 </span>
+<span class="lineno">  430 </span>
+<span class="lineno">  431 </span>-- TODO: Add Target_Maybe_RGB here
+<span class="lineno">  432 </span>-- use this to check if you can fmap over the Bool
+<span class="lineno">  433 </span>--goodToFmapBool [([],BOOL_Ty)] (Target_RGBA Blend) (Just (E _ (O_RGBA (RGBA _ _ _ 1)))) (Just (E _ (O_RGBA (RGBA _ _ _ 0)))) = True -- to: RM
+<span class="lineno">  434 </span>--goodToFmapBool [([],BOOL_Ty)] (Target_RGB) (Just (E _ (O_RGB {}))) (Just (E _ (O_RGB (RGB {})))) = True
+<span class="lineno">  435 </span>goodToFmapBool :: t -&gt; t1 -&gt; t2 -&gt; t3 -&gt; Bool
+<span class="lineno">  436 </span><span class="decl"><span class="nottickedoff">goodToFmapBool _ _ _ _ = False</span></span>
+<span class="lineno">  437 </span>
+<span class="lineno">  438 </span>{-
+<span class="lineno">  439 </span>compileBoardFmapBool bc t@(Target_RGBA Blend) 
+<span class="lineno">  440 </span>               (Just (E _ (O_RGBA (RGBA r g b 1))))
+<span class="lineno">  441 </span>               (Just (E _ (O_RGBA (RGBA _ _ _ 0))))   -- the background *better* be transparent.
+<span class="lineno">  442 </span>               other argTypes resTy = do
+<span class="lineno">  443 </span>        compileBoard2 bc (Target_Bool (RGB r g b)) other
+<span class="lineno">  444 </span>compileBoardFmapBool bc t@(Target_RGB) 
+<span class="lineno">  445 </span>               (Just (E _ (O_RGB tCol)))
+<span class="lineno">  446 </span>               (Just (E _ (O_RGB fCol@(RGB r g b))))
+<span class="lineno">  447 </span>               other argTypes resTy = do
+<span class="lineno">  448 </span>                     insts &lt;- compileBoard2 bc (Target_Bool tCol) other
+<span class="lineno">  449 </span>                     return $ [ Splat (bcDest bc)
+<span class="lineno">  450 </span>                                      Copy 
+<span class="lineno">  451 </span>                                      (SplatColor' (RGBA r g b 1) [(0,0),(1,0),(1,1),(0,1)])
+<span class="lineno">  452 </span>                           ] ++ insts
+<span class="lineno">  453 </span>compileBoardFmapBool bc t tr fa other argTypes resTy = do
+<span class="lineno">  454 </span>        error $ &quot;Found fmap over (Board Bool) (perhaps non transparent background?) &quot; ++ show (t,tr,fa)
+<span class="lineno">  455 </span>-}
+<span class="lineno">  456 </span>        
+<span class="lineno">  457 </span>
+<span class="lineno">  458 </span>-- It is the responsability of the caller to unallocate the returned bufferids.
+<span class="lineno">  459 </span>compileFmapArgs :: BoardContext -&gt; Target -&gt; Board a -&gt; [([Path],ExprType)] -&gt; IO ([Inst Int],[(BufferId,[Path])])
+<span class="lineno">  460 </span>--compileFmapArgs bc brd tyMap | trace (show (&quot;compileFmapArgs&quot;,bc,brd,tyMap)) False = undefined
+<span class="lineno">  461 </span><span class="decl"><span class="istickedoff">compileFmapArgs bc t (Board _ (Zip b1 b2)) ty | <span class="tickonlytrue">not (null ty)</span> = do</span>
+<span class="lineno">  462 </span><span class="spaces">        </span><span class="istickedoff">(insts1,mp1) &lt;- compileFmapArgs bc <span class="nottickedoff">t</span> b1 [ (p,t') | (Expr.GoLeft:p,t') &lt;- ty ]</span>
+<span class="lineno">  463 </span><span class="spaces">        </span><span class="istickedoff">(insts2,mp2) &lt;- compileFmapArgs bc <span class="nottickedoff">t</span> b2 [ (p,t') | (Expr.GoRight:p,t') &lt;- ty ]</span>
+<span class="lineno">  464 </span><span class="spaces">        </span><span class="istickedoff">return $ (insts1 ++ insts2, </span>
+<span class="lineno">  465 </span><span class="spaces">                  </span><span class="istickedoff">[ (bid,Expr.GoLeft:p) | (bid,p) &lt;- mp1 ] ++</span>
+<span class="lineno">  466 </span><span class="spaces">                  </span><span class="istickedoff">[ (bid,Expr.GoRight:p) | (bid,p) &lt;- mp2 ]</span>
+<span class="lineno">  467 </span><span class="spaces">                 </span><span class="istickedoff">)</span>
+<span class="lineno">  468 </span><span class="spaces"></span><span class="istickedoff">compileFmapArgs _ _ (Board _ (Zip {})) ty = <span class="nottickedoff">error $ &quot;found zip of boards, without zip types&quot; ++ show ty</span></span>
+<span class="lineno">  469 </span><span class="spaces"></span><span class="istickedoff">compileFmapArgs bc _ brd [([],ty)] = do</span>
+<span class="lineno">  470 </span><span class="spaces">        </span><span class="istickedoff">-- Otherwise, we allocate a board, construct it, and pass it back.</span>
+<span class="lineno">  471 </span><span class="spaces">        </span><span class="istickedoff">(rest,bid) &lt;- allocAndCompileBoard bc ty brd</span>
+<span class="lineno">  472 </span><span class="spaces">        </span><span class="istickedoff">return (rest,[(bid,[])])</span>
+<span class="lineno">  473 </span><span class="spaces"></span><span class="istickedoff">compileFmapArgs bc t brd tyMap = <span class="nottickedoff">error $ show (&quot;compileFmapArgs&quot;,bc,t,brd,tyMap)</span></span></span>
+<span class="lineno">  474 </span>
+<span class="lineno">  475 </span>allocAndCompileBoard
+<span class="lineno">  476 </span>        :: BoardContext               -- ignore the bcDest
+<span class="lineno">  477 </span>        -&gt; ExprType       -- should this be the target type????
+<span class="lineno">  478 </span>        -&gt; Board a
+<span class="lineno">  479 </span>        -&gt; IO ([CBIR.Inst Int],BufferId)
+<span class="lineno">  480 </span><span class="decl"><span class="istickedoff">allocAndCompileBoard bc RGB_Ty brd = do</span>
+<span class="lineno">  481 </span><span class="spaces">        </span><span class="istickedoff">newBoard &lt;- newNumber</span>
+<span class="lineno">  482 </span><span class="spaces">        </span><span class="istickedoff">rest &lt;- compileBoard2 (bc { bcDest = newBoard }) Target_RGB brd</span>
+<span class="lineno">  483 </span><span class="spaces">        </span><span class="istickedoff">return ( [ Nested <span class="nottickedoff">(&quot;alloc RGB_Ty&quot;)</span> $</span>
+<span class="lineno">  484 </span><span class="spaces">                          </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">  485 </span><span class="spaces">                                </span><span class="istickedoff">newBoard        -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  486 </span><span class="spaces">                                </span><span class="istickedoff">(bcSize bc)      -- tiny board</span>
+<span class="lineno">  487 </span><span class="spaces">                                </span><span class="istickedoff">RGB24Depth          -- depth of buffer       </span>
+<span class="lineno">  488 </span><span class="spaces">                                </span><span class="istickedoff">(BackgroundRGB24Depth (RGB 1 1 1))</span>
+<span class="lineno">  489 </span><span class="spaces">                          </span><span class="istickedoff">] ++ rest</span>
+<span class="lineno">  490 </span><span class="spaces">                </span><span class="istickedoff">], newBoard )</span>
+<span class="lineno">  491 </span><span class="spaces"></span><span class="istickedoff">-- TODO: we need to somehome pass in the backing color here.</span>
+<span class="lineno">  492 </span><span class="spaces"></span><span class="istickedoff">-- the only time we need </span>
+<span class="lineno">  493 </span><span class="spaces"></span><span class="istickedoff">allocAndCompileBoard bc RGBA_Ty brd = do</span>
+<span class="lineno">  494 </span><span class="spaces">        </span><span class="istickedoff">newBoard &lt;- newNumber</span>
+<span class="lineno">  495 </span><span class="spaces">        </span><span class="istickedoff">rest &lt;- compileBoard2 (bc { bcDest = newBoard }) Target_RGBA brd       -- TODO: could this be Blend???</span>
+<span class="lineno">  496 </span><span class="spaces">        </span><span class="istickedoff">return ( [ Nested <span class="nottickedoff">(&quot;alloc RGBA_Ty&quot;)</span> $</span>
+<span class="lineno">  497 </span><span class="spaces">                          </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">  498 </span><span class="spaces">                                </span><span class="istickedoff">newBoard        -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  499 </span><span class="spaces">                                </span><span class="istickedoff">(bcSize bc)      -- tiny board</span>
+<span class="lineno">  500 </span><span class="spaces">                                </span><span class="istickedoff">RGBADepth          -- depth of buffer        </span>
+<span class="lineno">  501 </span><span class="spaces">                                </span><span class="istickedoff">(BackgroundRGBADepth (RGBA 0 0 0 1))</span>
+<span class="lineno">  502 </span><span class="spaces">                          </span><span class="istickedoff">, copyBoard (bcDest bc) newBoard </span>
+<span class="lineno">  503 </span><span class="spaces">                          </span><span class="istickedoff">] ++ rest</span>
+<span class="lineno">  504 </span><span class="spaces">                </span><span class="istickedoff">], newBoard )</span>
+<span class="lineno">  505 </span><span class="spaces"></span><span class="istickedoff">allocAndCompileBoard bc (Maybe_Ty UI_Ty) brd = do</span>
+<span class="lineno">  506 </span><span class="spaces">        </span><span class="istickedoff">newBoard &lt;- newNumber</span>
+<span class="lineno">  507 </span><span class="spaces">        </span><span class="istickedoff">rest &lt;- compileBoard2 (bc { bcDest = newBoard }) (Target_Maybe_UI) brd -- TODO: could this be Blend???</span>
+<span class="lineno">  508 </span><span class="spaces">        </span><span class="istickedoff">return ( [ Nested <span class="nottickedoff">(&quot;alloc (Maybe_Ty RGB_Ty)&quot;)</span> $</span>
+<span class="lineno">  509 </span><span class="spaces">                          </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">  510 </span><span class="spaces">                                </span><span class="istickedoff">newBoard        -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  511 </span><span class="spaces">                                </span><span class="istickedoff">(bcSize bc)      -- tiny board</span>
+<span class="lineno">  512 </span><span class="spaces">                                </span><span class="istickedoff">RGBADepth          -- depth of buffer        </span>
+<span class="lineno">  513 </span><span class="spaces">                                </span><span class="istickedoff">(BackgroundRGBADepth (RGBA 0 0 0 0))</span>
+<span class="lineno">  514 </span><span class="spaces">                          </span><span class="istickedoff">] ++ rest</span>
+<span class="lineno">  515 </span><span class="spaces">                </span><span class="istickedoff">], newBoard )</span>
+<span class="lineno">  516 </span><span class="spaces"></span><span class="istickedoff">allocAndCompileBoard bc (Maybe_Ty RGB_Ty) brd = do</span>
+<span class="lineno">  517 </span><span class="spaces">        </span><span class="istickedoff">newBoard &lt;- newNumber</span>
+<span class="lineno">  518 </span><span class="spaces">        </span><span class="istickedoff">rest &lt;- compileBoard2 (bc { bcDest = newBoard }) (Target_Maybe_RGB) brd</span>
+<span class="lineno">  519 </span><span class="spaces">        </span><span class="istickedoff">return ( [ Nested <span class="nottickedoff">(&quot;alloc RGBA_Ty&quot;)</span> $</span>
+<span class="lineno">  520 </span><span class="spaces">                          </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">  521 </span><span class="spaces">                                </span><span class="istickedoff">newBoard        -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  522 </span><span class="spaces">                                </span><span class="istickedoff">(bcSize bc)      -- tiny board</span>
+<span class="lineno">  523 </span><span class="spaces">                                </span><span class="istickedoff">RGBADepth          -- depth of buffer        </span>
+<span class="lineno">  524 </span><span class="spaces">                                </span><span class="istickedoff">(BackgroundRGBADepth (RGBA 0 0 0 0)) -- default Nothing</span>
+<span class="lineno">  525 </span><span class="spaces">                          </span><span class="istickedoff">] ++ rest</span>
+<span class="lineno">  526 </span><span class="spaces">                </span><span class="istickedoff">], newBoard )</span>
+<span class="lineno">  527 </span><span class="spaces"></span><span class="istickedoff">allocAndCompileBoard bc BOOL_Ty brd = do</span>
+<span class="lineno">  528 </span><span class="spaces">        </span><span class="istickedoff">newBoard &lt;- newNumber</span>
+<span class="lineno">  529 </span><span class="spaces">        </span><span class="istickedoff">rest &lt;- compileBoard2 (bc { bcDest = newBoard }) (Target_Bool (RGB 1.0 1.0 1.0)) brd</span>
+<span class="lineno">  530 </span><span class="spaces">        </span><span class="istickedoff">return ( [ Nested <span class="nottickedoff">(&quot;alloc BOOL_Ty&quot;)</span> $</span>
+<span class="lineno">  531 </span><span class="spaces">                          </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">  532 </span><span class="spaces">                                </span><span class="istickedoff">newBoard        -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  533 </span><span class="spaces">                                </span><span class="istickedoff">(bcSize bc)      -- tiny board</span>
+<span class="lineno">  534 </span><span class="spaces">                                </span><span class="istickedoff">RGB24Depth          -- depth of buffer       </span>
+<span class="lineno">  535 </span><span class="spaces">                                </span><span class="istickedoff">(BackgroundRGB24Depth (RGB 0 0 0))</span>
+<span class="lineno">  536 </span><span class="spaces">                          </span><span class="istickedoff">] ++ rest</span>
+<span class="lineno">  537 </span><span class="spaces">                </span><span class="istickedoff">], newBoard )</span>
+<span class="lineno">  538 </span><span class="spaces"></span><span class="istickedoff">allocAndCompileBoard bc UI_Ty brd = do</span>
+<span class="lineno">  539 </span><span class="spaces">        </span><span class="istickedoff">newBoard &lt;- newNumber</span>
+<span class="lineno">  540 </span><span class="spaces">        </span><span class="istickedoff">rest &lt;- compileBoard2 (bc { bcDest = newBoard }) (Target_UI) brd</span>
+<span class="lineno">  541 </span><span class="spaces">        </span><span class="istickedoff">return ( [ Nested <span class="nottickedoff">(&quot;alloc UI_Ty&quot;)</span> $</span>
+<span class="lineno">  542 </span><span class="spaces">                          </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">  543 </span><span class="spaces">                                </span><span class="istickedoff">newBoard        -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  544 </span><span class="spaces">                                </span><span class="istickedoff">(bcSize bc)      -- tiny board</span>
+<span class="lineno">  545 </span><span class="spaces">                                </span><span class="istickedoff">RGB24Depth          -- depth of buffer       </span>
+<span class="lineno">  546 </span><span class="spaces">                                </span><span class="istickedoff">(BackgroundRGB24Depth (RGB 0 0 0))</span>
+<span class="lineno">  547 </span><span class="spaces">                          </span><span class="istickedoff">] ++ rest</span>
+<span class="lineno">  548 </span><span class="spaces">                </span><span class="istickedoff">], newBoard )</span>
+<span class="lineno">  549 </span><span class="spaces"></span><span class="istickedoff">allocAndCompileBoard bc ty brd = <span class="nottickedoff">error $ show (&quot;allocAndCompileBoard&quot;,bc,ty,brd)</span></span></span>
+<span class="lineno">  550 </span>
+<span class="lineno">  551 </span>-- what a hack! Compiles our Expr language into GLSL.
+<span class="lineno">  552 </span>compileFmapFun :: Map [Path] String -&gt; Expr E -&gt; ExprType -&gt; String
+<span class="lineno">  553 </span><span class="decl"><span class="istickedoff">compileFmapFun env (Choose e1 e2 e3) ty =</span>
+<span class="lineno">  554 </span><span class="spaces">              </span><span class="istickedoff">&quot;\nmix(&quot; ++ compileFmapFunE env e2 <span class="nottickedoff">ty</span> ++ &quot;,&quot; ++</span>
+<span class="lineno">  555 </span><span class="spaces">                        </span><span class="istickedoff">compileFmapFunE env e1 <span class="nottickedoff">ty</span> ++ &quot;,&quot; ++</span>
+<span class="lineno">  556 </span><span class="spaces">                 </span><span class="istickedoff">&quot;(&quot; ++ compileFmapFunE env e3 <span class="nottickedoff">BOOL_Ty</span> ++ &quot;) ? 1.0 : 0.0)\n&quot;;</span>
+<span class="lineno">  557 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (Mix e1 e2 e3) ty =</span>
+<span class="lineno">  558 </span><span class="spaces">              </span><span class="istickedoff">&quot;\nmix(&quot; ++ compileFmapFunE <span class="nottickedoff">env</span> e1 <span class="nottickedoff">ty</span> ++ &quot;,&quot; ++</span>
+<span class="lineno">  559 </span><span class="spaces">                        </span><span class="istickedoff">compileFmapFunE <span class="nottickedoff">env</span> e2 <span class="nottickedoff">ty</span> ++ &quot;,&quot; ++</span>
+<span class="lineno">  560 </span><span class="spaces">                        </span><span class="istickedoff">compileFmapFunE env e3 <span class="nottickedoff">UI_Ty</span> ++ &quot;)\n&quot;;</span>
+<span class="lineno">  561 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env v@(Var path) ty =</span>
+<span class="lineno">  562 </span><span class="spaces">        </span><span class="istickedoff">case Map.lookup path env of</span>
+<span class="lineno">  563 </span><span class="spaces">          </span><span class="istickedoff">Just varName -&gt; coerce (&quot;texture2D(&quot; ++ varName ++ &quot;,gl_TexCoord[0].st)&quot;)</span>
+<span class="lineno">  564 </span><span class="spaces">          </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">error $ &quot;Can not find Var &quot; ++ show v</span></span>
+<span class="lineno">  565 </span><span class="spaces">  </span><span class="istickedoff">where coerce txt = case ty of</span>
+<span class="lineno">  566 </span><span class="spaces">                       </span><span class="istickedoff">BOOL_Ty -&gt; &quot;(&quot; ++ txt ++ &quot;).r &gt; 0.5&quot;</span>
+<span class="lineno">  567 </span><span class="spaces">                       </span><span class="istickedoff">UI_Ty   -&gt; &quot;(&quot; ++ txt ++ &quot;).r&quot;</span>
+<span class="lineno">  568 </span><span class="spaces">                       </span><span class="istickedoff">RGB_Ty  -&gt;  &quot;(&quot; ++ txt ++ &quot;).rgb&quot;</span>
+<span class="lineno">  569 </span><span class="spaces"></span><span class="istickedoff">--                  RGBA_Ty -&gt; error &quot;can not directly access RGBA&quot;</span>
+<span class="lineno">  570 </span><span class="spaces">                       </span><span class="istickedoff">_       -&gt; txt</span>
+<span class="lineno">  571 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun _ (O_Bool True) BOOL_Ty = <span class="nottickedoff">&quot;true&quot;</span>;</span>
+<span class="lineno">  572 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun _ (O_Bool False) BOOL_Ty = <span class="nottickedoff">&quot;false&quot;</span>;</span>
+<span class="lineno">  573 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun _ (O_RGB (RGB r g b)) RGB_Ty =</span>
+<span class="lineno">  574 </span><span class="spaces">                </span><span class="istickedoff">&quot;vec3(&quot; ++ show r ++ &quot;,&quot; ++</span>
+<span class="lineno">  575 </span><span class="spaces">                           </span><span class="istickedoff">show g ++ &quot;,&quot; ++</span>
+<span class="lineno">  576 </span><span class="spaces">                           </span><span class="istickedoff">show b ++ &quot;)&quot;             </span>
+<span class="lineno">  577 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (Alpha v e) RGBA_Ty =</span>
+<span class="lineno">  578 </span><span class="spaces">        </span><span class="istickedoff">&quot;cb_Alpha(&quot; ++ compileFmapFunE' <span class="nottickedoff">env</span> v ++ &quot;,&quot; ++ compileFmapFunE <span class="nottickedoff">env</span> e <span class="nottickedoff">RGB_Ty</span> ++ &quot;)&quot;</span>
+<span class="lineno">  579 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (WithMask e1 e2) (Maybe_Ty RGB_Ty) =</span>
+<span class="lineno">  580 </span><span class="spaces">        </span><span class="istickedoff">&quot;cb_WithMaskRGB(&quot; ++ compileFmapFunE <span class="nottickedoff">env</span> e1 <span class="nottickedoff">RGB_Ty</span>  ++ &quot;,&quot; ++ compileFmapFunE env e2 <span class="nottickedoff">BOOL_Ty</span> ++ &quot;)&quot;</span>
+<span class="lineno">  581 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (WithMask e1 e2) (Maybe_Ty UI_Ty) =</span>
+<span class="lineno">  582 </span><span class="spaces">        </span><span class="istickedoff">&quot;cb_WithMaskUI(&quot; ++ compileFmapFunE <span class="nottickedoff">env</span> e1 <span class="nottickedoff">UI_Ty</span>  ++ &quot;,&quot; ++ compileFmapFunE env e2 <span class="nottickedoff">BOOL_Ty</span> ++ &quot;)&quot;</span>
+<span class="lineno">  583 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (WithDefault e1 e2) RGB_Ty =</span>
+<span class="lineno">  584 </span><span class="spaces">        </span><span class="istickedoff">&quot;cb_WithDefaultRGB(&quot; ++ compileFmapFunE <span class="nottickedoff">env</span> e1 <span class="nottickedoff">RGB_Ty</span>  ++ &quot;,&quot; ++ compileFmapFunE env e2 <span class="nottickedoff">(Maybe_Ty RGB_Ty)</span> ++ &quot;)&quot;</span>
+<span class="lineno">  585 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (WithDefault e1 e2) UI_Ty =</span>
+<span class="lineno">  586 </span><span class="spaces">        </span><span class="istickedoff">&quot;cb_WithDefaultUI(&quot; ++ compileFmapFunE <span class="nottickedoff">env</span> e1 <span class="nottickedoff">UI_Ty</span>  ++ &quot;,&quot; ++ compileFmapFunE env e2 <span class="nottickedoff">(Maybe_Ty UI_Ty)</span> ++ &quot;)&quot;</span>
+<span class="lineno">  587 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun _ (Lit v) UI_Ty = show v</span>
+<span class="lineno">  588 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  589 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (NOT e) BOOL_Ty =</span>
+<span class="lineno">  590 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;!(&quot; ++ compileFmapFunE env e BOOL_Ty ++ &quot;)&quot;</span></span>
+<span class="lineno">  591 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (EQUAL e1 e2) BOOL_Ty = </span>
+<span class="lineno">  592 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;(&quot; ++ compileFmapFunE env e1 (error &quot;XX&quot;) ++ </span></span>
+<span class="lineno">  593 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">&quot;) == (&quot; ++ compileFmapFunE env e2 (error &quot;XX&quot;) ++ </span></span>
+<span class="lineno">  594 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">&quot;)&quot;</span></span>
+<span class="lineno">  595 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (IsJust e1@(E (Maybe_Ty UI_Ty) _)) BOOL_Ty = </span>
+<span class="lineno">  596 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;(&quot; ++ compileFmapFunE' env e1 ++ &quot;).a &gt; 0.5&quot;</span> </span>
+<span class="lineno">  597 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (IsJust e1@(E (Maybe_Ty RGB_Ty) _)) BOOL_Ty =</span>
+<span class="lineno">  598 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;(&quot; ++ compileFmapFunE' env e1 ++ &quot;).a &gt; 0.5&quot;</span> </span>
+<span class="lineno">  599 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (UnJust e1) UI_Ty =</span>
+<span class="lineno">  600 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;(&quot; ++ compileFmapFunE' env e1 ++ &quot;).r&quot;</span> </span>
+<span class="lineno">  601 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (UnJust e1) RGB_Ty =</span>
+<span class="lineno">  602 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;(&quot; ++ compileFmapFunE' env e1 ++ &quot;).rgb&quot;</span> </span>
+<span class="lineno">  603 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (O_Just e1) (Maybe_Ty UI_Ty) =</span>
+<span class="lineno">  604 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;vec4(&quot; ++ compileFmapFunE' env e1 ++ &quot;,0.0,0.0,1.0)&quot;</span></span>
+<span class="lineno">  605 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env (O_Just e1) (Maybe_Ty RGB_Ty) =</span>
+<span class="lineno">  606 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;cb_Just_RGB(&quot; ++ compileFmapFunE' env e1 ++ &quot;)&quot;</span></span>
+<span class="lineno">  607 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun _ (O_Nothing) (Maybe_Ty UI_Ty) = <span class="nottickedoff">&quot;vec4(0.0,0.0,0.0,0.0)&quot;</span></span>
+<span class="lineno">  608 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun _ (O_Nothing) (Maybe_Ty RGB_Ty) = <span class="nottickedoff">&quot;vec4(0.0,0.0,0.0,0.0)&quot;</span></span>
+<span class="lineno">  609 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  610 </span><span class="spaces"></span><span class="istickedoff">compileFmapFun env e ty = <span class="nottickedoff">error $ show (&quot;compileFmapFun&quot;,env,e,ty)</span></span></span>
+<span class="lineno">  611 </span>
+<span class="lineno">  612 </span>
+<span class="lineno">  613 </span>-- Ha! Can use internal ty.
+<span class="lineno">  614 </span>compileFmapFunE :: Map [Path] String -&gt; E -&gt; t -&gt; String
+<span class="lineno">  615 </span><span class="decl"><span class="istickedoff">compileFmapFunE env (E ty' e) _ = compileFmapFun env e ty'</span></span>
+<span class="lineno">  616 </span>
+<span class="lineno">  617 </span>compileFmapFunE' :: Map [Path] String -&gt; E -&gt; String
+<span class="lineno">  618 </span><span class="decl"><span class="istickedoff">compileFmapFunE' env (E ty' e) = compileFmapFun <span class="nottickedoff">env</span> e ty'</span></span>
+<span class="lineno">  619 </span>
+<span class="lineno">  620 </span>
+<span class="lineno">  621 </span>compileBufferOnBoard :: BoardContext -&gt; Target -&gt; Buffer t -&gt; Board a -&gt; IO [Inst Int]
+<span class="lineno">  622 </span><span class="decl"><span class="istickedoff">compileBufferOnBoard bc t (Buffer _ low@(x0,y0) high@(x1,y1) buffer') brd = do</span>
+<span class="lineno">  623 </span><span class="spaces">        </span><span class="istickedoff">insts1          &lt;- compileBoard2 bc t brd</span>
+<span class="lineno">  624 </span><span class="spaces">        </span><span class="istickedoff">(insts2,buffId) &lt;- compileBuffer2 t low high buffer'</span>
+<span class="lineno">  625 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  626 </span><span class="spaces"></span><span class="istickedoff">--      let (x,y) = bcSize bc</span>
+<span class="lineno">  627 </span><span class="spaces">        </span><span class="istickedoff">-- TODO!</span>
+<span class="lineno">  628 </span><span class="spaces">        </span><span class="istickedoff">-- really, this is about 0 and 1, not x and y.</span>
+<span class="lineno">  629 </span><span class="spaces">        </span><span class="istickedoff">let mv0 = Scale (fromIntegral (1 + x1-x0) / 1,</span>
+<span class="lineno">  630 </span><span class="spaces">                        </span><span class="istickedoff">fromIntegral (1 + y1-y0) / 1)</span>
+<span class="lineno">  631 </span><span class="spaces">        </span><span class="istickedoff">let mv1 = Move (fromIntegral x0,fromIntegral y0)                  </span>
+<span class="lineno">  632 </span><span class="spaces">        </span><span class="istickedoff">let tr = bcTrans (updateTrans mv0 $ updateTrans mv1 bc)</span>
+<span class="lineno">  633 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  634 </span><span class="spaces">        </span><span class="istickedoff">return $ </span>
+<span class="lineno">  635 </span><span class="spaces">                </span><span class="istickedoff">[ Nested <span class="nottickedoff">&quot;buffer inside board (...)&quot;</span> $</span>
+<span class="lineno">  636 </span><span class="spaces">                        </span><span class="istickedoff">insts1 ++ insts2 ++ </span>
+<span class="lineno">  637 </span><span class="spaces">                        </span><span class="istickedoff">[ Splat (bcDest bc)</span>
+<span class="lineno">  638 </span><span class="spaces">                                </span><span class="istickedoff">(fst (targetOverBlend t (bcBlend bc)))</span>
+<span class="lineno">  639 </span><span class="spaces">                                </span><span class="istickedoff">(SplatPolygon' buffId -- need a version that does no merging, but just copies</span>
+<span class="lineno">  640 </span><span class="spaces">                                        </span><span class="istickedoff">[ PointMap (x,y) (mapPoint tr (x,y))</span>
+<span class="lineno">  641 </span><span class="spaces">                                        </span><span class="istickedoff">| (x,y) &lt;- [(0,0),(1,0),(1,1),(0,1)]</span>
+<span class="lineno">  642 </span><span class="spaces">                                        </span><span class="istickedoff">] )</span>
+<span class="lineno">  643 </span><span class="spaces">                        </span><span class="istickedoff">, Delete buffId</span>
+<span class="lineno">  644 </span><span class="spaces">                        </span><span class="istickedoff">]</span>
+<span class="lineno">  645 </span><span class="spaces">               </span><span class="istickedoff">]</span></span>
+<span class="lineno">  646 </span>
+<span class="lineno">  647 </span>
+<span class="lineno">  648 </span>compileBuffer2 
+<span class="lineno">  649 </span>        :: Target
+<span class="lineno">  650 </span>        -&gt; (Int,Int)
+<span class="lineno">  651 </span>        -&gt; (Int,Int)
+<span class="lineno">  652 </span>        -&gt; InsideBuffer a
+<span class="lineno">  653 </span>        -&gt; IO ([CBIR.Inst Int],BufferId)
+<span class="lineno">  654 </span>
+<span class="lineno">  655 </span>-- TODO: This should be a Copy or a Blend???
+<span class="lineno">  656 </span><span class="decl"><span class="istickedoff">compileBuffer2 (Target_RGBA) low high (ImageRGBA bs) = do</span>
+<span class="lineno">  657 </span><span class="spaces">        </span><span class="istickedoff">compileByteStringImage low high bs RGBADepth</span>
+<span class="lineno">  658 </span><span class="spaces"></span><span class="istickedoff">-- TODO: Not sure about this. what does blend mean in this context,</span>
+<span class="lineno">  659 </span><span class="spaces"></span><span class="istickedoff">-- because this *always* allocs a new board.</span>
+<span class="lineno">  660 </span><span class="spaces"></span><span class="istickedoff">-- Perhaps we need a mark function, that  maps Blend to Copy, for compileBufferOnBoard?</span>
+<span class="lineno">  661 </span><span class="spaces"></span><span class="istickedoff">compileBuffer2 Target_RGB low high (ImageRGB bs) = do</span>
+<span class="lineno">  662 </span><span class="spaces">        </span><span class="istickedoff">compileByteStringImage low high bs RGB24Depth</span>
+<span class="lineno">  663 </span><span class="spaces"></span><span class="istickedoff">compileBuffer2 Target_UI low high (ImageUI bs) = do</span>
+<span class="lineno">  664 </span><span class="spaces">        </span><span class="istickedoff">compileByteStringImage low high bs' RGB24Depth</span>
+<span class="lineno">  665 </span><span class="spaces">  </span><span class="istickedoff">where bs' = BS.concatMap (\ w -&gt; BS.pack [w,0,0]) bs</span>
+<span class="lineno">  666 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  667 </span><span class="spaces"></span><span class="istickedoff">-- TODO: common up with other fmap function. Not that Buffer can *not* use zip.</span>
+<span class="lineno">  668 </span><span class="spaces"></span><span class="istickedoff">compileBuffer2 t low@(x0,y0) high@(x1,y1) (FmapBuffer f buff argTy) = <span class="nottickedoff">do</span></span>
+<span class="lineno">  669 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">let tarTy = targetType t</span></span>
+<span class="lineno">  670 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">let expr  = runO1 f (E argTy $ Var [])</span></span>
+<span class="lineno">  671 </span><span class="spaces">                                </span><span class="istickedoff"><span class="nottickedoff">-- only place targetFromType is used!!!</span></span>
+<span class="lineno">  672 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">(insts,bId) &lt;- compileBuffer2 (targetFromType argTy) low high buff</span></span>
+<span class="lineno">  673 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">let env = Map.fromList [ ([],&quot;cb_sampler0&quot;) ]</span></span>
+<span class="lineno">  674 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">let code = compileFmapFunE env expr tarTy      </span></span>
+<span class="lineno">  675 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">let fn = </span></span>
+<span class="lineno">  676 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">unlines [ &quot;uniform sampler2D cb_sampler0;&quot; ] ++</span></span>
+<span class="lineno">  677 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">prelude ++</span></span>
+<span class="lineno">  678 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;void main(void) {\n&quot; ++</span></span>
+<span class="lineno">  679 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">assignFrag tarTy code ++</span></span>
+<span class="lineno">  680 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">&quot;}\n&quot;</span></span>
+<span class="lineno">  681 </span><span class="spaces"></span><span class="istickedoff"><span class="nottickedoff"></span></span>
+<span class="lineno">  682 </span><span class="spaces"></span><span class="istickedoff"><span class="nottickedoff">--      putStrLn fn</span></span>
+<span class="lineno">  683 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">newFrag &lt;- newNumber</span></span>
+<span class="lineno">  684 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">targetBuff &lt;- newNumber</span></span>
+<span class="lineno">  685 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">return ( insts ++</span></span>
+<span class="lineno">  686 </span><span class="spaces">                 </span><span class="istickedoff"><span class="nottickedoff">[ allocateBuffer (1+x1-x0,1+y1-y0) targetBuff t</span></span>
+<span class="lineno">  687 </span><span class="spaces">                 </span><span class="istickedoff"><span class="nottickedoff">, AllocFragmentShader newFrag fn []</span></span>
+<span class="lineno">  688 </span><span class="spaces">                 </span><span class="istickedoff"><span class="nottickedoff">, Splat targetBuff</span></span>
+<span class="lineno">  689 </span><span class="spaces">                        </span><span class="istickedoff"><span class="nottickedoff">Copy         -- copy, because it is a new board</span></span>
+<span class="lineno">  690 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">(SplatFunction' newFrag </span></span>
+<span class="lineno">  691 </span><span class="spaces">                                </span><span class="istickedoff"><span class="nottickedoff">[ (&quot;cb_sampler0&quot;,bId)]</span></span>
+<span class="lineno">  692 </span><span class="spaces">                                </span><span class="istickedoff"><span class="nottickedoff">[]</span></span>
+<span class="lineno">  693 </span><span class="spaces">                                </span><span class="istickedoff"><span class="nottickedoff">[ (x,y) | (x,y) &lt;- let (x0',x1',y0',y1') = (0,1,0,1) </span></span>
+<span class="lineno">  694 </span><span class="spaces">                                                                 </span><span class="istickedoff"><span class="nottickedoff">in [(x0',y0'),(x1',y0'),(x1',y1'),(x0',y1')]]</span></span>
+<span class="lineno">  695 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">)</span></span>
+<span class="lineno">  696 </span><span class="spaces">                 </span><span class="istickedoff"><span class="nottickedoff">, Delete newFrag     -- really should cache these</span></span>
+<span class="lineno">  697 </span><span class="spaces">                 </span><span class="istickedoff"><span class="nottickedoff">, Delete bId </span></span>
+<span class="lineno">  698 </span><span class="spaces">                 </span><span class="istickedoff"><span class="nottickedoff">], targetBuff )</span></span>
+<span class="lineno">  699 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  700 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  701 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  702 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  703 </span><span class="spaces"></span><span class="istickedoff">compileBuffer2 t (x0,y0) (x1,y1) (BoardInBuffer brd) = do</span>
+<span class="lineno">  704 </span><span class="spaces"></span><span class="istickedoff">--      newBoard &lt;- newNumber        </span>
+<span class="lineno">  705 </span><span class="spaces">        </span><span class="istickedoff">let (sx,sy) = (1 + x1 - x0, 1 + y1 - y0)</span>
+<span class="lineno">  706 </span><span class="spaces">        </span><span class="istickedoff">let mv = Move (fromIntegral x0,fromIntegral y0)</span>
+<span class="lineno">  707 </span><span class="spaces">        </span><span class="istickedoff">let sc = Scale (1 / fromIntegral sx,1 / fromIntegral sy)</span>
+<span class="lineno">  708 </span><span class="spaces">        </span><span class="istickedoff">let bc = updateTrans mv $ updateTrans sc $ initBoardContext (sx,sy) 0</span>
+<span class="lineno">  709 </span><span class="spaces">        </span><span class="istickedoff">allocAndCompileBoard bc (targetType t) brd</span>
+<span class="lineno">  710 </span><span class="spaces"></span><span class="istickedoff">{-</span>
+<span class="lineno">  711 </span><span class="spaces">        </span><span class="istickedoff">-- we want to map (x0,y0) x (x1,y1) onto the Board (0,0) x (1,1)</span>
+<span class="lineno">  712 </span><span class="spaces">        </span><span class="istickedoff">rest &lt;- compileBoard compileBoardRGBA bc brd</span>
+<span class="lineno">  713 </span><span class="spaces">        </span><span class="istickedoff">return ( [ Nested (&quot;BoardInBuffer&quot;) $</span>
+<span class="lineno">  714 </span><span class="spaces">                   </span><span class="istickedoff">[ Allocate </span>
+<span class="lineno">  715 </span><span class="spaces">                        </span><span class="istickedoff">newBoard     -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  716 </span><span class="spaces">                        </span><span class="istickedoff">(sx,sy)           -- we know size</span>
+<span class="lineno">  717 </span><span class="spaces">                        </span><span class="istickedoff">RGBADepth       -- depth of buffer</span>
+<span class="lineno">  718 </span><span class="spaces">                        </span><span class="istickedoff">(BackgroundRGBADepth (RGBA 1 1 1 1))</span>
+<span class="lineno">  719 </span><span class="spaces">                   </span><span class="istickedoff">] ++ rest</span>
+<span class="lineno">  720 </span><span class="spaces">                 </span><span class="istickedoff">], newBoard)</span>
+<span class="lineno">  721 </span><span class="spaces"></span><span class="istickedoff">-}</span>
+<span class="lineno">  722 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  723 </span><span class="spaces"></span><span class="istickedoff">{-      -- assume def is transparent!</span>
+<span class="lineno">  724 </span><span class="spaces">        </span><span class="istickedoff">-- assume the size of the buffer is okay. How do we do this?</span>
+<span class="lineno">  725 </span><span class="spaces">        </span><span class="istickedoff">let (x,y) = bcSize bc</span>
+<span class="lineno">  726 </span><span class="spaces">        </span><span class="istickedoff">-- TODO!</span>
+<span class="lineno">  727 </span><span class="spaces">        </span><span class="istickedoff">-- really, this is about 0 and 1, not x and y.</span>
+<span class="lineno">  728 </span><span class="spaces">        </span><span class="istickedoff">let mv = Scale (fromIntegral (1 + x1-x0) / fromIntegral 1,</span>
+<span class="lineno">  729 </span><span class="spaces">                        </span><span class="istickedoff">fromIntegral (1 + y1-y0) / fromIntegral 1)</span>
+<span class="lineno">  730 </span><span class="spaces">        </span><span class="istickedoff">back_code &lt;- compileBoard compileBoardRGBA bc back</span>
+<span class="lineno">  731 </span><span class="spaces">        </span><span class="istickedoff">(code,buffId) &lt;- compileInsideBufferRGBA (x0,y0) (x1,y1) buff</span>
+<span class="lineno">  732 </span><span class="spaces">        </span><span class="istickedoff">let tr = bcTrans (updateTrans mv bc)</span>
+<span class="lineno">  733 </span><span class="spaces"></span><span class="istickedoff">--      print ((x,y),(x1-x0,y1-y0))</span>
+<span class="lineno">  734 </span><span class="spaces">        </span><span class="istickedoff">return [ Nested &quot;buffer inside board (RGBA)&quot; $</span>
+<span class="lineno">  735 </span><span class="spaces">                        </span><span class="istickedoff">back_code ++ code ++</span>
+<span class="lineno">  736 </span><span class="spaces">                        </span><span class="istickedoff">[Nested (show ((x,y),bcTrans (updateTrans mv bc))) []] ++</span>
+<span class="lineno">  737 </span><span class="spaces">                        </span><span class="istickedoff">[ SplatPolygon buffId (bcDest bc) </span>
+<span class="lineno">  738 </span><span class="spaces">                                </span><span class="istickedoff">[ PointMap (x,y) (mapPoint tr (x,y))</span>
+<span class="lineno">  739 </span><span class="spaces">                                </span><span class="istickedoff">| (x,y) &lt;- [(0,0),(1,0),(1,1),(0,1)]</span>
+<span class="lineno">  740 </span><span class="spaces">                                </span><span class="istickedoff">]</span>
+<span class="lineno">  741 </span><span class="spaces">                        </span><span class="istickedoff">]</span>
+<span class="lineno">  742 </span><span class="spaces"></span><span class="istickedoff">-}      </span>
+<span class="lineno">  743 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  744 </span><span class="spaces"></span><span class="istickedoff">compileBuffer2 t low high buffer' = <span class="nottickedoff">error $ show (&quot;compileBuffer2&quot;,t,(low,high),buffer')</span></span></span>
+<span class="lineno">  745 </span>        
+<span class="lineno">  746 </span>-- Allocate a buffer; we do not care about color
+<span class="lineno">  747 </span>allocateBuffer :: (Show var) =&gt; (Int, Int) -&gt; var -&gt; Target -&gt; Inst var
+<span class="lineno">  748 </span><span class="decl"><span class="nottickedoff">allocateBuffer (sx,sy) newBoard Target_RGB =</span>
+<span class="lineno">  749 </span><span class="spaces">                </span><span class="nottickedoff">Allocate </span>
+<span class="lineno">  750 </span><span class="spaces">                        </span><span class="nottickedoff">newBoard     -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  751 </span><span class="spaces">                        </span><span class="nottickedoff">(sx,sy)           -- we know size</span>
+<span class="lineno">  752 </span><span class="spaces">                        </span><span class="nottickedoff">RGB24Depth       -- depth of buffer</span>
+<span class="lineno">  753 </span><span class="spaces">                        </span><span class="nottickedoff">(BackgroundRGB24Depth (RGB 0 0 0))</span>
+<span class="lineno">  754 </span><span class="spaces"></span><span class="nottickedoff">allocateBuffer (sx,sy) newBoard (Target_RGBA) =</span>
+<span class="lineno">  755 </span><span class="spaces">                </span><span class="nottickedoff">Allocate </span>
+<span class="lineno">  756 </span><span class="spaces">                        </span><span class="nottickedoff">newBoard     -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  757 </span><span class="spaces">                        </span><span class="nottickedoff">(sx,sy)           -- we know size</span>
+<span class="lineno">  758 </span><span class="spaces">                        </span><span class="nottickedoff">RGBADepth       -- depth of buffer</span>
+<span class="lineno">  759 </span><span class="spaces">                        </span><span class="nottickedoff">(BackgroundRGBADepth (RGBA 0 0 0 0))</span>
+<span class="lineno">  760 </span><span class="spaces"></span><span class="nottickedoff">allocateBuffer (sx,sy) newBoard Target_Maybe_UI =</span>
+<span class="lineno">  761 </span><span class="spaces">                </span><span class="nottickedoff">Allocate </span>
+<span class="lineno">  762 </span><span class="spaces">                        </span><span class="nottickedoff">newBoard     -- tag for this ChalkBoardBufferObject</span>
+<span class="lineno">  763 </span><span class="spaces">                        </span><span class="nottickedoff">(sx,sy)           -- we know size</span>
+<span class="lineno">  764 </span><span class="spaces">                        </span><span class="nottickedoff">RGBADepth       -- depth of buffer</span>
+<span class="lineno">  765 </span><span class="spaces">                        </span><span class="nottickedoff">(BackgroundRGBADepth (RGBA 0 0 0 0))</span>
+<span class="lineno">  766 </span><span class="spaces"></span><span class="nottickedoff">allocateBuffer (sx,sy) newBoard t = error $ show (&quot;allocateBuffer&quot;,(sx,sy),newBoard,t)</span></span>
+<span class="lineno">  767 </span>
+<span class="lineno">  768 </span>
+<span class="lineno">  769 </span>is24Bit :: UniformTexture -&gt; Bool
+<span class="lineno">  770 </span><span class="decl"><span class="istickedoff">is24Bit (BoardRGBArgument {})    = True</span>
+<span class="lineno">  771 </span><span class="spaces"></span><span class="istickedoff">is24Bit (BoardBoolArgument {})          = <span class="nottickedoff">True</span></span>
+<span class="lineno">  772 </span><span class="spaces"></span><span class="istickedoff">is24Bit (BoardUIArgument {})      = <span class="nottickedoff">True</span></span>
+<span class="lineno">  773 </span><span class="spaces"></span><span class="istickedoff">is24Bit (BoardMaybeRGBArgument {})      = <span class="nottickedoff">False</span></span>
+<span class="lineno">  774 </span><span class="spaces"></span><span class="istickedoff">is24Bit (BoardRGBAFnArgument {})        = <span class="nottickedoff">False</span></span>
+<span class="lineno">  775 </span><span class="spaces"></span><span class="istickedoff">is24Bit (BufferRGBAFnArgument {})       = <span class="nottickedoff">False</span></span></span>
+<span class="lineno">  776 </span>
+<span class="lineno">  777 </span>{-
+<span class="lineno">  778 </span>uniTexToTarget ::  UniformTexture -&gt; Target
+<span class="lineno">  779 </span>uniTexToTarget (BoardRGBArgument {})      = Target_RGB
+<span class="lineno">  780 </span>uniTexToTarget (BoardBoolArgument {})    = Target_Bool (RGB 1 1 1)
+<span class="lineno">  781 </span>uniTexToTarget (BoardUIArgument {})        = Target_UI
+<span class="lineno">  782 </span>uniTexToTarget (BoardMaybeRGBArgument {})       = Target_Maybe_RGB
+<span class="lineno">  783 </span>uniTexToTarget (BoardRGBAFnArgument {})         = Target_RGBA
+<span class="lineno">  784 </span>uniTexToTarget (BufferRGBAFnArgument {})        = Target_RGBA
+<span class="lineno">  785 </span>-}
+<span class="lineno">  786 </span> 
+<span class="lineno">  787 </span>{-
+<span class="lineno">  788 </span>uniTexToBoard ::  UniformTexture -&gt; Either (forall a. Board a) (Buffer a)
+<span class="lineno">  789 </span>uniTexToBoard (BoardRGBArgument a)          = Left a
+<span class="lineno">  790 </span>uniTexToBoard (BoardBoolArgument a)        = Left a
+<span class="lineno">  791 </span>uniTexToBoard (BoardUIArgument a)            = Left a
+<span class="lineno">  792 </span>uniTexToBoard (BoardMaybeRGBArgument a)         = Left a
+<span class="lineno">  793 </span>uniTexToBoard (BoardRGBAFnArgument a)    = Left a
+<span class="lineno">  794 </span>uniTexToBoard (BufferRGBAFnArgument a)   = Right a
+<span class="lineno">  795 </span>-} 
+<span class="lineno">  796 </span>
+<span class="lineno">  797 </span>-- TODO: use allocAnd... to build this.
+<span class="lineno">  798 </span>compileBoardGSI 
+<span class="lineno">  799 </span>        :: BoardContext 
+<span class="lineno">  800 </span>        -&gt; Target 
+<span class="lineno">  801 </span>        -&gt; String 
+<span class="lineno">  802 </span>        -&gt; [(String,TextureSize,UniformTexture)] 
+<span class="lineno">  803 </span>        -&gt; [(String,UniformArgument)] 
+<span class="lineno">  804 </span>        -&gt; IO [Inst Int]
+<span class="lineno">  805 </span><span class="decl"><span class="istickedoff">compileBoardGSI bc Target_RGB fn bargs vargs = do</span>
+<span class="lineno">  806 </span><span class="spaces">        </span><span class="istickedoff">let findSize ResultSize       = bcSize bc</span>
+<span class="lineno">  807 </span><span class="spaces">            </span><span class="istickedoff">findSize (ActualSize x y) = <span class="nottickedoff">(x,y)</span> </span>
+<span class="lineno">  808 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  809 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  810 </span><span class="spaces">        </span><span class="istickedoff">let create arg sz | <span class="tickonlytrue">is24Bit arg</span> = do</span>
+<span class="lineno">  811 </span><span class="spaces">                </span><span class="istickedoff">idNo &lt;- newNumber</span>
+<span class="lineno">  812 </span><span class="spaces">                </span><span class="istickedoff">return $ (idNo</span>
+<span class="lineno">  813 </span><span class="spaces">                         </span><span class="istickedoff">, Allocate idNo</span>
+<span class="lineno">  814 </span><span class="spaces">                                   </span><span class="istickedoff">sz                -- we know size</span>
+<span class="lineno">  815 </span><span class="spaces">                                   </span><span class="istickedoff">RGB24Depth           -- depth of buffer</span>
+<span class="lineno">  816 </span><span class="spaces">                                  </span><span class="istickedoff">(BackgroundRGB24Depth (RGB 0 0 0))</span>
+<span class="lineno">  817 </span><span class="spaces">                         </span><span class="istickedoff">)</span>
+<span class="lineno">  818 </span><span class="spaces">                          </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">do</span></span>
+<span class="lineno">  819 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">idNo &lt;- newNumber</span></span>
+<span class="lineno">  820 </span><span class="spaces">                </span><span class="istickedoff"><span class="nottickedoff">return $ ( idNo</span></span>
+<span class="lineno">  821 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">, Allocate idNo</span></span>
+<span class="lineno">  822 </span><span class="spaces">                                   </span><span class="istickedoff"><span class="nottickedoff">sz                -- we know size</span></span>
+<span class="lineno">  823 </span><span class="spaces">                                   </span><span class="istickedoff"><span class="nottickedoff">RGBADepth           -- depth of buffer</span></span>
+<span class="lineno">  824 </span><span class="spaces">                                  </span><span class="istickedoff"><span class="nottickedoff">(BackgroundRGBADepth (RGBA 0 0 0 0))</span></span>
+<span class="lineno">  825 </span><span class="spaces">                         </span><span class="istickedoff"><span class="nottickedoff">)</span></span>
+<span class="lineno">  826 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  827 </span><span class="spaces">        </span><span class="istickedoff">info &lt;- sequence</span>
+<span class="lineno">  828 </span><span class="spaces">                   </span><span class="istickedoff">[ do let sz' = findSize sz</span>
+<span class="lineno">  829 </span><span class="spaces">                        </span><span class="istickedoff">(brdId,argAlloc) &lt;- create arg sz'</span>
+<span class="lineno">  830 </span><span class="spaces"></span><span class="istickedoff">--               let bc' = bc { bcDest = brdId, bcSize = sz', bcBlend = Copy }</span>
+<span class="lineno">  831 </span><span class="spaces">                        </span><span class="istickedoff">fill &lt;- case arg of</span>
+<span class="lineno">  832 </span><span class="spaces">                                   </span><span class="istickedoff">BoardRGBArgument brd -&gt; </span>
+<span class="lineno">  833 </span><span class="spaces">                                        </span><span class="istickedoff">compileBoard2 (bc { bcDest = brdId, bcSize = sz', bcBlend = Copy }) Target_RGB brd</span>
+<span class="lineno">  834 </span><span class="spaces">                                   </span><span class="istickedoff">BoardRGBAFnArgument brd -&gt; </span>
+<span class="lineno">  835 </span><span class="spaces">                                        </span><span class="istickedoff"><span class="nottickedoff">compileBoard2 (bc { bcDest = brdId, bcSize = sz', bcBlend = Copy }) Target_RGBA brd</span></span>
+<span class="lineno">  836 </span><span class="spaces">                                   </span><span class="istickedoff">BufferRGBAFnArgument buff -&gt; </span>
+<span class="lineno">  837 </span><span class="spaces">                                        </span><span class="istickedoff"><span class="nottickedoff">compileBoard2 (bc { bcDest = brdId, bcSize = sz', bcBlend = Copy }) Target_RGBA </span></span>
+<span class="lineno">  838 </span><span class="spaces">                                                                </span><span class="istickedoff"><span class="nottickedoff">(Board RGBA_Ty (BufferOnBoard buff (boardOf O.transparent)))</span></span>
+<span class="lineno">  839 </span><span class="spaces">                        </span><span class="istickedoff">let del = Delete brdId</span>
+<span class="lineno">  840 </span><span class="spaces">                        </span><span class="istickedoff">return ( argAlloc : fill     -- fill the board</span>
+<span class="lineno">  841 </span><span class="spaces">                               </span><span class="istickedoff">, (nm,brdId)          -- arg for FFI call</span>
+<span class="lineno">  842 </span><span class="spaces">                               </span><span class="istickedoff">, del</span>
+<span class="lineno">  843 </span><span class="spaces">                               </span><span class="istickedoff">)</span>
+<span class="lineno">  844 </span><span class="spaces">                    </span><span class="istickedoff">| (nm,sz,arg) &lt;- bargs </span>
+<span class="lineno">  845 </span><span class="spaces">                    </span><span class="istickedoff">]</span>
+<span class="lineno">  846 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  847 </span><span class="spaces"></span><span class="istickedoff">{-</span>
+<span class="lineno">  848 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  849 </span><span class="spaces">        </span><span class="istickedoff">fill_Buffers_RGBA &lt;- return []</span>
+<span class="lineno">  850 </span><span class="spaces"></span><span class="istickedoff">{-      </span>
+<span class="lineno">  851 </span><span class="spaces">                </span><span class="istickedoff">&lt;- sequence [ compileBufferOnBoard (bc { bcDest = brdId, bcSize = sz, bcBlend = Blend }) Target_RGBA buff </span>
+<span class="lineno">  852 </span><span class="spaces">                                        </span><span class="istickedoff"></span>
+<span class="lineno">  853 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  854 </span><span class="spaces">        </span><span class="istickedoff">do (inst,id) &lt;- compileBuffer (0,0) (x-1,y-1) (</span>
+<span class="lineno">  855 </span><span class="spaces">        </span><span class="istickedoff">compileBoard2  (bc { bcDest = brdId, bcSize = sz, bcBlend = Copy }) Target_RGBA brd</span>
+<span class="lineno">  856 </span><span class="spaces">                            </span><span class="istickedoff">| ((_,sz,brd),brdId) &lt;- zip boards_RGBA num_for_boards_RGBA</span>
+<span class="lineno">  857 </span><span class="spaces">                            </span><span class="istickedoff">]</span>
+<span class="lineno">  858 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  859 </span><span class="spaces"></span><span class="istickedoff">compileBoard2 bc t (Board ty (BufferOnBoard buffer brd))        = compileBufferOnBoard bc t buffer brd</span>
+<span class="lineno">  860 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  861 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  862 </span><span class="spaces"></span><span class="istickedoff">compileBuffer2 </span>
+<span class="lineno">  863 </span><span class="spaces">        </span><span class="istickedoff">:: Target</span>
+<span class="lineno">  864 </span><span class="spaces">        </span><span class="istickedoff">-&gt; (Int,Int)</span>
+<span class="lineno">  865 </span><span class="spaces">        </span><span class="istickedoff">-&gt; (Int,Int)</span>
+<span class="lineno">  866 </span><span class="spaces">        </span><span class="istickedoff">-&gt; InsideBuffer a</span>
+<span class="lineno">  867 </span><span class="spaces">        </span><span class="istickedoff">-&gt; IO ([CBIR.Inst Int],BufferId)</span>
+<span class="lineno">  868 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  869 </span><span class="spaces"></span><span class="istickedoff">-}</span>
+<span class="lineno">  870 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  871 </span><span class="spaces">        </span><span class="istickedoff">let delete_Boards</span>
+<span class="lineno">  872 </span><span class="spaces">                  </span><span class="istickedoff">= [ Delete num </span>
+<span class="lineno">  873 </span><span class="spaces">                    </span><span class="istickedoff">| num &lt;- num_for_boards_RGB ++ num_for_boards_Bool ++ num_for_boards_UI ++ num_for_boards_Maybe_RGB ++ num_for_boards_RGBA</span>
+<span class="lineno">  874 </span><span class="spaces">                                </span><span class="istickedoff">++ num_for_buffers_RGBA</span>
+<span class="lineno">  875 </span><span class="spaces">                    </span><span class="istickedoff">]</span>
+<span class="lineno">  876 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  877 </span><span class="spaces">        </span><span class="istickedoff">let fst3 (a,_,_) = a</span>
+<span class="lineno">  878 </span><span class="spaces"></span><span class="istickedoff">-}</span>
+<span class="lineno">  879 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">  880 </span><span class="spaces">        </span><span class="istickedoff">newFrag &lt;- newNumber</span>
+<span class="lineno">  881 </span><span class="spaces">        </span><span class="istickedoff">let (x0,x1,y0,y1) = (0,1,0,1) </span>
+<span class="lineno">  882 </span><span class="spaces">        </span><span class="istickedoff">return $ [ AllocFragmentShader newFrag fn <span class="nottickedoff">[]</span> ]</span>
+<span class="lineno">  883 </span><span class="spaces">                </span><span class="istickedoff">++ concat [ init' | (init',_,_) &lt;- info ]</span>
+<span class="lineno">  884 </span><span class="spaces">                </span><span class="istickedoff">++ [ Splat (bcDest bc)</span>
+<span class="lineno">  885 </span><span class="spaces">                         </span><span class="istickedoff">(bcBlend bc)</span>
+<span class="lineno">  886 </span><span class="spaces">                           </span><span class="istickedoff">(SplatFunction' newFrag </span>
+<span class="lineno">  887 </span><span class="spaces">                                </span><span class="istickedoff">[ (nm,brdId) | (_,(nm,brdId),_) &lt;- info ]</span>
+<span class="lineno">  888 </span><span class="spaces">                                </span><span class="istickedoff">vargs</span>
+<span class="lineno">  889 </span><span class="spaces">                                </span><span class="istickedoff">[(x,y) | (x,y) &lt;- [(x0,y0),(x1,y0),(x1,y1),(x0,y1)]]</span>
+<span class="lineno">  890 </span><span class="spaces">                           </span><span class="istickedoff">)</span>
+<span class="lineno">  891 </span><span class="spaces">                   </span><span class="istickedoff">]</span>
+<span class="lineno">  892 </span><span class="spaces">                </span><span class="istickedoff">++ [ Delete newFrag ] -- really should cache these</span>
+<span class="lineno">  893 </span><span class="spaces">                </span><span class="istickedoff">++ [ del | (_,_,del) &lt;- info ]</span></span>
+<span class="lineno">  894 </span>
+<span class="lineno">  895 </span>
+<span class="lineno">  896 </span>
+<span class="lineno">  897 </span>{-
+<span class="lineno">  898 </span>
+<span class="lineno">  899 </span> Challenge
+<span class="lineno">  900 </span>
+<span class="lineno">  901 </span>
+<span class="lineno">  902 </span>
+<span class="lineno">  903 </span>   compile    Board (RGBA -&gt; RGBA)
+<span class="lineno">  904 </span>
+<span class="lineno">  905 </span> it requires
+<span class="lineno">  906 </span>
+<span class="lineno">  907 </span>    RGBAtoRGBA
+<span class="lineno">  908 </span>
+<span class="lineno">  909 </span>and 
+<span class="lineno">  910 </span>
+<span class="lineno">  911 </span>    RGB &lt;- seed.
+<span class="lineno">  912 </span>
+<span class="lineno">  913 </span>  compile :: context -&gt; fmap (f (...) (...)) (Board XX)
+<span class="lineno">  914 </span>
+<span class="lineno">  915 </span>
+<span class="lineno">  916 </span>
+<span class="lineno">  917 </span>-}
+<span class="lineno">  918 </span>
+
+</pre>
+</html>

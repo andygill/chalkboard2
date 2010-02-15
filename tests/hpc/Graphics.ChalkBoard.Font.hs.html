@@ -1,0 +1,124 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>module Graphics.ChalkBoard.Font
+<span class="lineno">    2 </span>        ( Graphics.ChalkBoard.Font.initFont
+<span class="lineno">    3 </span>        , Font
+<span class="lineno">    4 </span>        , letter
+<span class="lineno">    5 </span>        , lineSpacing
+<span class="lineno">    6 </span>        , label
+<span class="lineno">    7 </span>        ) where
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>
+<span class="lineno">   10 </span>--import Data.Boolean
+<span class="lineno">   11 </span>
+<span class="lineno">   12 </span>--import Data.Ix
+<span class="lineno">   13 </span>import Data.Array.Unboxed
+<span class="lineno">   14 </span>import Graphics.Rendering.TrueType.STB hiding (Font)
+<span class="lineno">   15 </span>import qualified Graphics.Rendering.TrueType.STB as STB
+<span class="lineno">   16 </span>--import Graphics.ChalkBoard
+<span class="lineno">   17 </span>--import Graphics.ChalkBoard.Utils
+<span class="lineno">   18 </span>import Graphics.ChalkBoard.Types
+<span class="lineno">   19 </span>import Graphics.ChalkBoard.Board
+<span class="lineno">   20 </span>import Graphics.ChalkBoard.Buffer
+<span class="lineno">   21 </span>--import Graphics.ChalkBoard.O
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>import qualified Data.ByteString as BS
+<span class="lineno">   24 </span>
+<span class="lineno">   25 </span>data Font = Font
+<span class="lineno">   26 </span>        STB.Font             -- the font
+<span class="lineno">   27 </span>        ()            -- the cache for each use char
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>initFont :: String -&gt; Int -&gt; IO Font
+<span class="lineno">   30 </span><span class="decl"><span class="istickedoff">initFont fontFile ix = do</span>
+<span class="lineno">   31 </span><span class="spaces">    </span><span class="istickedoff">tt &lt;- loadTTF fontFile</span>
+<span class="lineno">   32 </span><span class="spaces">    </span><span class="istickedoff">en &lt;- enumerateFonts tt</span>
+<span class="lineno">   33 </span><span class="spaces">    </span><span class="istickedoff">font &lt;- STB.initFont tt (en !! ix)</span>
+<span class="lineno">   34 </span><span class="spaces">    </span><span class="istickedoff">return $ Font font ()</span></span>
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>lineSpacing :: Font -&gt; Float -&gt; IO Float
+<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">lineSpacing (Font font _) sz = do</span>
+<span class="lineno">   39 </span><span class="spaces">        </span><span class="istickedoff">met &lt;- getFontVerticalMetrics font</span>
+<span class="lineno">   40 </span><span class="spaces">        </span><span class="istickedoff">return $ sz * (fromIntegral (ascent met - descent met + lineGap met))</span></span>
+<span class="lineno">   41 </span>        
+<span class="lineno">   42 </span>
+<span class="lineno">   43 </span>label :: Font -&gt; Float -&gt; String -&gt; IO (Board UI, Float)
+<span class="lineno">   44 </span><span class="decl"><span class="istickedoff">label font sz str = do</span>
+<span class="lineno">   45 </span><span class="spaces">        </span><span class="istickedoff"></span>
+<span class="lineno">   46 </span><span class="spaces">        </span><span class="istickedoff">let brd0 :: Board (UI)</span>
+<span class="lineno">   47 </span><span class="spaces">            </span><span class="istickedoff">brd0 = boardOf 0.0 --flip withMask false &lt;$&gt; boardOf 0.9</span>
+<span class="lineno">   48 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   49 </span><span class="spaces">        </span><span class="istickedoff">brds &lt;- sequence [ do</span>
+<span class="lineno">   50 </span><span class="spaces">                </span><span class="istickedoff">(b,off) &lt;- letter font sz ch</span>
+<span class="lineno">   51 </span><span class="spaces">                </span><span class="istickedoff">return (b,off)</span>
+<span class="lineno">   52 </span><span class="spaces">                </span><span class="istickedoff">| ch &lt;- str</span>
+<span class="lineno">   53 </span><span class="spaces">                </span><span class="istickedoff">]</span>
+<span class="lineno">   54 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">--      let lens :: [Float]</span>
+<span class="lineno">   56 </span><span class="spaces"></span><span class="istickedoff">--          lens = 0 : Prelude.zipWith (+) (map snd brds) lens</span>
+<span class="lineno">   57 </span><span class="spaces">        </span><span class="istickedoff">let brd1 :: Board UI</span>
+<span class="lineno">   58 </span><span class="spaces">            </span><span class="istickedoff">brd1 = foldr (\ (buff,off) brd -&gt; buff `bufferOnBoard` (move (off,0) brd)) brd0 </span>
+<span class="lineno">   59 </span><span class="spaces">                        </span><span class="istickedoff">(Prelude.zip (map fst brds) (map id (map snd brds)))</span>
+<span class="lineno">   60 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   61 </span><span class="spaces">        </span><span class="istickedoff">-- Use UI rather than Maybe UI later: it will be more efficient.</span>
+<span class="lineno">   62 </span><span class="spaces">        </span><span class="istickedoff">-- because we avoid the big &lt;$&gt; here, over the *whole* board.</span>
+<span class="lineno">   63 </span><span class="spaces">        </span><span class="istickedoff">return (brd1, sum (map snd brds))</span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>letter :: Font -&gt; Float -&gt; Char -&gt; IO 
+<span class="lineno">   66 </span>        ( Buffer UI       -- 
+<span class="lineno">   67 </span>        , Float                     -- how far to push rest of word to right
+<span class="lineno">   68 </span>        )
+<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">letter (Font font ()) sz ch = do</span>
+<span class="lineno">   70 </span><span class="spaces">    </span><span class="istickedoff">glyph_K &lt;- do opt &lt;- findGlyph font ch</span>
+<span class="lineno">   71 </span><span class="spaces">                  </span><span class="istickedoff">case opt of</span>
+<span class="lineno">   72 </span><span class="spaces">                        </span><span class="istickedoff">Just v -&gt; return v</span>
+<span class="lineno">   73 </span><span class="spaces">                        </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">error $ &quot;Cannot find: &quot; ++ show ch</span></span>
+<span class="lineno">   74 </span><span class="spaces"></span><span class="istickedoff">--    bb_K &lt;- getGlyphBoundingBox font glyph_K</span>
+<span class="lineno">   75 </span><span class="spaces">    </span><span class="istickedoff">(bm_K,_) &lt;- newGlyphBitmap font glyph_K (sz,sz)</span>
+<span class="lineno">   76 </span><span class="spaces">    </span><span class="istickedoff">m_K &lt;- getGlyphHorizontalMetrics font glyph_K</span>
+<span class="lineno">   77 </span><span class="spaces">    </span><span class="istickedoff">bma_K &lt;- bitmapArray bm_K </span>
+<span class="lineno">   78 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   79 </span><span class="spaces">    </span><span class="istickedoff">-- The backing board must be a power of two (PoT).</span>
+<span class="lineno">   80 </span><span class="spaces">    </span><span class="istickedoff">let pot' n x = if n &gt; x then n else pot' (n * 2) x</span>
+<span class="lineno">   81 </span><span class="spaces">    </span><span class="istickedoff">let pot = pot' 1</span>
+<span class="lineno">   82 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   83 </span><span class="spaces">    </span><span class="istickedoff">let ((x0,y0),(x1,y1)) = bounds bma_K</span>
+<span class="lineno">   84 </span><span class="spaces"></span><span class="istickedoff">--    print (x1,y1)</span>
+<span class="lineno">   85 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   86 </span><span class="spaces">    </span><span class="istickedoff">let x1' = pot x1 - 1</span>
+<span class="lineno">   87 </span><span class="spaces">    </span><span class="istickedoff">let y1' = pot y1 - 1</span>
+<span class="lineno">   88 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   89 </span><span class="spaces">    </span><span class="istickedoff">let bs' = BS.pack [ if x &gt; x1 || y &gt; y1 then 0 else bma_K ! (x1 - (x - x0),y)</span>
+<span class="lineno">   90 </span><span class="spaces">                      </span><span class="istickedoff">| x &lt;- [x0..x1']</span>
+<span class="lineno">   91 </span><span class="spaces">                      </span><span class="istickedoff">, y &lt;- [y0..y1']</span>
+<span class="lineno">   92 </span><span class="spaces">                      </span><span class="istickedoff">]</span>
+<span class="lineno">   93 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   94 </span><span class="spaces"></span><span class="istickedoff">--    let x1' = x1 </span>
+<span class="lineno">   95 </span><span class="spaces"></span><span class="istickedoff">--    let y1' = y1</span>
+<span class="lineno">   96 </span><span class="spaces"></span><span class="istickedoff">--    let (x1'',y1'') = (pot x1' - 1,pot y1' - 1)</span>
+<span class="lineno">   97 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   98 </span><span class="spaces"></span><span class="istickedoff">--    let (bo_x,bo_y) = bo_K</span>
+<span class="lineno">   99 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  100 </span><span class="spaces"></span><span class="istickedoff">--    let (BBox (a,b) (c,d)) = bb_K</span>
+<span class="lineno">  101 </span><span class="spaces">    </span><span class="istickedoff">xx &lt;- getGlyphBitmapBox font glyph_K (sz,sz)</span>
+<span class="lineno">  102 </span><span class="spaces">    </span><span class="istickedoff">let (BBox (_,_) (_,d)) = xx</span>
+<span class="lineno">  103 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  104 </span><span class="spaces">    </span><span class="istickedoff">return </span>
+<span class="lineno">  105 </span><span class="spaces">        </span><span class="istickedoff">( moveBuffer (0 + ceiling (sz * fromIntegral (leftSideBearing m_K)),-d) $ newBufferUI bs' (y1'+1,x1'+1)</span>
+<span class="lineno">  106 </span><span class="spaces">        </span><span class="istickedoff">, sz * fromIntegral (advanceWidth m_K) -- + the remainer from the ceiling operation</span>
+<span class="lineno">  107 </span><span class="spaces">        </span><span class="istickedoff">)</span></span>
+<span class="lineno">  108 </span>
+<span class="lineno">  109 </span>--just :: O UI -&gt; O (Maybe UI)
+<span class="lineno">  110 </span>--just o = withMask o (o /=* 0)
+
+</pre>
+</html>

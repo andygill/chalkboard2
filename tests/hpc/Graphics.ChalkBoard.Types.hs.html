@@ -1,0 +1,234 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+<span class="lineno">    2 </span>-- |
+<span class="lineno">    3 </span>-- Module: Graphics.ChalkBoard.Types
+<span class="lineno">    4 </span>-- Copyright: (c) 2009 Andy Gill
+<span class="lineno">    5 </span>-- License: BSD3
+<span class="lineno">    6 </span>--
+<span class="lineno">    7 </span>-- Maintainer: Andy Gill &lt;andygill@ku.edu&gt;
+<span class="lineno">    8 </span>-- Stability: unstable
+<span class="lineno">    9 </span>-- Portability: ghc
+<span class="lineno">   10 </span>--
+<span class="lineno">   11 </span>-- This module contains the types used by chalkboard, except Board itself.
+<span class="lineno">   12 </span>--
+<span class="lineno">   13 </span>module Graphics.ChalkBoard.Types 
+<span class="lineno">   14 </span>        ( -- * Basic types
+<span class="lineno">   15 </span>          UI, R, Point, Radian,
+<span class="lineno">   16 </span>          -- * Overlaying
+<span class="lineno">   17 </span>          Over(..),
+<span class="lineno">   18 </span>          stack,
+<span class="lineno">   19 </span>          -- * Scaling
+<span class="lineno">   20 </span>          Scale(..),
+<span class="lineno">   21 </span>          -- * Linear Interpolation
+<span class="lineno">   22 </span>          Lerp(..),
+<span class="lineno">   23 </span>          -- * Averaging
+<span class="lineno">   24 </span>          Average(..),
+<span class="lineno">   25 </span>{-
+<span class="lineno">   26 </span>          -- * Alpha Channel support
+<span class="lineno">   27 </span>          Alpha(..),
+<span class="lineno">   28 </span>         alpha, transparent, withAlpha, unAlpha,
+<span class="lineno">   29 </span>          -- * Z buffer support
+<span class="lineno">   30 </span>          Z(..),
+<span class="lineno">   31 </span>-}
+<span class="lineno">   32 </span>          -- * Constants
+<span class="lineno">   33 </span>          nearZero
+<span class="lineno">   34 </span>          -- * Colors
+<span class="lineno">   35 </span>        , Gray
+<span class="lineno">   36 </span>        , RGB(..)
+<span class="lineno">   37 </span>        , RGBA(..)
+<span class="lineno">   38 </span>        ) where
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>import Data.Binary
+<span class="lineno">   41 </span>import Control.Monad
+<span class="lineno">   42 </span>import Data.Ratio
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>-- | A real number.
+<span class="lineno">   45 </span>type R = Float
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>-- | Unit Interval: value between 0 and 1, inclusive.
+<span class="lineno">   48 </span>type UI = R
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>-- | A point in R2.
+<span class="lineno">   51 </span>type Point = (R,R)
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>-- | Angle units
+<span class="lineno">   54 </span>type Radian = Float     
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>-- | Close to zero; needed for @Over (Alpha c)@ instance.
+<span class="lineno">   57 </span>nearZero :: R
+<span class="lineno">   58 </span><span class="decl"><span class="nottickedoff">nearZero = 0.0000001</span></span> 
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>
+<span class="lineno">   61 </span>------------------------------------------------------------------------------
+<span class="lineno">   62 </span>
+<span class="lineno">   63 </span>infixr 5 `over`
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>-- | For placing a value literally /over/ another value. The 2nd value /might/ shine through.
+<span class="lineno">   66 </span>-- The operation /must/ be associative.
+<span class="lineno">   67 </span>class Over c where
+<span class="lineno">   68 </span>  over :: c -&gt; c -&gt; c
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>instance Over Bool where
+<span class="lineno">   71 </span>  <span class="decl"><span class="nottickedoff">over = (||)</span></span>
+<span class="lineno">   72 </span>
+<span class="lineno">   73 </span>instance Over (a -&gt; a) where
+<span class="lineno">   74 </span>  <span class="decl"><span class="nottickedoff">over = (.)</span></span>
+<span class="lineno">   75 </span>
+<span class="lineno">   76 </span>instance Over (Maybe a) where
+<span class="lineno">   77 </span>  <span class="decl"><span class="nottickedoff">(Just a) `over` _    = Just a</span>
+<span class="lineno">   78 </span><span class="spaces">  </span><span class="nottickedoff">Nothing `over` other = other</span></span>
+<span class="lineno">   79 </span>
+<span class="lineno">   80 </span>-- | 'stack' stacks a list of things over each other, 
+<span class="lineno">   81 </span>-- where earlier elements are 'over' later elements.
+<span class="lineno">   82 </span>-- Requires non empty lists, which can be satisfied by using an explicitly
+<span class="lineno">   83 </span>-- transparent @Board@ as one of the elements.
+<span class="lineno">   84 </span>
+<span class="lineno">   85 </span>stack :: (Over c) =&gt; [c] -&gt; c
+<span class="lineno">   86 </span><span class="decl"><span class="nottickedoff">stack = foldr1 over</span></span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>------------------------------------------------------------------------------
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>-- | 'Scale' something by a value. scaling value can be bigger than 1.
+<span class="lineno">   91 </span>
+<span class="lineno">   92 </span>class Scale c where
+<span class="lineno">   93 </span>  scale :: R -&gt; c -&gt; c
+<span class="lineno">   94 </span>
+<span class="lineno">   95 </span>instance Scale R where
+<span class="lineno">   96 </span>  <span class="decl"><span class="nottickedoff">scale u v = u * v</span></span>
+<span class="lineno">   97 </span>
+<span class="lineno">   98 </span>instance (Scale a,Scale b) =&gt; Scale (a,b) where
+<span class="lineno">   99 </span>  <span class="decl"><span class="nottickedoff">scale u (x,y) = (scale u x,scale u y)</span></span>
+<span class="lineno">  100 </span>
+<span class="lineno">  101 </span>instance Scale Rational where
+<span class="lineno">  102 </span>  <span class="decl"><span class="nottickedoff">scale u r = toRational u * r</span></span>
+<span class="lineno">  103 </span>
+<span class="lineno">  104 </span>------------------------------------------------------------------------------
+<span class="lineno">  105 </span>
+<span class="lineno">  106 </span>-- | Linear interpolation between two values.
+<span class="lineno">  107 </span>class Lerp a where
+<span class="lineno">  108 </span>  lerp :: UI -&gt; a -&gt; a -&gt; a
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>instance Lerp R where
+<span class="lineno">  111 </span>  <span class="decl"><span class="nottickedoff">lerp s v v' = v + (s * (v' - v))</span></span>
+<span class="lineno">  112 </span>
+<span class="lineno">  113 </span>instance Lerp Rational where
+<span class="lineno">  114 </span>  <span class="decl"><span class="nottickedoff">lerp s v v' = v + (toRational s * (v' - v))</span></span>
+<span class="lineno">  115 </span>
+<span class="lineno">  116 </span>-- | 'Lerp' over pairs
+<span class="lineno">  117 </span>
+<span class="lineno">  118 </span>instance (Lerp a,Lerp b) =&gt; Lerp (a,b) where
+<span class="lineno">  119 </span>  <span class="decl"><span class="nottickedoff">lerp s (a,b) (a',b') = (lerp s a a',lerp s b b')</span></span>
+<span class="lineno">  120 </span>
+<span class="lineno">  121 </span>instance (Lerp a) =&gt; Lerp (Maybe a) where
+<span class="lineno">  122 </span>  <span class="decl"><span class="nottickedoff">lerp _ Nothing  Nothing  = Nothing</span>
+<span class="lineno">  123 </span><span class="spaces">  </span><span class="nottickedoff">lerp _ (Just a) Nothing  = Just a </span>
+<span class="lineno">  124 </span><span class="spaces">  </span><span class="nottickedoff">lerp _ Nothing  (Just b) = Just b</span>
+<span class="lineno">  125 </span><span class="spaces">  </span><span class="nottickedoff">lerp s (Just a) (Just b) = Just (lerp s a b)</span></span>
+<span class="lineno">  126 </span>
+<span class="lineno">  127 </span>------------------------------------------------------------------------------
+<span class="lineno">  128 </span>
+<span class="lineno">  129 </span>-- | 'Average' a set of values. weighting can be achived using multiple entries.
+<span class="lineno">  130 </span>
+<span class="lineno">  131 </span>class Average a where
+<span class="lineno">  132 </span>  -- | average is not defined for empty list
+<span class="lineno">  133 </span>  average :: [a] -&gt; a 
+<span class="lineno">  134 </span>
+<span class="lineno">  135 </span>instance Average R where
+<span class="lineno">  136 </span>  <span class="decl"><span class="nottickedoff">average xs = sum xs / fromIntegral (length xs)</span></span>
+<span class="lineno">  137 </span>  
+<span class="lineno">  138 </span>instance (Average a,Average b) =&gt; Average (a,b) where
+<span class="lineno">  139 </span>  <span class="decl"><span class="nottickedoff">average xs = (average $ map fst xs,average $ map snd xs)</span></span>
+<span class="lineno">  140 </span>
+<span class="lineno">  141 </span>------------------------------------------------------------------------------
+<span class="lineno">  142 </span>
+<span class="lineno">  143 </span>-- | 'Gray' is just a value between 0 and 1, inclusive.
+<span class="lineno">  144 </span>-- Be careful to consider if this is pre or post gamma.
+<span class="lineno">  145 </span>type Gray = UI
+<span class="lineno">  146 </span>
+<span class="lineno">  147 </span>instance Over Gray where
+<span class="lineno">  148 </span>  <span class="decl"><span class="nottickedoff">over r _ = r</span></span>
+<span class="lineno">  149 </span>
+<span class="lineno">  150 </span>------------------------------------------------------------------------------
+<span class="lineno">  151 </span>-- Simple colors
+<span class="lineno">  152 </span>
+<span class="lineno">  153 </span>-- | 'RGB' is our color, with values between 0 and 1, inclusive.
+<span class="lineno">  154 </span>data RGB  = RGB !UI !UI !UI deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
+<span class="lineno">  155 </span>
+<span class="lineno">  156 </span>instance Over RGB where
+<span class="lineno">  157 </span>  -- simple overwriting
+<span class="lineno">  158 </span>  <span class="decl"><span class="nottickedoff">over x _y = x</span></span>
+<span class="lineno">  159 </span>
+<span class="lineno">  160 </span>instance Lerp RGB where
+<span class="lineno">  161 </span>  <span class="decl"><span class="nottickedoff">lerp s (RGB r g b) (RGB r' g' b')</span>
+<span class="lineno">  162 </span><span class="spaces">         </span><span class="nottickedoff">= RGB (lerp s r r') </span>
+<span class="lineno">  163 </span><span class="spaces">               </span><span class="nottickedoff">(lerp s g g')</span>
+<span class="lineno">  164 </span><span class="spaces">               </span><span class="nottickedoff">(lerp s b b')</span></span>
+<span class="lineno">  165 </span>
+<span class="lineno">  166 </span>instance Scale RGB where
+<span class="lineno">  167 </span>  <span class="decl"><span class="nottickedoff">scale s (RGB r g b)</span>
+<span class="lineno">  168 </span><span class="spaces">         </span><span class="nottickedoff">= RGB (scale s r) </span>
+<span class="lineno">  169 </span><span class="spaces">               </span><span class="nottickedoff">(scale s g)</span>
+<span class="lineno">  170 </span><span class="spaces">               </span><span class="nottickedoff">(scale s b)</span></span> 
+<span class="lineno">  171 </span>
+<span class="lineno">  172 </span>instance Average RGB where
+<span class="lineno">  173 </span>  <span class="decl"><span class="nottickedoff">average cs = RGB (average reds) (average greens) (average blues)</span>
+<span class="lineno">  174 </span><span class="spaces">     </span><span class="nottickedoff">where</span>
+<span class="lineno">  175 </span><span class="spaces">        </span><span class="nottickedoff">reds   = [ r | RGB r _ _ &lt;- cs ]</span>
+<span class="lineno">  176 </span><span class="spaces">        </span><span class="nottickedoff">greens = [ g | RGB _ g _ &lt;- cs ]</span>
+<span class="lineno">  177 </span><span class="spaces">        </span><span class="nottickedoff">blues  = [ b | RGB _ _ b &lt;- cs ]</span></span>
+<span class="lineno">  178 </span>
+<span class="lineno">  179 </span>
+<span class="lineno">  180 </span>-- Consider using 4 bytes for color, rather than 32 bytes for the double (or are they floats?)
+<span class="lineno">  181 </span>instance Binary RGB where
+<span class="lineno">  182 </span>  <span class="decl"><span class="nottickedoff">put (RGB r g b) = put r &gt;&gt; put g &gt;&gt; put b</span></span>
+<span class="lineno">  183 </span>  <span class="decl"><span class="nottickedoff">get = liftM3 RGB get get get</span></span>
+<span class="lineno">  184 </span>
+<span class="lineno">  185 </span>
+<span class="lineno">  186 </span>------------------------------------------------------------------------------------------
+<span class="lineno">  187 </span>-- Colors with alpha
+<span class="lineno">  188 </span>
+<span class="lineno">  189 </span>-- | 'RGBA' is our color, with values between 0 and 1, inclusive.
+<span class="lineno">  190 </span>-- These values are *not* prenormalized
+<span class="lineno">  191 </span>data RGBA = RGBA !UI !UI !UI !UI deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
+<span class="lineno">  192 </span>
+<span class="lineno">  193 </span> -- Todo: rethink what this means
+<span class="lineno">  194 </span>
+<span class="lineno">  195 </span>instance Over RGBA where
+<span class="lineno">  196 </span>  <span class="decl"><span class="nottickedoff">over (RGBA r g b a) (RGBA r' g' b' a') =</span>
+<span class="lineno">  197 </span><span class="spaces">        </span><span class="nottickedoff">RGBA (f r r')           -- (SrcAlpha, OneMinusSrcAlpha)</span>
+<span class="lineno">  198 </span><span class="spaces">             </span><span class="nottickedoff">(f g g')</span>
+<span class="lineno">  199 </span><span class="spaces">             </span><span class="nottickedoff">(f b b')  </span>
+<span class="lineno">  200 </span><span class="spaces">             </span><span class="nottickedoff">(a + a' * (1 - a))               -- (One, OneMinusSrcAlpha)</span>
+<span class="lineno">  201 </span><span class="spaces">    </span><span class="nottickedoff">where f x y  = a * y + (1 - a) * x</span></span>
+<span class="lineno">  202 </span>
+<span class="lineno">  203 </span>{-
+<span class="lineno">  204 </span>   -- An associative algorithm for handling the alpha channel
+<span class="lineno">  205 </span>        -- Associative; please reinstate later
+<span class="lineno">  206 </span>
+<span class="lineno">  207 </span>        | a &lt;= nearZero = RGBA r' g' b' a_new
+<span class="lineno">  208 </span>        | otherwise     = RGBA 
+<span class="lineno">  209 </span>                     (lerp r' (scale (1/a) r) a) 
+<span class="lineno">  210 </span>                     (lerp g' (scale (1/a) g) a) 
+<span class="lineno">  211 </span>                     (lerp b' (scale (1/a) b) a) 
+<span class="lineno">  212 </span>                           a_new
+<span class="lineno">  213 </span>     where
+<span class="lineno">  214 </span>        -- can a_new be 0? only if a == 0 and a' == 0
+<span class="lineno">  215 </span>        a_new     = a + a' * (1 - a)
+<span class="lineno">  216 </span>-}
+<span class="lineno">  217 </span>
+<span class="lineno">  218 </span>instance Binary RGBA where
+<span class="lineno">  219 </span>  <span class="decl"><span class="nottickedoff">put (RGBA r g b a) = put r &gt;&gt; put g &gt;&gt; put b &gt;&gt; put a</span></span>
+<span class="lineno">  220 </span>  <span class="decl"><span class="nottickedoff">get = liftM4 RGBA get get get get</span></span>
+
+</pre>
+</html>

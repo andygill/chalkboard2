@@ -1,0 +1,186 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE TypeFamilies, ExistentialQuantification, GADTs, 
+<span class="lineno">    2 </span>    FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, 
+<span class="lineno">    3 </span>    UndecidableInstances #-}
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>module Graphics.ChalkBoard.Board 
+<span class="lineno">    6 </span>        ( -- * The 'Board' 
+<span class="lineno">    7 </span>          Board
+<span class="lineno">    8 </span>          -- * Ways of manipulating 'Board'.
+<span class="lineno">    9 </span>        , (&lt;$&gt;)
+<span class="lineno">   10 </span>        , zip
+<span class="lineno">   11 </span>        , zipWith
+<span class="lineno">   12 </span>        , zipWith3
+<span class="lineno">   13 </span>        , move
+<span class="lineno">   14 </span>        , rotate
+<span class="lineno">   15 </span>        , scaleXY
+<span class="lineno">   16 </span>          -- * Ways of creating a new 'Board'.
+<span class="lineno">   17 </span>        , boardOf
+<span class="lineno">   18 </span>        , circle
+<span class="lineno">   19 </span>        , box
+<span class="lineno">   20 </span>        , square
+<span class="lineno">   21 </span>        , triangle
+<span class="lineno">   22 </span>        , polygon
+<span class="lineno">   23 </span>        , readBoard
+<span class="lineno">   24 </span>        , bufferOnBoard
+<span class="lineno">   25 </span>        , readNormalizedBoard
+<span class="lineno">   26 </span>        , unAlphaBoard
+<span class="lineno">   27 </span>        ) where
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>
+<span class="lineno">   30 </span>import Graphics.ChalkBoard.Internals
+<span class="lineno">   31 </span>import Graphics.ChalkBoard.Types
+<span class="lineno">   32 </span>import Graphics.ChalkBoard.O as O
+<span class="lineno">   33 </span>import Graphics.ChalkBoard.O.Internals
+<span class="lineno">   34 </span>--import Graphics.ChalkBoard.Core
+<span class="lineno">   35 </span>--import Graphics.ChalkBoard.Utils
+<span class="lineno">   36 </span>import Graphics.ChalkBoard.Expr
+<span class="lineno">   37 </span>import Graphics.ChalkBoard.Buffer
+<span class="lineno">   38 </span>--import Graphics.ChalkBoard.IStorable as IS
+<span class="lineno">   39 </span>
+<span class="lineno">   40 </span>--import Data.Array.Unboxed  as U
+<span class="lineno">   41 </span>--import Data.Array.MArray
+<span class="lineno">   42 </span>--import Data.Array.Storable
+<span class="lineno">   43 </span>--import Data.Word
+<span class="lineno">   44 </span>--import Codec.Image.DevIL
+<span class="lineno">   45 </span>import Prelude hiding (zip, zipWith, zipWith3,lookup)
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>-- | 'fmap' like operator over a 'Board'.
+<span class="lineno">   48 </span>
+<span class="lineno">   49 </span>instance OFunctor Board where
+<span class="lineno">   50 </span>  <span class="decl"><span class="istickedoff">(&lt;$&gt;) f brd = Board (typeO1 f <span class="nottickedoff">(typeOfBoard brd)</span>) $ Fmap f brd</span></span>
+<span class="lineno">   51 </span>
+<span class="lineno">   52 </span>
+<span class="lineno">   53 </span>-- | 'pure' like operator for 'Board'.  
+<span class="lineno">   54 </span>boardOf :: O a -&gt; Board a
+<span class="lineno">   55 </span><span class="decl"><span class="istickedoff">boardOf ob = Board (typeO ob) (PrimConst ob)</span></span>
+<span class="lineno">   56 </span>
+<span class="lineno">   57 </span>zip :: Board a -&gt; Board b -&gt; Board (a,b)
+<span class="lineno">   58 </span><span class="decl"><span class="istickedoff">zip b1 b2 = Board (Pair_Ty (typeOfBoard b1) (typeOfBoard b2)) $ Zip b1 b2</span></span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>zipWith :: (O a -&gt; O b -&gt; O c) -&gt; Board a -&gt; Board b -&gt; Board c
+<span class="lineno">   61 </span><span class="decl"><span class="nottickedoff">zipWith f b1 b2 = (\ o' -&gt; f (fstO o') (sndO o')) &lt;$&gt; (b1 `zip` b2)</span></span>
+<span class="lineno">   62 </span>
+<span class="lineno">   63 </span>zipWith3 :: (O a -&gt; O b -&gt; O c -&gt; O d) -&gt; Board a -&gt; Board b -&gt; Board c -&gt; Board d
+<span class="lineno">   64 </span><span class="decl"><span class="nottickedoff">zipWith3 f b1 b2 b3 = (\ o' -&gt; f (fstO o') (fstO (sndO o')) (sndO (sndO o'))) &lt;$&gt; (b1 `zip` (b2 `zip` b3))</span></span>
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>{-
+<span class="lineno">   67 </span>transPoint :: Trans -&gt; (R,R) -&gt; (R,R)
+<span class="lineno">   68 </span>transPoint (Move (xd,yd))       (x,y) = (x - xd,y - yd)
+<span class="lineno">   69 </span>transPoint (Scale (xn,yn))      (x,y) = (x / xn,y / yn)
+<span class="lineno">   70 </span>transPoint (Rotate theta)       (x,y) = (cos theta * x - sin theta * y,
+<span class="lineno">   71 </span>                               sin theta * x + cos theta * y)
+<span class="lineno">   72 </span>-}
+<span class="lineno">   73 </span>
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>-- |  Generate a unit square (1 by 1 square) centered on origin
+<span class="lineno">   76 </span>square :: Board Bool
+<span class="lineno">   77 </span><span class="decl"><span class="istickedoff">square = Board BOOL_Ty $ Polygon (const [(-0.5,-0.5),(-0.5,0.5),(0.5,0.5),(0.5,-0.5)])</span></span>
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>-- | Generate a unit circle (radius .5) centered on origin
+<span class="lineno">   80 </span>circle :: Board Bool
+<span class="lineno">   81 </span><span class="decl"><span class="istickedoff">circle = Board BOOL_Ty $ Polygon $ \ sz' -&gt; </span>
+<span class="lineno">   82 </span><span class="spaces">        </span><span class="istickedoff">let sz = max (ceiling sz') 3</span>
+<span class="lineno">   83 </span><span class="spaces">        </span><span class="istickedoff">in [ (sin x/2,cos x/2) </span>
+<span class="lineno">   84 </span><span class="spaces">           </span><span class="istickedoff">| x &lt;- map (* (2*pi/fromIntegral sz)) $ take sz [0..]</span>
+<span class="lineno">   85 </span><span class="spaces">           </span><span class="istickedoff">]</span></span>
+<span class="lineno">   86 </span>
+<span class="lineno">   87 </span>-- | Generate an arbitary triangle from 3 points.
+<span class="lineno">   88 </span>triangle :: Point -&gt; Point -&gt; Point -&gt; Board Bool
+<span class="lineno">   89 </span><span class="decl"><span class="istickedoff">triangle p1 p2 p3 = Board BOOL_Ty $ Polygon (const [p1,p2,p3])</span></span>
+<span class="lineno">   90 </span>
+<span class="lineno">   91 </span>-- | Generate a (convex) polygon from a list of points. There must be at least 3 points,
+<span class="lineno">   92 </span>-- and the points must form a convex polygon.
+<span class="lineno">   93 </span>polygon :: [Point] -&gt; Board Bool
+<span class="lineno">   94 </span><span class="decl"><span class="nottickedoff">polygon points = Board BOOL_Ty $ Polygon (const points)</span></span>
+<span class="lineno">   95 </span>
+<span class="lineno">   96 </span>-- | 'box' generate a box between two corner points)
+<span class="lineno">   97 </span>box :: (Point,Point) -&gt; Board Bool
+<span class="lineno">   98 </span><span class="decl"><span class="nottickedoff">box ((x0,y0),(x1,y1)) = Board BOOL_Ty $ Polygon (const [(x0,y0),(x1,y0),(x1,y1),(x0,y1)])</span></span>
+<span class="lineno">   99 </span>
+<span class="lineno">  100 </span>-- | 'move' moves the contents of 'Board'
+<span class="lineno">  101 </span>move :: (R,R) -&gt; Board a -&gt; Board a
+<span class="lineno">  102 </span><span class="decl"><span class="istickedoff">move xy brd = Board (typeOfBoard brd) $ Trans (Move xy) brd</span></span>
+<span class="lineno">  103 </span>
+<span class="lineno">  104 </span>instance Scale (Board a) where
+<span class="lineno">  105 </span>  -- | 'scale' scales the contents of 'Board'
+<span class="lineno">  106 </span>  <span class="decl"><span class="istickedoff">scale n brd = scaleXY (n,n) brd</span></span>
+<span class="lineno">  107 </span>
+<span class="lineno">  108 </span>-- | 'scaleXY' scales the contents of 'Board' the X and Y dimension.
+<span class="lineno">  109 </span>--  See also 'scale'.
+<span class="lineno">  110 </span>scaleXY :: (R,R) -&gt; Board a -&gt; Board a
+<span class="lineno">  111 </span><span class="decl"><span class="istickedoff">scaleXY s brd = Board (typeOfBoard brd) $ Trans (Scale s) brd</span></span>
+<span class="lineno">  112 </span>
+<span class="lineno">  113 </span>-- | 'rotate' rotates a 'Board' clockwise by a radian argument.
+<span class="lineno">  114 </span>rotate :: Radian -&gt; Board a -&gt; Board a
+<span class="lineno">  115 </span><span class="decl"><span class="istickedoff">rotate r brd = Board (typeOfBoard brd) $ Trans (Rotate r) brd</span></span>
+<span class="lineno">  116 </span>
+<span class="lineno">  117 </span>{-
+<span class="lineno">  118 </span>lookup :: Board a -&gt; Float -&gt; (R,R) -&gt; a
+<span class="lineno">  119 </span>lookup brd r (x,y) = unO $ lookupO brd r (x,y)
+<span class="lineno">  120 </span>
+<span class="lineno">  121 </span>lookupO :: Board a -&gt; Float -&gt; (R,R) -&gt; O a
+<span class="lineno">  122 </span>lookupO (Trans t brd) r (x,y) = lookupO brd r (transPoint t (x,y))
+<span class="lineno">  123 </span>lookupO (Fmap f brd) r (x,y) = f $ lookupO brd r (x,y)
+<span class="lineno">  124 </span>lookupO (Polygon points) r (x,y) = 
+<span class="lineno">  125 </span>        if insidePoly (points r) (x,y)
+<span class="lineno">  126 </span>        then true
+<span class="lineno">  127 </span>        else false
+<span class="lineno">  128 </span>lookupO other r (x,y) = error $ show (&quot;lookup&quot;,other,r,(x,y))
+<span class="lineno">  129 </span>-}
+<span class="lineno">  130 </span>
+<span class="lineno">  131 </span>-- miss-use of PrimFun and primO
+<span class="lineno">  132 </span>        
+<span class="lineno">  133 </span>--coord :: Board (R,R)
+<span class="lineno">  134 </span>--coord = PrimFun (\ (x,y) -&gt; primO (O_Pair (E $ Lit x) (E $ Lit y)) $ (x,y))
+<span class="lineno">  135 </span>
+<span class="lineno">  136 </span>instance Over a =&gt; Over (Board a) where
+<span class="lineno">  137 </span>        -- 'over' overlays two 'Board's.
+<span class="lineno">  138 </span>        <span class="decl"><span class="istickedoff">over b1 b2 = Board (typeOfBoard b1) $ Over <span class="nottickedoff">over</span> b1 b2</span></span>
+<span class="lineno">  139 </span>
+<span class="lineno">  140 </span>-- I would rather mask to be a Board Bool, and we could use &lt;$&gt;,
+<span class="lineno">  141 </span>-- to choose, but the Board transformer will do for now.
+<span class="lineno">  142 </span>{-
+<span class="lineno">  143 </span>mask :: ((R,R),(R,R)) -&gt; Board a -&gt; Board (Maybe a)
+<span class="lineno">  144 </span>mask = error &quot;mask&quot;
+<span class="lineno">  145 </span>-}
+<span class="lineno">  146 </span>
+<span class="lineno">  147 </span>-- | read a file containing a common image format (jpg, gif, etc.), 
+<span class="lineno">  148 </span>-- and create a 'Board RGBA', and the X and Y size of the image.
+<span class="lineno">  149 </span>readBoard :: String -&gt; IO (Int,Int,Board (RGBA -&gt; RGBA))
+<span class="lineno">  150 </span><span class="decl"><span class="istickedoff">readBoard filename = do</span>
+<span class="lineno">  151 </span><span class="spaces">  </span><span class="istickedoff">buff &lt;- readBuffer filename</span>
+<span class="lineno">  152 </span><span class="spaces">  </span><span class="istickedoff">let (x,y) = bufferSize buff</span>
+<span class="lineno">  153 </span><span class="spaces">  </span><span class="istickedoff">return $ (x,y,Board <span class="nottickedoff">RGBA_Ty</span> $ BufferOnBoard buff (boardOf (O.transparent)))</span></span>
+<span class="lineno">  154 </span>  
+<span class="lineno">  155 </span>readNormalizedBoard :: String -&gt; IO (Int,Int,Board (RGBA -&gt; RGBA))
+<span class="lineno">  156 </span><span class="decl"><span class="istickedoff">readNormalizedBoard filename = do</span>
+<span class="lineno">  157 </span><span class="spaces">    </span><span class="istickedoff">(x,y,imgBrd) &lt;- readBoard (filename)</span>
+<span class="lineno">  158 </span><span class="spaces">    </span><span class="istickedoff">let xy = fromIntegral $ max x y</span>
+<span class="lineno">  159 </span><span class="spaces">        </span><span class="istickedoff">sc = 1 / xy</span>
+<span class="lineno">  160 </span><span class="spaces">        </span><span class="istickedoff">xd = fromIntegral y / xy</span>
+<span class="lineno">  161 </span><span class="spaces">        </span><span class="istickedoff">yd = fromIntegral x / xy</span>
+<span class="lineno">  162 </span><span class="spaces">        </span><span class="istickedoff">img = move (-0.5 * yd,-0.5 * xd)  (scale sc imgBrd)</span>
+<span class="lineno">  163 </span><span class="spaces">    </span><span class="istickedoff">return (<span class="nottickedoff">x</span>,<span class="nottickedoff">y</span>,img)</span></span>
+<span class="lineno">  164 </span>
+<span class="lineno">  165 </span>
+<span class="lineno">  166 </span>-- TODO: Consider, does this draw whole pixels, or interprelate between the center points?
+<span class="lineno">  167 </span>bufferOnBoard :: Buffer a -&gt; Board a -&gt; Board a
+<span class="lineno">  168 </span><span class="decl"><span class="istickedoff">bufferOnBoard buff brd = Board (typeOfBoard brd) $ BufferOnBoard buff brd</span></span>
+<span class="lineno">  169 </span>
+<span class="lineno">  170 </span>-- call this appAlpha
+<span class="lineno">  171 </span>unAlphaBoard :: Board RGB -&gt; Board (RGBA -&gt; RGBA) -&gt; Board RGB
+<span class="lineno">  172 </span><span class="decl"><span class="istickedoff">unAlphaBoard b1 b2 = Board <span class="nottickedoff">RGB_Ty</span> (BoardUnAlpha b1 b2)</span></span>
+
+</pre>
+</html>

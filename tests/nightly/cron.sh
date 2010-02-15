@@ -4,7 +4,7 @@
 #  -  New recipients can be added by inserting additional email addresses into the string below, separated by a space.
 
 
-recipients="kmatlage@ittc.ku.edu kmatlage@ku.edu"
+recipients="kmatlage@ittc.ku.edu andygill@ittc.ku.edu"
 
 nightlyEmail=/tmp/nightlyEmail
 nightlyLog=/tmp/nightly.log

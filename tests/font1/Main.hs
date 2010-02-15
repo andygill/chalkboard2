@@ -1,7 +1,9 @@
 {-# LANGUAGE TypeFamilies, FlexibleInstances  #-}
+module Main where
+
 import Graphics.ChalkBoard.O
 import Graphics.ChalkBoard
-import Graphics.ChalkBoard.O.Internals
+--import Graphics.ChalkBoard.O.Internals
 import qualified Graphics.ChalkBoard.Font as Font
 import Numeric
 import Data.Boolean

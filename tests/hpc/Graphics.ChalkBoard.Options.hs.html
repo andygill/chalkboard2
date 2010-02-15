@@ -1,0 +1,54 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>-- ChalkBoard Options
+<span class="lineno">    2 </span>-- October 2009
+<span class="lineno">    3 </span>-- Kevin Matlage, Andy Gill
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>
+<span class="lineno">    6 </span>module Graphics.ChalkBoard.Options where
+<span class="lineno">    7 </span>
+<span class="lineno">    8 </span>import Graphics.ChalkBoard.CBIR( BufferId )
+<span class="lineno">    9 </span>import Data.Binary
+<span class="lineno">   10 </span>import Control.Monad
+<span class="lineno">   11 </span>
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>data Options = NoFBO
+<span class="lineno">   14 </span>             | DebugFrames
+<span class="lineno">   15 </span>             | DebugAll                      -- ^ not supported (yet!)
+<span class="lineno">   16 </span>             | DebugBoards [BufferId]     -- ^ not supported (yet!)
+<span class="lineno">   17 </span>             | BoardSize Int Int             -- ^ default is 400x400.
+<span class="lineno">   18 </span>             | FullScreen               -- ^ not supported (yet!)
+<span class="lineno">   19 </span>             | DebugCBIR
+<span class="lineno">   20 </span>             | VerboseVideo
+<span class="lineno">   21 </span>        deriving (<span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>, <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>)
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>instance Binary Options where
+<span class="lineno">   24 </span>  <span class="decl"><span class="nottickedoff">put (NoFBO)                    = put (0 :: Word8)</span>
+<span class="lineno">   25 </span><span class="spaces">  </span><span class="nottickedoff">put (DebugFrames)         = put (1 :: Word8)</span>
+<span class="lineno">   26 </span><span class="spaces">  </span><span class="nottickedoff">put (DebugBoards buffs)        = put (2 :: Word8) &gt;&gt; put buffs</span>
+<span class="lineno">   27 </span><span class="spaces">  </span><span class="nottickedoff">put (BoardSize w h)     = put (3 :: Word8) &gt;&gt; put w &gt;&gt; put h</span>
+<span class="lineno">   28 </span><span class="spaces">  </span><span class="nottickedoff">put (FullScreen)           = put (4 :: Word8)</span>
+<span class="lineno">   29 </span><span class="spaces">  </span><span class="nottickedoff">put (DebugCBIR)             = put (5 :: Word8)</span>
+<span class="lineno">   30 </span><span class="spaces">  </span><span class="nottickedoff">put (VerboseVideo)       = put (6 :: Word8)</span></span>
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>  <span class="decl"><span class="nottickedoff">get = do tag &lt;- getWord8</span>
+<span class="lineno">   33 </span><span class="spaces">           </span><span class="nottickedoff">case tag of</span>
+<span class="lineno">   34 </span><span class="spaces">                  </span><span class="nottickedoff">0 -&gt; return $ NoFBO </span>
+<span class="lineno">   35 </span><span class="spaces">                  </span><span class="nottickedoff">1 -&gt; return $ DebugFrames</span>
+<span class="lineno">   36 </span><span class="spaces">                  </span><span class="nottickedoff">2 -&gt; liftM DebugBoards get</span>
+<span class="lineno">   37 </span><span class="spaces">                  </span><span class="nottickedoff">3 -&gt; liftM2 BoardSize get get</span>
+<span class="lineno">   38 </span><span class="spaces">                  </span><span class="nottickedoff">4 -&gt; return $ FullScreen</span>
+<span class="lineno">   39 </span><span class="spaces">                  </span><span class="nottickedoff">5 -&gt; return $ DebugCBIR</span>
+<span class="lineno">   40 </span><span class="spaces">                  </span><span class="nottickedoff">5 -&gt; return $ VerboseVideo</span></span>
+
+</pre>
+</html>

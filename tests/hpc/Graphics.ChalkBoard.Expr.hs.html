@@ -1,0 +1,226 @@
+<html><style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE TypeFamilies, GADTs #-}
+<span class="lineno">    2 </span>module Graphics.ChalkBoard.Expr where
+<span class="lineno">    3 </span>        
+<span class="lineno">    4 </span>--import Control.Applicative
+<span class="lineno">    5 </span>import Graphics.ChalkBoard.Types -- hiding (Alpha)
+<span class="lineno">    6 </span>import qualified Graphics.ChalkBoard.Types as Ty
+<span class="lineno">    7 </span>--import Graphics.ChalkBoard.Core as C
+<span class="lineno">    8 </span>--import Data.Reify.Graph
+<span class="lineno">    9 </span>import Data.Reify
+<span class="lineno">   10 </span>import Control.Applicative as AF
+<span class="lineno">   11 </span>import qualified Data.Traversable as T
+<span class="lineno">   12 </span>import qualified Data.Foldable as F
+<span class="lineno">   13 </span>import Data.Monoid
+<span class="lineno">   14 </span>import Data.Maybe
+<span class="lineno">   15 </span>import qualified Data.List as L
+<span class="lineno">   16 </span>import Control.Monad
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>------------------------------------------------------------------------------
+<span class="lineno">   19 </span>-- Data Type
+<span class="lineno">   20 </span>------------------------------------------------------------------------------
+<span class="lineno">   21 </span>
+<span class="lineno">   22 </span>-- All the functions in our first order language.
+<span class="lineno">   23 </span>data Expr s 
+<span class="lineno">   24 </span>        -- The var
+<span class="lineno">   25 </span>        = Var [Path]
+<span class="lineno">   26 </span>        | Back                      -- a var to the backing plane
+<span class="lineno">   27 </span>        -- constants TODO: common up the constants
+<span class="lineno">   28 </span>        | Lit R
+<span class="lineno">   29 </span>        | O_Bool Bool
+<span class="lineno">   30 </span>        | O_RGB RGB
+<span class="lineno">   31 </span>        | O_RGBA RGBA -- (Ty.Alpha RGB)
+<span class="lineno">   32 </span>        -- deconstructors
+<span class="lineno">   33 </span>--      | O_Fst s
+<span class="lineno">   34 </span>--      | O_Snd s
+<span class="lineno">   35 </span>        -- constructors
+<span class="lineno">   36 </span>--      | O_Pair s s                      -- (a,b)
+<span class="lineno">   37 </span>        -- Functions
+<span class="lineno">   38 </span>--      | IsJust s      -- O (Just a) -&gt; O Bool
+<span class="lineno">   39 </span>        | OrBool                  -- the || function
+<span class="lineno">   40 </span>        | Choose s s s                -- O a -&gt; O a -&gt; O Bool -&gt; O a
+<span class="lineno">   41 </span>        | Mix s s s          -- O a -&gt; O a -&gt; O UI -&gt; O a
+<span class="lineno">   42 </span>        | Alpha s s         -- O UI -&gt; O RGB -&gt; O (RGBA -&gt; RGBA)
+<span class="lineno">   43 </span>--      | ScaleAlpha UI s       -- RGBA -&gt; RGBA   -- TODO - is the dead code
+<span class="lineno">   44 </span>        | UnAlpha s s           -- RGB -&gt; (RGBA -&gt; RGBA) -&gt; RGB
+<span class="lineno">   45 </span>        | WithMask s s           -- O a -&gt; O Bool       -&gt; O (Maybe a)
+<span class="lineno">   46 </span>        | WithDefault s s           -- O a -&gt; O (Maybe a)       -&gt; O a
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>        -- boolean ops
+<span class="lineno">   49 </span>        | EQUAL s s         -- O a -&gt; O a -&gt; O Bool
+<span class="lineno">   50 </span>        | NOT s                          -- O Bool -&gt; O Bool
+<span class="lineno">   51 </span>
+<span class="lineno">   52 </span>        | IsJust s
+<span class="lineno">   53 </span>        | UnJust s
+<span class="lineno">   54 </span>        | O_Nothing
+<span class="lineno">   55 </span>        | O_Just s             
+<span class="lineno">   56 </span>
+<span class="lineno">   57 </span>        deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
+<span class="lineno">   58 </span>
+<span class="lineno">   59 </span>data Path  = GoLeft | GoRight 
+<span class="lineno">   60 </span>        deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>,<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>,<span class="istickedoff"><span class="decl"><span class="istickedoff">Ord</span></span></span>)
+<span class="lineno">   61 </span>        
+<span class="lineno">   62 </span>data E = E ExprType (Expr E)       -- TODO: changing type of E
+<span class="lineno">   63 </span>        deriving <span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>
+<span class="lineno">   64 </span>
+<span class="lineno">   65 </span>unE :: E -&gt; Expr E
+<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">unE (E _ e) = e</span></span>
+<span class="lineno">   67 </span>
+<span class="lineno">   68 </span>typeE :: E -&gt; ExprType
+<span class="lineno">   69 </span><span class="decl"><span class="istickedoff">typeE (E t _) = t</span></span>
+<span class="lineno">   70 </span>
+<span class="lineno">   71 </span>------------------------------------------------------------------------------
+<span class="lineno">   72 </span>-- Unification and Type Checking
+<span class="lineno">   73 </span>------------------------------------------------------------------------------
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>data ExprType 
+<span class="lineno">   76 </span>        = BOOL_Ty 
+<span class="lineno">   77 </span>        | RGB_Ty 
+<span class="lineno">   78 </span>        | RGBA_Ty      -- Change to RGBA_to_RGBA_Ty
+<span class="lineno">   79 </span>        | UI_Ty
+<span class="lineno">   80 </span>        | Pair_Ty ExprType ExprType
+<span class="lineno">   81 </span>        | Left_Ty ExprType            -- ( ty, \alpha )
+<span class="lineno">   82 </span>        | Right_Ty ExprType         -- ( \alpha, ty )
+<span class="lineno">   83 </span>        | Maybe_Ty ExprType
+<span class="lineno">   84 </span>        | Poly_Ty           -- because of fst, snd
+<span class="lineno">   85 </span>    deriving (<span class="decl"><span class="nottickedoff"><span class="decl"><span class="nottickedoff">Show</span></span></span></span>, <span class="decl"><span class="istickedoff"><span class="decl"><span class="nottickedoff">Eq</span></span></span></span>)
+<span class="lineno">   86 </span>{-
+<span class="lineno">   87 </span>-- SHOULD BE DEAD CODE!
+<span class="lineno">   88 </span>exprUnifyE :: E -&gt; ExprType -&gt; [([Path],ExprType)]
+<span class="lineno">   89 </span>exprUnifyE (E _ e) = exprUnify e
+<span class="lineno">   90 </span>
+<span class="lineno">   91 </span>-- exprUnify :: what the expected result type is, and does it unify
+<span class="lineno">   92 </span>exprUnify :: Expr E -&gt; ExprType -&gt; [([Path],ExprType)]
+<span class="lineno">   93 </span>exprUnify (Choose a b c)        ty      = L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c BOOL_Ty)
+<span class="lineno">   94 </span>exprUnify (Mix a b c)   ty                = L.nub (exprUnifyE a ty ++ exprUnifyE b ty ++ exprUnifyE c UI_Ty)
+<span class="lineno">   95 </span>exprUnify (O_Bool {})    BOOL_Ty         = []
+<span class="lineno">   96 </span>exprUnify (O_RGB {})      RGB_Ty    = []
+<span class="lineno">   97 </span>exprUnify (O_RGBA {})    RGBA_Ty         = []
+<span class="lineno">   98 </span>exprUnify (Lit {})          UI_Ty          = []
+<span class="lineno">   99 </span>exprUnify (Alpha _ e)    RGBA_Ty         = exprUnifyE e RGB_Ty
+<span class="lineno">  100 </span>exprUnify (UnAlpha e1 e2)       RGB_Ty            = L.nub (exprUnifyE e1 RGB_Ty ++ exprUnifyE e2 RGBA_Ty)
+<span class="lineno">  101 </span>exprUnify (ScaleAlpha _ e)      RGBA_Ty     = exprUnifyE e RGBA_Ty
+<span class="lineno">  102 </span>exprUnify (WithMask e1 e2)      (Maybe_Ty ty)       = L.nub (exprUnifyE e1 ty ++ exprUnifyE e2 BOOL_Ty)
+<span class="lineno">  103 </span>exprUnify (WithDefault e1 e2)   ty            = L.nub (exprUnifyE e1 ty ++ exprUnifyE e2 (Maybe_Ty ty))
+<span class="lineno">  104 </span>
+<span class="lineno">  105 </span>exprUnify (Var i)            ty          = [(i,ty)]
+<span class="lineno">  106 </span>--exprUnify (O_Fst e)    ty          = exprUnifyE e (Pair_Ty ty Poly_Ty)
+<span class="lineno">  107 </span>--exprUnify (O_Snd e)    ty          = exprUnifyE e (Pair_Ty Poly_Ty ty)
+<span class="lineno">  108 </span>exprUnify other ty = error $ &quot;exprUnify failure (internal errror) &quot; ++ show (other,ty)
+<span class="lineno">  109 </span>
+<span class="lineno">  110 </span>-}
+<span class="lineno">  111 </span>unifyTy :: ExprType -&gt; ExprType -&gt; ExprType
+<span class="lineno">  112 </span><span class="decl"><span class="istickedoff">unifyTy t1 t2 </span>
+<span class="lineno">  113 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">t1 == t2</span> = t1</span>
+<span class="lineno">  114 </span><span class="spaces">  </span><span class="istickedoff">| <span class="nottickedoff">otherwise</span> = <span class="nottickedoff">error $ &quot;unifyTy failed&quot; ++ show (t1,t2)</span></span></span>
+<span class="lineno">  115 </span>        
+<span class="lineno">  116 </span>------------------------------------------------------------------------------
+<span class="lineno">  117 </span>-- constructors
+<span class="lineno">  118 </span>------------------------------------------------------------------------------
+<span class="lineno">  119 </span>
+<span class="lineno">  120 </span>oFst :: E -&gt; E
+<span class="lineno">  121 </span><span class="decl"><span class="istickedoff">oFst (E (Pair_Ty ty _) (Var i)) = E ty (Var (i ++ [GoLeft]))</span>
+<span class="lineno">  122 </span><span class="spaces"></span><span class="istickedoff">oFst other   = <span class="nottickedoff">error $ &quot;oFst failed&quot; ++ show other</span></span></span>
+<span class="lineno">  123 </span>
+<span class="lineno">  124 </span>oSnd :: E -&gt; E
+<span class="lineno">  125 </span><span class="decl"><span class="istickedoff">oSnd (E (Pair_Ty _ ty) (Var i)) = E ty (Var (i ++ [GoRight])) </span>
+<span class="lineno">  126 </span><span class="spaces"></span><span class="istickedoff">oSnd other   = <span class="nottickedoff">error $ &quot;oSnd failed&quot; ++ show other</span></span></span>
+<span class="lineno">  127 </span>
+<span class="lineno">  128 </span>------------------------------------------------------------------------------
+<span class="lineno">  129 </span>-- Evaluation
+<span class="lineno">  130 </span>------------------------------------------------------------------------------
+<span class="lineno">  131 </span>
+<span class="lineno">  132 </span>-- TODO: consider using the shallow embedding for this.
+<span class="lineno">  133 </span>-- evaluate to a normal form (constant folding, really)
+<span class="lineno">  134 </span>evalExprE :: Expr E -&gt; Maybe (Expr E)
+<span class="lineno">  135 </span>-- already values
+<span class="lineno">  136 </span><span class="decl"><span class="istickedoff">evalExprE e@(Var {})      = <span class="nottickedoff">return e</span></span>
+<span class="lineno">  137 </span><span class="spaces"></span><span class="istickedoff">evalExprE e@(O_Bool {})         = <span class="nottickedoff">return e</span></span>
+<span class="lineno">  138 </span><span class="spaces"></span><span class="istickedoff">evalExprE e@(O_RGB {})          = return e</span>
+<span class="lineno">  139 </span><span class="spaces"></span><span class="istickedoff">evalExprE e@(O_RGBA {})         = <span class="nottickedoff">return e</span></span>
+<span class="lineno">  140 </span><span class="spaces"></span><span class="istickedoff">evalExprE e@(Lit _)         = return e</span>
+<span class="lineno">  141 </span><span class="spaces"></span><span class="istickedoff">-- try some evaluation, please.</span>
+<span class="lineno">  142 </span><span class="spaces"></span><span class="istickedoff">evalExprE (Choose a b c) = </span>
+<span class="lineno">  143 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">case liftM unE $ evalE c of</span></span>
+<span class="lineno">  144 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">Just (O_Bool True)  -&gt; liftM unE $ evalE a</span></span>
+<span class="lineno">  145 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">Just (O_Bool False) -&gt; liftM unE $ evalE b</span></span>
+<span class="lineno">  146 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">_ -&gt; Nothing</span></span>
+<span class="lineno">  147 </span><span class="spaces"></span><span class="istickedoff">evalExprE (Alpha n e) =</span>
+<span class="lineno">  148 </span><span class="spaces">        </span><span class="istickedoff">case liftM unE $ evalE e of</span>
+<span class="lineno">  149 </span><span class="spaces">          </span><span class="istickedoff">Just (O_RGB (RGB r g b)) -&gt; </span>
+<span class="lineno">  150 </span><span class="spaces">             </span><span class="istickedoff">case liftM unE $ evalE n of</span>
+<span class="lineno">  151 </span><span class="spaces">                </span><span class="istickedoff">Just (Lit n') -&gt; return (O_RGBA (RGBA r g b n'))</span>
+<span class="lineno">  152 </span><span class="spaces">                </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">Nothing</span></span>
+<span class="lineno">  153 </span><span class="spaces">          </span><span class="istickedoff">Nothing -&gt; <span class="nottickedoff">Nothing</span></span>
+<span class="lineno">  154 </span><span class="spaces"></span><span class="istickedoff">evalExprE (O_Just e) =</span>
+<span class="lineno">  155 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">case evalE e of</span></span>
+<span class="lineno">  156 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">Just e' -&gt; return (O_Just e')</span></span>
+<span class="lineno">  157 </span><span class="spaces">           </span><span class="istickedoff"><span class="nottickedoff">Nothing -&gt; fail &quot;opps&quot;</span></span>
+<span class="lineno">  158 </span><span class="spaces"></span><span class="istickedoff">evalExprE _ = <span class="nottickedoff">Nothing</span></span></span>
+<span class="lineno">  159 </span>
+<span class="lineno">  160 </span>evalE :: E -&gt; Maybe E
+<span class="lineno">  161 </span><span class="decl"><span class="istickedoff">evalE (E t e) = liftM (E <span class="nottickedoff">t</span>) (evalExprE e)</span></span>
+<span class="lineno">  162 </span>
+<span class="lineno">  163 </span>------------------------------------------------------------------------------
+<span class="lineno">  164 </span>-- Reification Support
+<span class="lineno">  165 </span>------------------------------------------------------------------------------
+<span class="lineno">  166 </span>
+<span class="lineno">  167 </span>-- The generic plubing for our Expr datatype.              -- 
+<span class="lineno">  168 </span>
+<span class="lineno">  169 </span>
+<span class="lineno">  170 </span>-- TODO: allow Graph Expr to include the type
+<span class="lineno">  171 </span>instance MuRef E where
+<span class="lineno">  172 </span>  type DeRef E = Expr
+<span class="lineno">  173 </span>  <span class="decl"><span class="nottickedoff">mapDeRef f (E _ e) = T.traverse f e</span></span>
+<span class="lineno">  174 </span>
+<span class="lineno">  175 </span>
+<span class="lineno">  176 </span>
+<span class="lineno">  177 </span>instance T.Traversable Expr where
+<span class="lineno">  178 </span>        <span class="decl"><span class="nottickedoff">traverse _ (Var i)         = pure $ Var i</span>
+<span class="lineno">  179 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  180 </span><span class="spaces">        </span><span class="nottickedoff">traverse _ (O_Bool v)   = pure $ O_Bool v</span>
+<span class="lineno">  181 </span><span class="spaces">        </span><span class="nottickedoff">traverse _ (O_RGB v)     = pure $ O_RGB v</span>
+<span class="lineno">  182 </span><span class="spaces">        </span><span class="nottickedoff">traverse _ (O_RGBA v)   = pure $ O_RGBA v</span>
+<span class="lineno">  183 </span><span class="spaces">        </span><span class="nottickedoff">traverse _ (Lit r)         = pure $ Lit r</span>
+<span class="lineno">  184 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  185 </span><span class="spaces"></span><span class="nottickedoff">--      traverse f (O_Fst a)                = O_Fst &lt;$&gt; f a</span>
+<span class="lineno">  186 </span><span class="spaces"></span><span class="nottickedoff">--      traverse f (O_Snd a)                = O_Snd &lt;$&gt; f a</span>
+<span class="lineno">  187 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  188 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (Choose a b c)      = Choose &lt;$&gt; f a &lt;*&gt; f b &lt;*&gt; f c</span>
+<span class="lineno">  189 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (Mix a b c)                = Mix &lt;$&gt; f a &lt;*&gt; f b &lt;*&gt; f c</span>
+<span class="lineno">  190 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (Alpha c e)                = Alpha &lt;$&gt; f c &lt;*&gt; f e</span>
+<span class="lineno">  191 </span><span class="spaces"></span><span class="nottickedoff">--      traverse f (ScaleAlpha c e)  = ScaleAlpha c &lt;$&gt; f e</span>
+<span class="lineno">  192 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (UnAlpha e1 e2)     = UnAlpha &lt;$&gt; f e1 &lt;*&gt; f e2</span>
+<span class="lineno">  193 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  194 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (WithMask v1 v2)     = pure WithMask     &lt;*&gt; f v1 &lt;*&gt; f v2</span>
+<span class="lineno">  195 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (WithDefault v1 v2)  = pure WithDefault       &lt;*&gt; f v1 &lt;*&gt; f v2</span>
+<span class="lineno">  196 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (EQUAL v1 v2)        = pure EQUAL    &lt;*&gt; f v1 &lt;*&gt; f v2</span>
+<span class="lineno">  197 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  198 </span><span class="spaces"></span><span class="nottickedoff"></span>
+<span class="lineno">  199 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (IsJust e)          = IsJust &lt;$&gt; f e</span>
+<span class="lineno">  200 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (UnJust e)          = UnJust &lt;$&gt; f e</span>
+<span class="lineno">  201 </span><span class="spaces">        </span><span class="nottickedoff">traverse _ (O_Nothing)                = pure O_Nothing </span>
+<span class="lineno">  202 </span><span class="spaces">        </span><span class="nottickedoff">traverse f (O_Just e)           = O_Just &lt;$&gt; f e</span></span>
+<span class="lineno">  203 </span>
+<span class="lineno">  204 </span>        -- TODO
+<span class="lineno">  205 </span>        
+<span class="lineno">  206 </span>instance F.Foldable Expr where
+<span class="lineno">  207 </span>        <span class="decl"><span class="nottickedoff">foldMap f (Choose a b c) = mconcat [f a, f b, f c]</span></span>
+<span class="lineno">  208 </span>        --- TODO
+<span class="lineno">  209 </span>        
+<span class="lineno">  210 </span>instance Functor Expr where
+<span class="lineno">  211 </span>        <span class="decl"><span class="nottickedoff">fmap f (Choose a b c) = Choose (f a) (f b) (f c)</span></span>
+<span class="lineno">  212 </span>        --- TODO
+
+</pre>
+</html>
