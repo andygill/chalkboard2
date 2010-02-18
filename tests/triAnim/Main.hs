@@ -13,7 +13,7 @@ animMain cb = do
             triangle345 = pure $ choose (alpha black) transparent <$> triangle (0,0) (0,-0.3) (0.4,-0.3)
             square4  = pure $ move (0.2,-0.5) $ scale 0.4 $ choose (withAlpha 0.6 blue) transparent <$> square
             
-        let square3  = overList moveSq3s
+        let --square3  = overList moveSq3s
             moveSq3s = [ taking 2 (moveSq3 curSq i) | (curSq,i) <- Prelude.zip square3s [0..] ]
             square3s = [ scale 0.3 $ scale (1/3) $ choose (withAlpha 0.6 red) transparent <$> square | (x,y) <- combinations [0..2] [0..2] ]
             
@@ -30,7 +30,7 @@ animMain cb = do
 		                  moveSq3s
 		                )
 	                )
-	 
+	
         let loop 0 = return ()
             loop n = do
                 animatedScene <- moveScene animation -- $ square4 `over` square3 `over` triangle345 `over` background
@@ -50,10 +50,7 @@ overList (b:bs) = b `over` (overList bs)
 combinations (a:as) (b:bs) = (a,b):((combinations as (b:bs)) ++ (combinationsR (a:as) bs))
 combinations _ _ = []
 combinationsR (a:as) (b:bs) = (a,b):(combinationsR (a:as) bs)
-combinationsR _ _ = []   
-
-color :: O RGB -> Active (Board UI) -> Active (Board (RGBA -> RGBA))
-color rgb = fmap ((\ ui -> withAlpha ui rgb) .$)
+combinationsR _ _ = []
 
 
 moveScene active = do
@@ -84,27 +81,18 @@ mkActive t brd fn = ( fmap (\ x -> (fn x) $ brd)
                     )
 
 
-
+color :: O RGB -> Active (Board UI) -> Active (Board (RGBA -> RGBA))
+color rgb = fmap ((\ ui -> withAlpha ui rgb) .$)
 
 
 
 {-
-        moveSq3 sq i = foldr1 page
-               [
-                
-               ]
-
-        where movedSq = rotate (pi/2-atan(4/3)){-0.6435-} $ move (0.4,0.4) $ sq
-              x = i `mod` 3
-              y = i `div` 3
-
 let fn :: O ((RGB,RGB),Bool) -> O RGB
 fn o = choose (fstO (fstO o)) (sndO (fstO o)) (sndO o)
 drawChalkBoard cb $ fn <$> ((brd1 `CB.zip` brd2) `CB.zip` brd3)
 
 myMix :: O ((RGBA->RGBA,RGBA->RGBA),UI) -> O (RGBA->RGBA)
 myMix x = choose (fstO (fstO x)) (sndO (fstO x)) (o ((sndO x) == 1))
-
 --}
 
 
