@@ -10,13 +10,16 @@ main = startChalkBoard [BoardSize (400) (400)] animMain
 
 animMain cb = do
         let background = pure $ boardOf (alpha white) :: Active (Board (RGBA->RGBA))
-            triangle345 = pure $ choose (alpha black) transparent <$> triangle (0,0) (0,-0.3) (0.4,-0.3)
-            square4  = pure $ move (0.2,-0.5) $ scale 0.4 $ choose (withAlpha 0.6 blue) transparent <$> square
+            triangle345 = pure $ choose (alpha black) transparent <$> triangle (0,0) (0,-0.3) (0.4,-0.3) :: Active (Board (RGBA->RGBA))
+            square4  = pure $ move (0.2,-0.5) $ scale 0.4 $ choose (withAlpha 0.6 blue) transparent <$> square :: Active (Board (RGBA->RGBA))
             
-        let --square3  = overList moveSq3s
-            moveSq3s = [ taking 2 (moveSq3 curSq i) | (curSq,i) <- Prelude.zip square3s [0..] ]
+        let moveSq3s = [ taking 2 (moveSq3 curSq i) | (curSq,i) <- Prelude.zip square3s [0..] ]
             square3s = [ scale 0.3 $ scale (1/3) $ choose (withAlpha 0.6 red) transparent <$> square | (x,y) <- combinations [0..2] [0..2] ]
             
+            --moveSq3s = [ taking 2 $ color red (moveSq3 curSq i) | (curSq,i) <- Prelude.zip square3s [0..] ]
+            --square3s = [ scale 0.3 $ scale (1/3) $ choose 0.6 0 <$> square | (x,y) <- combinations [0..2] [0..2] ]
+            
+            --square3  = overList moveSq3s
             --square3  = mix white red <$> {-myMix <$> (CB.zip (CB.zip (boardOf (withAlpha 0.6 red)) (boardOf transparent))-} (withDefault 0.0 <$> (overList init3pos))
             --moveSq3s = [ unsafePerformIO (moveSquare (moveSq3 curSq i)) | (curSq,i) <- Prelude.zip square3s [0..] ]
             --init3pos = map (\x -> move (-0.15,-0.15) $ scale 0.3 x) square3s
@@ -76,9 +79,9 @@ moveBrd brd rot (sx,sy) (ex,ey) = mkActive 1 brd activeBoth
 
 
 mkActive :: R -> (Board a) -> (UI -> Board a -> Board a) -> Active (Board a)
-mkActive t brd fn = ( fmap (\ x -> (fn x) $ brd)
-	                (scale t $ age)
-                    )
+mkActive t brd fn = fmap (\ ui -> (fn ui) $ brd)
+	            $ scale t
+	            $ age
 
 
 color :: O RGB -> Active (Board UI) -> Active (Board (RGBA -> RGBA))
@@ -87,6 +90,12 @@ color rgb = fmap ((\ ui -> withAlpha ui rgb) .$)
 
 
 {-
+mkActive, color, overList, moveScene
+moveToOrigin? or a localRotate? or a moveToPosition?
+
+
+
+
 let fn :: O ((RGB,RGB),Bool) -> O RGB
 fn o = choose (fstO (fstO o)) (sndO (fstO o)) (sndO o)
 drawChalkBoard cb $ fn <$> ((brd1 `CB.zip` brd2) `CB.zip` brd3)
@@ -94,5 +103,8 @@ drawChalkBoard cb $ fn <$> ((brd1 `CB.zip` brd2) `CB.zip` brd3)
 myMix :: O ((RGBA->RGBA,RGBA->RGBA),UI) -> O (RGBA->RGBA)
 myMix x = choose (fstO (fstO x)) (sndO (fstO x)) (o ((sndO x) == 1))
 --}
+
+
+
 
 
