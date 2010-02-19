@@ -26,13 +26,17 @@ animMain cb = do
             -- could potentially use UI instead, not that it would be helpful
         
 	
-	--Determine the ordering/timing to create different looking animations
+	--Determine the ordering/timing to create different animations
 	let normalAnim = for 6 $ (flicker moveSq4s) `over` (flicker moveSq3s) `over` triangle345
 	    allAtOnce = for 6 $ (taking 1 $ overList moveSq4s) `over` (taking 1 $ overList moveSq3s) `over` triangle345
 	    redThenBlue = for 8 $ flicker $ [taking 0 triangle345] ++ (map (taking 0.3) moveSq3s) ++ moveSq4s
 	    blueThenRed = for 8 $ flicker $ [taking 0 triangle345] ++ moveSq4s ++ (map (taking 0.3) moveSq3s)
 	    rectangles = for 6 $ (flicker moveRec4s) `over` (flicker moveSq3s) `over` triangle345
 	    rectsAtOnce = for 6 $ (taking 1 $ overList moveRec4s) `over` (taking 1 $ overList moveSq3s) `over` triangle345
+	    
+	    combineSome = for 6 $ (flicker [(overList (take 2 (drop i moveSq4s))) | i <- [0,2..14] ]) `over` (flicker moveSq3s) `over` triangle345
+	    -- would be interesting to maybe map some 'sleep's into some of the ones that are just using 'over' and going at the same time
+	
 	
 	--Pick the animation you would like to see and turn it into a play object
 	playObj <- byFrame 29.97 normalAnim
