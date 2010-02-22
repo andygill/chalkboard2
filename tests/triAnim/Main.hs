@@ -2,7 +2,6 @@ module Main where
 
 import Graphics.ChalkBoard as CB
 import Control.Applicative (pure)
---import System.IO.Unsafe
 
 
 main = startChalkBoard [BoardSize (400) (400)] animMain
@@ -23,7 +22,7 @@ animMain cb = do
             
             -- could use something instead of combinations or actually do something with them?
             -- could start square moves from their start locations and then move from 0,0 to final location?
-            -- could potentially use UI instead, not that it would be helpful
+            -- could potentially use UI instead as an example, not that it would be more helpful
         
 	
 	--Determine the ordering/timing to create different animations
@@ -35,11 +34,14 @@ animMain cb = do
 	    rectsAtOnce = for 6 $ (taking 1 $ overList moveRec4s) `over` (taking 1 $ overList moveSq3s) `over` triangle345
 	    
 	    combineSome = for 6 $ (flicker [(overList (take 2 (drop i moveSq4s))) | i <- [0,2..14] ]) `over` (flicker moveSq3s) `over` triangle345
-	    -- would be interesting to maybe map some 'sleep's into some of the ones that are just using 'over' and going at the same time
+	    
+	    moveSq4sSep = [ actMove (0.15*i) moveSq4 | (moveSq4,i) <- Prelude.zip moveSq4s [0..] ]
+	    moveSq3sSep = [ actMove (0.25*i) moveSq3 | (moveSq3,i) <- Prelude.zip moveSq3s [0..] ]
+	    allWithDelays = for 4 $ (overList moveSq4sSep) `over` (overList moveSq3sSep) `over` triangle345
 	
 	
 	--Pick the animation you would like to see and turn it into a play object
-	playObj <- byFrame 29.97 normalAnim
+	playObj <- byFrame 29.97 allWithDelays
         --playObj <- realTime active
         
         
@@ -115,7 +117,7 @@ mkActive brd fn = fmap (\ ui -> (fn ui) $ brd) age
 
 
 {-
-mkActive, color, overList, unfilledPolygon?
+mkActive, color, overList, unfilledPolygon?, moveBrd/rotBrd/scaleBrd/etc?
 moveToOrigin? or a localRotate? or a moveToPosition?
 compiler optimizations would be great since we are often manipulating the same board over and over
 
@@ -123,13 +125,6 @@ compiler optimizations would be great since we are often manipulating the same b
 
 color :: O RGB -> Active (Board UI) -> Active (Board (RGBA -> RGBA))
 color rgb = fmap ((\ ui -> withAlpha ui rgb) .$)
-
-let fn :: O ((RGB,RGB),Bool) -> O RGB
-fn o = choose (fstO (fstO o)) (sndO (fstO o)) (sndO o)
-drawChalkBoard cb $ fn <$> ((brd1 `CB.zip` brd2) `CB.zip` brd3)
-
-myMix :: O ((RGBA->RGBA,RGBA->RGBA),UI) -> O (RGBA->RGBA)
-myMix x = choose (fstO (fstO x)) (sndO (fstO x)) (o ((sndO x) == 1))
 --}
 
 
