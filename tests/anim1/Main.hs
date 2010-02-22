@@ -7,7 +7,7 @@ example1 :: Point -> Point -> R -> Active (Board Bool)
 example1 s e th = id
  	$ fmap (\ (a,b) -> straightLine (s,(a,b)) th) 
 	$ scale 1
-	$ actLerp balloon s e
+	$ actLerp age s e
 
 example2 :: O RGB -> Active (Board RGB)
 example2 rgb 
@@ -25,7 +25,7 @@ example3 :: R -> O RGB -> Active (Board RGB)
 example3 r rgb = rot <*> ex
   where
 	ex = example2 rgb
-	rot = fmap (\ ui -> rotate (pi * ui * r)) balloon `streach` ex
+	rot = fmap (\ ui -> rotate (pi * ui * r)) age `streach` ex
 
 
 
