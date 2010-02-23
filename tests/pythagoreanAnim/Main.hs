@@ -9,15 +9,18 @@ main = startChalkBoard [BoardSize (400) (400)] animMain
 
 animMain cb = do
         let background = pure $ boardOf $ withAlpha 0.2 yellow :: Active (Board (RGBA->RGBA))
+        
             triangle345 = choose (alpha yellow) transparent <$> triangle (-0.2,0.15) (-0.2,-0.15) (0.2,-0.15)
             triLines = choose (alpha black) transparent <$> pointsToLine [(-0.2,0.15), (-0.2,-0.15), (0.2,-0.15), (-0.2,0.15)] 0.004
             mainTriangle = triLines `over` triangle345
             largeTriangle = mergeActive (activeMove (0.15,0.2)) $ mkActive (activeScale (2/3)) $ scale 1.5 $ mainTriangle
 
-            otherTriangles = mkActive (activeScale 2) $ overList [rotate (i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [1..3] ]
+            otherTriangles = [ rotate (i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [1..3] ]
+            otherTrianglesIn = overList [actMove i $ mkActive (activeMove (1,0)) $ move (-1,0) $ tri | (tri,i) <- Prelude.zip otherTriangles [1..] ]
 
         let anim = for 4 $ flicker [ actMove 1 $ taking 1 $ largeTriangle
-                                   , taking 1 $ otherTriangles] -- Need to fade this in or something
+                                   , taking 1 $ otherTrianglesIn  -- Need to fade this in or something
+                                   ]
         
         
         --Pick the animation you would like to see and turn it into a play object
@@ -44,7 +47,7 @@ overList (b:bs) = b `over` (overList bs)
 
 
 activeMove (x,y) ui = move (ui*x,ui*y)
-activeRotate radians ui = rotate (ui * radians)
+activeRotate radians ui = rotate (ui*radians)
 activeScale s ui = scale (ui*s + (1-ui))
 
 
