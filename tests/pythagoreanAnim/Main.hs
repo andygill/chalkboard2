@@ -17,9 +17,15 @@ animMain cb = do
 
             otherTriangles = [ rotate (i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [1..3] ]
             otherTrianglesIn = overList [actMove i $ mkActive (activeMove (1,0)) $ move (-1,0) $ tri | (tri,i) <- Prelude.zip otherTriangles [1..] ]
+            
+            colorSquare = fadeIn yellow $ scale 0.095 $ square
 
-        let anim = for 4 $ flicker [ actMove 1 $ taking 1 $ largeTriangle
+        let anim = for 6 $ flicker [ wait 0.5
+                                   , taking 1 $ largeTriangle
+                                   , wait 0.5
                                    , taking 1 $ otherTrianglesIn  -- Need to fade this in or something
+                                   , taking 0.5 $ colorSquare
+                                   , wait 1
                                    ]
         
         
@@ -56,6 +62,17 @@ mergeActive fn (Active start stop f) = Active start stop (\ui -> (fn (fromRation
 
 mkActive :: (UI -> Board a -> Board a) -> (Board a) -> Active (Board a)
 mkActive fn brd = fmap (\ ui -> (fn ui) $ brd) age
+
+
+color :: O RGB -> Active (Board UI) -> Active (Board (RGBA -> RGBA))
+color rgb = fmap ((\ ui -> withAlpha ui rgb) .$)
+
+fadeIn :: O RGB -> Board Bool -> Active (Board (RGBA -> RGBA))
+fadeIn rgb brd = fmap (\ ui -> choose (withAlpha (o ui) rgb) (transparent) <$> brd) age
+
+
+wait :: R -> Active (Board (RGBA -> RGBA))
+wait n = taking n (pure (boardOf transparent))
 
 
 {-
