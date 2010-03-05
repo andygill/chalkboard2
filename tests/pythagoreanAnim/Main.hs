@@ -24,7 +24,7 @@ animMain cb font sz (w,h) = do
             triangle345 = triangle (-0.2,0.15) (-0.2,-0.15) (0.2,-0.15)
             triLines = pointsToLine [(-0.2,0.15), (-0.2,-0.15), (0.2,-0.15), (-0.2,0.15)] 0.004
             mainTriangle = (choose (alpha black) transparent <$> triLines) `over` (choose (alpha yellow) transparent <$> triangle345)
-            largeTriangle = mergeActive (activeMove (0.15,0.2)) $ mkActive (activeScale (2/3)) $ scale 1.5 $ mainTriangle
+            largeTriangle = mergeActive (activeMove (0.15,0.2)) $ mergeActive (activeScale (2/3)) $ pure $ scale 1.5 $ mainTriangle
             
             a = move (-0.25,-0.03) $ makelbl aSP aLabel
             b = move (-0.04,-0.195) $ makelbl bSP bLabel
@@ -55,13 +55,15 @@ animMain cb font sz (w,h) = do
 
         --Set up the animation ordering/timing
         let anim = flicker [ taking 0.5 $ background
-                           , taking 0.5 $ firstABC
+                           , taking 1 $ firstABC
                            , taking 1 $ largeTriangle
                            , wait 0.5
-                           , taking 1 $ otherTrianglesIn
-                           , taking 0.5 $ colorSquare `over` secondABC `over` area
+                           , taking 2 $ otherTrianglesIn
+                           , taking 1 $ colorSquare `over` secondABC `over` area
                            , taking 1 $ slideLeft
+                           , wait 0.5
                            , taking 1 $ slideRight
+                           , taking 0.5 $ thirdABC
                            , taking 1 $ newSquares `over` thirdABC
                            , taking 1 $ finalABC `over` formula
                            ]
@@ -70,6 +72,8 @@ animMain cb font sz (w,h) = do
         --Pick the animation you would like to see and turn it into a play object
 	playObj <- byFrame 29.97 anim
         
+        --Start the video write stream
+        sid <- startDefaultWriteStream cb "pythagoreanAnim.mp4"
         
         --Run the animation
         let loop = do
@@ -78,11 +82,13 @@ animMain cb font sz (w,h) = do
                         Just scene -> do
                                 let scaledScene = scene
                                 drawChalkBoard cb $ unAlphaBoard (boardOf white) scaledScene
+                                frameChalkBoard cb sid
                                 loop
                         Nothing  -> return ()
         
         loop
         
+        endWriteStream cb sid
         exitChalkBoard cb
 
 
@@ -104,6 +110,7 @@ tempAppear ui = if (ui == 0 || ui == 1)
 
 
 mergeActive :: (UI -> Board a -> Board a) -> Active (Board a) -> Active (Board a)
+mergeActive fn (Pure brd) = Active 0 1 (\ui -> fn (fromRational ui) brd)
 mergeActive fn (Active start stop f) = Active start stop (\ui -> (fn (fromRational ui) . f) ui)
 
 mkActive :: (UI -> Board a -> Board b) -> (Board a) -> Active (Board b)
