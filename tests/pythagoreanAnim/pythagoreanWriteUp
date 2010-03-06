@@ -1,4 +1,4 @@
-More Public Write-Up:
+The More Public Write-Up:
 
 In testing the current features and usability of animation in
 ChalkBoard, we decided to recreate an existing animation. This
@@ -84,15 +84,17 @@ can also be taken with the returned Boards if the user desires.
 
 
 
-More Private Write-Up:
+The More Private Write-Up:
 
 One of the bigger issues I've noticed with the current version of the Active
 language is that everything starts to slow down as more animation elements get
-added. I think this is probably because even though part of an animation may
+added. I think this is probably because even though each animation part may
 only be active for a short period of time, it still has to be checked/calculated and 
 potential drawn in every pass. Whatever the cause, I have definitely noticed a
 distinct slow-down in animation speed as more parts of the animation are
-added, and so that's probably something we should try to fix or look into.
+added, and so that's probably something we should try to fix or look into. Also 
+helpful in this regard would be the reuse of boards, so that animations that are just 
+moving boards around and stuff can save a lot of processing time.
 
 Another couple issues that seemed pretty big were the lerp for RGBA->RGBA
 and the font support. At the moment, there is no instance for lerp with alpha
@@ -110,7 +112,8 @@ they need to be scaled down isn't immediately clear. Perhaps some function could
 used to automatically scale these text labels down to appropriate ChalkBoard sizes 
 when they are created. Right now, in order to scale them down to a reasonable size, 
 we just have to guess and keep decreasing the scale value until it looks about right.
-Placement isn't terribly easy either, but at least a little bit more obvious.
+Placement isn't terribly easy either, but at least a little bit more obvious once you 
+can see the text on the screen.
 
 There are also a few functions that I have used to script up some of these examples 
 that should probably be included in the Active language. The 'mkActive' that I have 
@@ -141,28 +144,12 @@ greater flexibility and ease of use.
 
 In addition to the predefined transformations mentioned above that could be passed to 
 these Active creating/modifying functions, it would also probably be useful to have 
-'appear' and 'disappear' parameters that can be passed in. These would, respectively, 
+'appear' and 'disappear' functions that can be passed in. These would, respectively, 
 make an animation element appear once its Active time index was >0 and would make it 
 disappear once that index reaches 1. A combination of both would also be good. A 
 primitive version of this is implemented in the pythagoreanAnim example.
 
-In another vein, it may be more useful to re-look at how the timing is done overall 
-so that animations can more easily be interlaced--appearing, starting, and 
-disappearing at a bunch of arbitrary times, independent of one another. This timing 
-would probably replace the current 'flicker'/'taking' paradigm and could perhaps use 
-some type of 'from' command to say that a given animation runs from some start time 
-to some end time. All animations would then be ran on a single timeline, starting up 
-whenever at their specified start time and finishing at their end time. This timeline 
-could still be scaled however, to change actual run time. The individual animations 
-themselves would still need to keep their 0 to 1 time index though, so that the 
-Active functions can work based on that percentage. The change from 0 to 1 would just 
-be stretched out over the amount of time specified in the 'from' function.
-
-
-
-New Thought:
-
-In regards to mkActive/mergeActive, I have now made it so that mergeActive can  
+Also in regards to mkActive/mergeActive, I have now made it so that mergeActive can  
 effectively change Active boards that are Pure into Active boards that are Active. 
 Basically, all boards can now be lifted into the Active world using the 'pure' 
 function and then only the mergeActive function is needed because it will switch 
@@ -170,7 +157,21 @@ Actives that are Pure to Actives that are Active. Because of this, all of the
 predefined transformations, as well as 'appear' and 'disappear', and any functions 
 that would be commonly passed to mergeActive can now be made into standalone, 
 predefined functions so that mergeActive doesn't need to be called all the time. For 
-instance activeMove could just act over Active boards and always add on the move 
+instance, activeMove could just act over Active boards and always add on the move 
 action to whatever was already there. If it was just a Pure, then this will create a 
 new Active. If there was already an Active function, then this new transformation is 
-just added on top of that.
+just added on top of that function.
+
+In another vein, it also be quite useful to re-look at how the timing is done overall 
+so that animations can more easily be interlaced--appearing, starting, and 
+disappearing at a bunch of arbitrary times, independent of one another. This timing 
+would probably replace the current 'flicker'/'taking' paradigm and could perhaps use 
+some type of 'from' command to say that a given animation runs from some start time 
+to some end time. All animations would then be ran on a single timeline, starting up 
+at their specified start time and finishing at the given end time. This timeline 
+could still be scaled, however, to change actual run time. The individual animations 
+themselves would still need to keep their 0 to 1 time index though, so that the 
+Active functions can work based on that percentage. The change from 0 to 1 would just 
+be stretched out over the amount of time specified in the 'from' function.
+
+
