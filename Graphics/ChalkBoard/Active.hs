@@ -3,6 +3,7 @@ module Graphics.ChalkBoard.Active where
 import Control.Applicative
 import Graphics.ChalkBoard.Types 
 import Graphics.ChalkBoard.Utils
+import Graphics.ChalkBoard.Board
 import Data.Ratio
 import Data.Time.Clock
 import Control.Concurrent.MVar
@@ -224,6 +225,45 @@ snapAt :: Rational -> Active a -> Maybe a
 snapAt r act@(Active start end f) 
 	| r >= start && r <= end = Just $ f (boundBy act r)
 	| otherwise              = Nothing
+
+
+
+---------------------------------------------
+----- 3/8/10 Additions by Kevin Matlage -----
+---------------------------------------------
+
+
+addActive :: (UI -> Board a -> Board a) -> Active (Board a) -> Active (Board a)
+addActive fn (Pure brd) = Active 0 1 (\ui -> fn (fromRational ui) brd)
+addActive fn (Active start stop f) = Active start stop (\ui -> (fn (fromRational ui) . f) ui)
+
+
+
+activeMove :: (R,R) -> Active (Board a) -> Active (Board a)
+activeMove (x,y) = addActive $ \ui -> move (ui*x,ui*y)
+
+activeScale :: R -> Active (Board a) -> Active (Board a)
+activeScale s = addActive $ \ui -> scale (ui*s + (1-ui))
+
+activeRotate :: R -> Active (Board a) -> Active (Board a)
+activeRotate radians = addActive $ \ui -> rotate (ui*radians)
+
+
+
+activeAppear :: Active (Board a) -> Active (Board a)
+activeAppear = addActive $ \ui -> if ui == 0
+                                        then scale 0
+                                        else scale 1
+
+activeTempAppear :: Active (Board a) -> Active (Board a)
+activeTempAppear = addActive $ \ui -> if (ui == 0 || ui == 1)
+                                        then scale 0
+                                        else scale 1
+
+activeDisappear :: Active (Board a) -> Active (Board a)
+activeDisappear = addActive $ \ui -> if ui == 1
+                                        then scale 0
+                                        else scale 1
 
 
 
