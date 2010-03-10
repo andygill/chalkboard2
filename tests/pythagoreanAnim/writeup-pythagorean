@@ -1,0 +1,259 @@
+The More Public Write-Up:
+
+In testing the current features and usability of animation in
+ChalkBoard, we decided to recreate an existing animation. This
+was done both to see how close we could reasonably get to the
+original and also how difficult it would be to do so. The
+animation that we chose for this experiment was an animated
+proof of the Pythagorean theorem that can be found on wikipedia
+<a href="http://en.wikipedia.org/wiki/File:Pythagoras-2a.gif" target="_blank">here</a>
+
+This example looked nice, served a useful purpose, and was exactly the
+type of animation we would like to be easily created with ChalkBoard.
+It also was complicated enough that we felt like it would be a good
+test of ChalkBoard's features, without being too complicated as to
+require an exorbitant amount of time to create and analyze.
+
+In scripting up this and other examples, a general structure for
+ChalkBoard animations using the Active language has begun to appear. First, the individual
+actions of the animation are built up separately, for instance, in a 'let' clause.
+This stage consists of building up all of the Active boards that will
+be used to show an individual piece of the final animation. This can be
+anything from an object moving across the screen, rotating,
+fading into view, changing colors, or a ton of other possibilities.
+The Active animation language really provides a lot of opportunities to be creative here.
+
+For this particular example, I would recommend following along with the relatively
+simple source code provided <a href="src" target="_blank">here</a>.
+
+In the Pythagorean example, I began by creating the background. I decided that in order to match 
+the background of the wikipedia entry, I wanted a faded yellow background. To do this, I simply 
+used the color yellow with an alpha value of 0.2. Because ChalkBoard assumes the default 
+background to be white, this blends the yellow with the default background of yellow to produce a 
+faded/light yellow similar to the example.
+
+Next, I built up a basic triangle in the middle of the screen. To do this, I first created a nice 
+3/4/5 triangle by giving the there points (-0.2,0.15) (-0.2,-0.15) and (0.2,-0.15) to the 
+triangle constructor. This created the shape of the triangle, but I also wanted a black outline 
+around it to match the original animation. To do this I used the pointsToLine function with takes 
+a list of points and draws a line between the adjacently listed points. Notice that the first 
+point is also listed last so that a line will be drawn back to the beginning to finish enclosing 
+our triangle. Lastly, the triangle is finally given it's color by choosing (alpha black) over a 
+transparent background for the line, and (alpha yellow) over a transparent background for the 
+triangle shape, with the line being placed over the triangle.
+
+While this finishes creating a simple triangle, this triangle itself is never actually displayed 
+in the animation. Instead, this triangle is transformed in different ways to create the triangles 
+that are actually displayed. For instance, the initial triangle shown in the animation is 
+achieved by scaling this 'mainTriangle' by the value 1.5. The animation of this triangle 
+shrinking down into it's final position is achieved by adding some Active functions. First, the 
+triangle is lifted into the Active (applicative functor) world using pure. This changes the Board 
+(RGBA->RGBA) into an Active ( Board (RGBA->RGBA) ), even though it currently remains constant 
+over time. The next step is to start applying actions to the board. In this instance, we apply 
+and 'activeScale' of 2/3 and an 'activeMove' up 0.2 units and right 0.15 units. These functions 
+are basically the same as their original affine transformations, except that their effects are 
+now displayed over time. A video of just this portion of the animation can be seen to the right. 
+(01largeTriangle)
+
+As a note, all of the font for this animation was actually added in last. In this tutorial, I 
+will only be covering the creation of the actual animation, and not the insertion of font. This 
+is predominantly because the only interesting parts that deal with the font are when to make the 
+font labels appear and disappear. In terms of the timing, this is mostly just done to 
+mirror the animation on wikipedia. Unfortunately, current Chalkboard animations using Active must 
+be explicitly told when parts of an animation should
+appear and disappear from the screen. While this will hopefully be taken care of with a couple 
+new combinators in the near future, the functions that are currently used to tell Actives to only 
+appear when they are in use are activeAppear and activeTempAppear. The function 
+activeAppear makes it so that the Active Board will only appear when its action starts, but will 
+remain visible after it has finished. The activeTempAppear function, on the other hand, changes 
+the Active Board so that it will only be visible while the action is actually happening, not 
+before or after the fact.
+
+Moving on the with actual animation, the next step was to create the four identical but rotated 
+triangles that are displayed in the wikipedia graphic. These were created using the list 
+comprehension for 'otherTriangles' that simply rotates the moved version of the original 
+'mainTriangle' that was created. These triangles are then made to appear using the activeAppear 
+function as described above. While they could have each been listed separately in the 'flicker' 
+portion of the program (described later), I instead chose to apply an 'actMove' to each of these 
+new triangles. This function simply moves the action of the given Active Board backwards in time 
+by the given value. Using the list comprehension in otherTrianglesActive, each new triangle is 
+made to appear a little bit later in time than the previous. Finally, this list of Active Boards, 
+each represented one new triangle, is compressed into one Active Board using the 'over' function.
+A video of this portion of the animation can be seen to the right.
+
+The next part of the animation is just adding a couple missing pieces to the screen so that the 
+full square can be clearly seen. A yellow square is added to the middle so that the entire 
+larger square can be seen to be of size cxc, and therefore having an area of c², as indicated by 
+the accompanying text.
+
+Next, we need to slide the top triangles down to match up with the lower triangles, as seen in 
+the animation to the right. We also want an outline of the old triangles to remain behind so we 
+can see where they originally came from (like in the original on wikipedia). This is done in two 
+parts. The first part is to fade the existing triangles while also creating two new triangles, 
+which will be the ones that actually slide down. The first part is done very similarly to how we 
+used rotate to create the 'otherTriangles'. In this instance, however, a white triangle with an 
+alpha value of 0.6 is simply placed where these two triangles used to be so that these triangles 
+will now look faded. For the second part, we create the first triangle by moving the original 
+'mainTriangle' up to where it stopped to form the first of the four smaller triangles, and then 
+from there apply an activeMove that will move it down to it's final position over time. We do the 
+same thing with the second triangle, but we can just grab its original shape/position from the 
+head of the 'otherTriangles' list, and then activeMove this triangle down to it's final position 
+on the right side. The effects of running just these individual animation parts can be seen in 
+the animation to the right, where you will notice the white triangles where the originals used to 
+be. Those are the triangles used to fade the existing triangles, while the new ones simply move 
+down to their new locations.
+
+The last part of the animation is simply switching the organization of these shapes. Now that 
+they are in their new positions, two new squares can be drawn covering this entire area that have 
+side lengths of a and b, and thus areas of a² and b². This in effect concludes the proof that a² 
++ b² equals the original area of c². In order to animate this part, I used the same general 
+strategy as fading out the two original triangles in the last step. The two main differences are 
+that this time I used yellow squares with alpha values of 0.8 instead so that the new squares 
+would be a darker yellow instead of a lighter one, and that I also drew lines around the new 
+squares as well to make them more clear. The squares to be faded in where just created as shapes 
+in ChalkBoard and moved to the right locations. They were then faded in over time using the 
+'fadeIn' function, which takes an alpha and RGB value of what color the shape should end up, as 
+well as a Board Bool of the shape, and produces an Active (Board (RGBA->RGBA)). This Active 
+Board consists of the shape fading in over time as the given color. The lines around the squares 
+are then drawn over the top of these fading in squares using the same pointsToLine function as 
+I did when drawing the original 'mainTriangle' above. This final part of the animation can be 
+seen to the right.
+
+
+In this example, each part of the animation is created separately and then must be strung
+together to create the full animation. The reason we did it this way was simply because, at the 
+moment, most of the animations we have attempted have been easier to create this way (by
+making smaller animations that are then combined together). These smaller animation pieces often 
+use some of the same basic structures repeatedly and so can be pretty easy to create in this way. 
+For instance, the originally defined triangle, which isn't actually displayed itself, is rotated 
+and moved around a lot in order to create all of the other triangles in the scene.
+While longer animations can definitely be created using these functions and actMove, it seems
+to be much easier at the moment to keep these individual animations pretty basic and then string 
+them together using some combinator such as the 'flicker' function.
+
+Using the 'flicker' function in this way is the second major stage we use for creating 
+an animation at the moment. Using the 'flicker' function, animations can be strung 
+together, one after the other, with the newer animations being stacked on top of the 
+older ones. The length of time each individual animation component takes to be 
+performed can be specified using the 'taking' function inside the list of 
+animations given to 'flicker'. This can stretch out certain actions to take longer amounts of 
+time or compress other actions to take short periods of time. If some parts of the animation
+need to appear when they start, or disappear after they are completed, this has to be done using 
+the activeAppear and activeTempAppear functions as described earlier. We do hope to implement
+a slightly easier way to specify when certain boards should appear and/or disappear soon though.
+
+This use of 'flicker' basically is what manages the ordering and timing of the
+individual parts of the animation that were created. It returns a single
+Active board that can then be used to display the whole animation (or used in turn
+to create an even bigger animation, hierarchically). In terms of displaying the
+animation, this will largely be done the same way for most animations. First, the
+Active board must be turned into a Player using the 'byFrame' or 'realTime'
+functions. The Player is then passed to the 'play' function to retrieve the next
+image of the animation (or Nothing, if the animation is finished). Finally, this 
+retrieved image can then be used in any way that ChalkBoard can use a Board. 
+Traditionally, the image will be displayed on the screen using 'drawChalkBoard' or 
+saved into a movie file with 'frameChalkBoard' (possibly both). After this, the 
+process of calling 'play' on the Player must be repeated to extract the next image. 
+This is usually placed into a simple loop that extracts and then displays or saves 
+the returned frame. In the future, we will probably include predefined functions to 
+perform each of these most basic cases automatically, though obviously there are
+other actions that can also be taken with the returned Boards, if the user desires.
+
+
+
+
+
+
+
+
+The More Private Write-Up:
+
+One of the bigger issues I've noticed with the current version of the Active
+language is that everything starts to slow down as more animation elements get
+added. I think this is probably because even though each animation part may
+only be active for a short period of time, it still has to be checked/calculated and 
+potential drawn in every pass. Whatever the cause, I have definitely noticed a
+distinct slow-down in animation speed as more parts of the animation are
+added, and so that's probably something we should try to fix or look into. Also 
+helpful in this regard would be the reuse of boards, so that animations that are just 
+moving boards around and stuff can save a lot of processing time.
+
+Another couple issues that seemed pretty big were the lerp for RGBA->RGBA
+and the font support. At the moment, there is no instance for lerp with alpha
+(RGBA->RGBA) and that would obviously be a very useful addition in order to
+interpolate between RGBA colors or fade objects in or out of a scene based on
+a starting and ending RGBA (transparent to some RGBA color, normally).
+The font support issue is actually a ChalkBoard issue, but definitely has an
+effect on animation because fonts are often going to be used in animations. 
+Basically, the main issue with font is how difficult it is to use. Right now,
+a lot of our font functions seem to require some arguments that are determined in
+a rather arbitrary/guess-and-check way. The biggest of these cases comes into play
+when trying to size the text labels that are created. The textures start out with
+characters that are way to big to even fit on the ChalkBoard screen, and how much 
+they need to be scaled down isn't immediately clear. Perhaps some function could be 
+used to automatically scale these text labels down to appropriate ChalkBoard sizes 
+when they are created. Right now, in order to scale them down to a reasonable size, 
+we just have to guess and keep decreasing the scale value until it looks about right.
+Placement isn't terribly easy either, but at least a little bit more obvious once you 
+can see the text on the screen.
+
+There are also a few functions that I have used to script up some of these examples 
+that should probably be included in the Active language. The 'mkActive' that I have 
+used in the pythagoreanAnim example is really useful for creating an Active board. 
+You just need to give it a function that takes a UI argument and then acts over 
+boards (basically a function that is UI -> Board a -> Board a). The UI here is 
+obviously the Active time index, which is 0 until the animation begins, then 
+climbs to a value of 1 over a given amount of time, and then maintains this final 
+value of 1. This function could be especially useful in combination with other
+predefined Active functions. For instance, the implementations I have for activeMove, 
+activeRotate, and activeScale in the same pythagoreanAnim example would all be 
+incredibly useful for animating these standard affine transformations over time. All 
+a user would need to do is decide where they want to move, or how much they want to 
+rotate or scale by, and the rest of the plumbing for making that transformation 
+happen over time would already be done for them.
+
+In conjunction with 'mkActive', the mergeActive function defined in this same 
+pythagoreanAnim example would also be really useful. It allows for other types of 
+Active actions to be performed on a previously created Active board. For instance, if 
+you have created an Active board that scales some shape, you can merge in another 
+Active action, such as moving this shape. Then, the shape would scale and move at the 
+same time. This can be done repeatedly to apply a ton of different transformations or 
+other actions to the same board. One could also see the usefulness of creating a 
+similar function that instead of merging the two actions, would have the new action 
+be performed after the original. In this way, a shape could be made to scale, and 
+then move, instead of scale and move at the same time. This would allow for 
+greater flexibility and ease of use.
+
+In addition to the predefined transformations mentioned above that could be passed to 
+these Active creating/modifying functions, it would also probably be useful to have 
+'appear' and 'disappear' functions that can be passed in. These would, respectively, 
+make an animation element appear once its Active time index was >0 and would make it 
+disappear once that index reaches 1. A combination of both would also be good. A 
+primitive version of this is implemented in the pythagoreanAnim example.
+
+Also in regards to mkActive/mergeActive, I have now made it so that mergeActive can  
+effectively change Active boards that are Pure into Active boards that are Active. 
+Basically, all boards can now be lifted into the Active world using the 'pure' 
+function and then only the mergeActive function is needed because it will switch 
+Actives that are Pure to Actives that are Active. Because of this, all of the 
+predefined transformations, as well as 'appear' and 'disappear', and any functions 
+that would be commonly passed to mergeActive can now be made into standalone, 
+predefined functions so that mergeActive doesn't need to be called all the time. For 
+instance, activeMove could just act over Active boards and always add on the move 
+action to whatever was already there. If it was just a Pure, then this will create a 
+new Active. If there was already an Active function, then this new transformation is 
+just added on top of that function.
+
+In another vein, it also be quite useful to re-look at how the timing is done overall 
+so that animations can more easily be interlaced--appearing, starting, and 
+disappearing at a bunch of arbitrary times, independent of one another. This timing 
+would probably replace the current 'flicker'/'taking' paradigm and could perhaps use 
+some type of 'from' command to say that a given animation runs from some start time 
+to some end time. All animations would then be ran on a single timeline, starting up 
+at their specified start time and finishing at the given end time. This timeline 
+could still be scaled, however, to change actual run time. The individual animations 
+themselves would still need to keep their 0 to 1 time index though, so that the 
+Active functions can work based on that percentage. The change from 0 to 1 would just 
+be stretched out over the amount of time specified in the 'from' function.
+
+

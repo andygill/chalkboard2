@@ -32,7 +32,7 @@ animMain cb font sz (w,h) = do
             firstABC = activeTempAppear $ pure $ (move (-0.1,0) a) `over` (move (-0.03,-0.08) b) `over` (move (0.005,0.005) c)
             
             otherTriangles = [ rotate (-i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [1..3] ]
-            otherTrianglesIn = overList [actMove i $ activeAppear $ pure $ {-activeMove (1,0) $ move (-1,0) $-} tri | (tri,i) <- Prelude.zip otherTriangles [1..] ]
+            otherTrianglesActive = overList [actMove i $ activeAppear $ pure $ {-activeMove (1,0) $ move (-1,0) $-} tri | (tri,i) <- Prelude.zip otherTriangles [1..] ]
             
             colorSquare = activeAppear $ pure $ scale 0.095 $ choose (alpha yellow) transparent <$> square
             area = activeAppear $ pure $ move (-0.4,0.35) $ makelbl aSP areaLabel
@@ -48,7 +48,7 @@ animMain cb font sz (w,h) = do
             square3 = move (-0.2, -0.2) $ scale 0.3 $ square
             squares = (square4 `over` square3)
             newLines = pointsToLine [(-0.05,-0.35), (0.35,-0.35), (0.35,0.05), (-0.05,0.05), (-0.05,-0.35), (-0.35,-0.35), (-0.35,-0.05), (-0.05,-0.05)] 0.004
-            newSquares = (fadeIn 1 black newLines) `over` (fadeIn 0.9 yellow squares)
+            newSquares = (fadeIn 1 black newLines) `over` (fadeIn 0.8 yellow squares)
             
             finalABC = activeAppear $ pure $ (move (-0.15, -0.2) a) `over` (move (0.03,-0.36) a) `over` (move (0.18,-0.2) b) `over` (move (0.4,0) b)
             formula = activeAppear $ pure $ move (0.15,0.35) $ makelbl aSP formulaLabel
@@ -58,14 +58,14 @@ animMain cb font sz (w,h) = do
                            , taking 1 $ firstABC
                            , taking 1 $ largeTriangle
                            , wait 0.5
-                           , taking 2 $ otherTrianglesIn
-                           , taking 1 $ colorSquare `over` secondABC `over` area
+                           , taking 2 $ otherTrianglesActive
+                           , taking 1.5 $ colorSquare `over` secondABC `over` area
                            , taking 1 $ slideLeft
                            , wait 0.5
                            , taking 1 $ slideRight
-                           , taking 0.5 $ thirdABC
+                           , taking 1 $ thirdABC
                            , taking 1 $ newSquares `over` thirdABC
-                           , taking 1 $ finalABC `over` formula
+                           , taking 3 $ finalABC `over` formula
                            ]
         
         
@@ -73,7 +73,7 @@ animMain cb font sz (w,h) = do
 	playObj <- byFrame 29.97 anim
         
         --Start the video write stream
-        sid <- startDefaultWriteStream cb "pythagoreanAnim.mp4"
+        sid <- startDefaultWriteStream cb "pythagorean.avi"
         
         --Run the animation
         let loop = do

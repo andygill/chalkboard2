@@ -17,61 +17,8 @@ Graphics/ChalkBoard/IStorable.hs:125:9:
     In the instance declaration for `Binary ReadOnlyCByteArray'
 [ 2 of 22] Compiling Graphics.ChalkBoard.Types ( Graphics/ChalkBoard/Types.hs, dist/build/Graphics/ChalkBoard/Types.o )
 [ 3 of 22] Compiling Graphics.ChalkBoard.Utils ( Graphics/ChalkBoard/Utils.hs, dist/build/Graphics/ChalkBoard/Utils.o )
-[ 4 of 22] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/Graphics/ChalkBoard/Active.o )
-
-Graphics/ChalkBoard/Active.hs:58:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `boundBy': Patterns not matched: (Pure _) _
-
-Graphics/ChalkBoard/Active.hs:65:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `toTime': Patterns not matched: (Pure _) _
-
-Graphics/ChalkBoard/Active.hs:69:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `fromTime': Patterns not matched: (Pure _) _
-
-Graphics/ChalkBoard/Active.hs:114:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `after':
-                 Patterns not matched:
-                     (Pure _) _
-                     (Active _ _ _) (Pure _)
-
-Graphics/ChalkBoard/Active.hs:118:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `before':
-                 Patterns not matched:
-                     (Pure _) _
-                     (Active _ _ _) (Pure _)
-
-Graphics/ChalkBoard/Active.hs:127:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `streach':
-                 Patterns not matched:
-                     (Active _ _ _) (Pure _)
-                     (Pure _) (Pure _)
-
-Graphics/ChalkBoard/Active.hs:133:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `reverse': Patterns not matched: Pure _
-
-Graphics/ChalkBoard/Active.hs:137:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `page':
-                 Patterns not matched:
-                     (Pure _) _
-                     (Active _ _ _) (Pure _)
-
-Graphics/ChalkBoard/Active.hs:150:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `turnPages': Patterns not matched: _ []
-
-Graphics/ChalkBoard/Active.hs:224:0:
-    Warning: Pattern match(es) are non-exhaustive
-             In the definition of `snapAt': Patterns not matched: _ (Pure _)
-[ 5 of 22] Compiling Graphics.ChalkBoard.Core ( Graphics/ChalkBoard/Core.hs, dist/build/Graphics/ChalkBoard/Core.o )
-[ 6 of 22] Compiling Graphics.ChalkBoard.Expr ( Graphics/ChalkBoard/Expr.hs, dist/build/Graphics/ChalkBoard/Expr.o )
+[ 4 of 22] Compiling Graphics.ChalkBoard.Core ( Graphics/ChalkBoard/Core.hs, dist/build/Graphics/ChalkBoard/Core.o )
+[ 5 of 22] Compiling Graphics.ChalkBoard.Expr ( Graphics/ChalkBoard/Expr.hs, dist/build/Graphics/ChalkBoard/Expr.o )
 
 Graphics/ChalkBoard/Expr.hs:148:1:
     Warning: Pattern match(es) are non-exhaustive
@@ -110,7 +57,7 @@ Graphics/ChalkBoard/Expr.hs:211:1:
                      _ (UnJust _)
                      _ (IsJust _)
                      ...
-[ 7 of 22] Compiling Graphics.ChalkBoard.O.Internals ( Graphics/ChalkBoard/O/Internals.hs, dist/build/Graphics/ChalkBoard/O/Internals.o )
+[ 6 of 22] Compiling Graphics.ChalkBoard.O.Internals ( Graphics/ChalkBoard/O/Internals.hs, dist/build/Graphics/ChalkBoard/O/Internals.o )
 
 Graphics/ChalkBoard/O/Internals.hs:72:9:
     Warning: No explicit method nor default method for `+'
@@ -127,7 +74,7 @@ Graphics/ChalkBoard/O/Internals.hs:72:9:
 Graphics/ChalkBoard/O/Internals.hs:72:9:
     Warning: No explicit method nor default method for `signum'
     In the instance declaration for `Num (O UI)'
-[ 8 of 22] Compiling Graphics.ChalkBoard.O ( Graphics/ChalkBoard/O.hs, dist/build/Graphics/ChalkBoard/O.o )
+[ 7 of 22] Compiling Graphics.ChalkBoard.O ( Graphics/ChalkBoard/O.hs, dist/build/Graphics/ChalkBoard/O.o )
 
 Graphics/ChalkBoard/O.hs:171:9:
     Warning: orphan instance: instance Boolean (O Bool)
@@ -154,7 +101,7 @@ Graphics/ChalkBoard/O.hs:171:9:
 Graphics/ChalkBoard/O.hs:171:9:
     Warning: No explicit method nor default method for `||*'
     In the instance declaration for `Boolean (O Bool)'
-[ 9 of 22] Compiling Graphics.ChalkBoard.Internals ( Graphics/ChalkBoard/Internals.hs, dist/build/Graphics/ChalkBoard/Internals.o )
+[ 8 of 22] Compiling Graphics.ChalkBoard.Internals ( Graphics/ChalkBoard/Internals.hs, dist/build/Graphics/ChalkBoard/Internals.o )
 
 Graphics/ChalkBoard/Internals.hs:24:0:
     Warning: Module `Graphics.ChalkBoard.IStorable' is imported, but nothing from it is used,
@@ -188,8 +135,8 @@ Graphics/ChalkBoard/Internals.hs:148:1:
                      FlipTB _
                      FlipLR _
                      ImageG _
-[10 of 22] Compiling Graphics.ChalkBoard.Shader ( Graphics/ChalkBoard/Shader.hs, dist/build/Graphics/ChalkBoard/Shader.o )
-[11 of 22] Compiling Graphics.ChalkBoard.CBIR ( Graphics/ChalkBoard/CBIR.hs, dist/build/Graphics/ChalkBoard/CBIR.o )
+[ 9 of 22] Compiling Graphics.ChalkBoard.Shader ( Graphics/ChalkBoard/Shader.hs, dist/build/Graphics/ChalkBoard/Shader.o )
+[10 of 22] Compiling Graphics.ChalkBoard.CBIR ( Graphics/ChalkBoard/CBIR.hs, dist/build/Graphics/ChalkBoard/CBIR.o )
 
 Graphics/ChalkBoard/CBIR.hs:65:9:
     Warning: orphan instance: instance Show (a -> IO ())
@@ -250,7 +197,7 @@ Graphics/ChalkBoard/CBIR.hs:363:4:
                      #x
                      with
                      #x `notElem` [0#, 1#, 2#, 3#, 4#, 5#, 6#, 7#, 8#, 9#, 10#, 11#]
-[12 of 22] Compiling Graphics.ChalkBoard.Options ( Graphics/ChalkBoard/Options.hs, dist/build/Graphics/ChalkBoard/Options.o )
+[11 of 22] Compiling Graphics.ChalkBoard.Options ( Graphics/ChalkBoard/Options.hs, dist/build/Graphics/ChalkBoard/Options.o )
 
 Graphics/ChalkBoard/Options.hs:24:2:
     Warning: Pattern match(es) are non-exhaustive
@@ -264,18 +211,18 @@ Graphics/ChalkBoard/Options.hs:33:11:
     Warning: Pattern match(es) are non-exhaustive
              In a case alternative:
                  Patterns not matched: #x with #x `notElem` [0#, 1#, 2#, 3#, 4#, 5#]
-[13 of 22] Compiling Graphics.ChalkBoard.Buffer ( Graphics/ChalkBoard/Buffer.hs, dist/build/Graphics/ChalkBoard/Buffer.o )
+[12 of 22] Compiling Graphics.ChalkBoard.Buffer ( Graphics/ChalkBoard/Buffer.hs, dist/build/Graphics/ChalkBoard/Buffer.o )
 
 Graphics/ChalkBoard/Buffer.hs:41:9:
     Warning: orphan instance: instance OFunctor Buffer
-[14 of 22] Compiling Graphics.ChalkBoard.Video ( Graphics/ChalkBoard/Video.hs, dist/build/Graphics/ChalkBoard/Video.o )
-[15 of 22] Compiling Graphics.ChalkBoard.OpenGL.Env ( Graphics/ChalkBoard/OpenGL/Env.hs, dist/build/Graphics/ChalkBoard/OpenGL/Env.o )
+[13 of 22] Compiling Graphics.ChalkBoard.Video ( Graphics/ChalkBoard/Video.hs, dist/build/Graphics/ChalkBoard/Video.o )
+[14 of 22] Compiling Graphics.ChalkBoard.OpenGL.Env ( Graphics/ChalkBoard/OpenGL/Env.hs, dist/build/Graphics/ChalkBoard/OpenGL/Env.o )
 
 Graphics/ChalkBoard/OpenGL/Env.hs:11:0:
     Warning: Module `Graphics.Rendering.OpenGL.Raw.Core31' is imported, but nothing from it is used,
                except perhaps instances visible in `Graphics.Rendering.OpenGL.Raw.Core31'
              To suppress this warning, use: import Graphics.Rendering.OpenGL.Raw.Core31()
-[16 of 22] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/Graphics/ChalkBoard/OpenGL/CBBE.o )
+[15 of 22] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/Graphics/ChalkBoard/OpenGL/CBBE.o )
 
 Graphics/ChalkBoard/OpenGL/CBBE.hs:466:4:
     Warning: Pattern match(es) are non-exhaustive
@@ -446,7 +393,7 @@ Graphics/ChalkBoard/OpenGL/CBBE.hs:1474:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `bindFunctionToPipeline':
                  Patterns not matched: _ (Just _)
-[17 of 22] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/Graphics/ChalkBoard/Board.o )
+[16 of 22] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/Graphics/ChalkBoard/Board.o )
 
 Graphics/ChalkBoard/Board.hs:49:9:
     Warning: orphan instance: instance OFunctor Board
@@ -456,11 +403,64 @@ Graphics/ChalkBoard/Board.hs:104:9:
 
 Graphics/ChalkBoard/Board.hs:136:9:
     Warning: orphan instance: instance (Over a) => Over (Board a)
-[18 of 22] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/Graphics/ChalkBoard/Shapes.o )
+[17 of 22] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/Graphics/ChalkBoard/Shapes.o )
 
 Graphics/ChalkBoard/Shapes.hs:126:9:
     Warning: orphan instance: instance (LerpBoard a) => Lerp (Board a)
-[19 of 22] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/Graphics/ChalkBoard/Font.o )
+[18 of 22] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/Graphics/ChalkBoard/Font.o )
+[19 of 22] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/Graphics/ChalkBoard/Active.o )
+
+Graphics/ChalkBoard/Active.hs:59:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `boundBy': Patterns not matched: (Pure _) _
+
+Graphics/ChalkBoard/Active.hs:66:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `toTime': Patterns not matched: (Pure _) _
+
+Graphics/ChalkBoard/Active.hs:70:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `fromTime': Patterns not matched: (Pure _) _
+
+Graphics/ChalkBoard/Active.hs:115:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `after':
+                 Patterns not matched:
+                     (Pure _) _
+                     (Active _ _ _) (Pure _)
+
+Graphics/ChalkBoard/Active.hs:119:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `before':
+                 Patterns not matched:
+                     (Pure _) _
+                     (Active _ _ _) (Pure _)
+
+Graphics/ChalkBoard/Active.hs:128:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `streach':
+                 Patterns not matched:
+                     (Active _ _ _) (Pure _)
+                     (Pure _) (Pure _)
+
+Graphics/ChalkBoard/Active.hs:134:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `reverse': Patterns not matched: Pure _
+
+Graphics/ChalkBoard/Active.hs:138:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `page':
+                 Patterns not matched:
+                     (Pure _) _
+                     (Active _ _ _) (Pure _)
+
+Graphics/ChalkBoard/Active.hs:151:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `turnPages': Patterns not matched: _ []
+
+Graphics/ChalkBoard/Active.hs:225:0:
+    Warning: Pattern match(es) are non-exhaustive
+             In the definition of `snapAt': Patterns not matched: _ (Pure _)
 [20 of 22] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/Graphics/ChalkBoard/CBIR/Compiler.o )
 
 Graphics/ChalkBoard/CBIR/Compiler.hs:169:0:
@@ -638,10 +638,9 @@ Graphics/ChalkBoard/IStorable.hs:125:9:
     In the instance declaration for `Binary ReadOnlyCByteArray'
 [ 2 of 23] Compiling Graphics.ChalkBoard.Types ( Graphics/ChalkBoard/Types.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Types.o )
 [ 3 of 23] Compiling Graphics.ChalkBoard.Utils ( Graphics/ChalkBoard/Utils.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Utils.o )
-[ 4 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Active.o )
-[ 5 of 23] Compiling Graphics.ChalkBoard.Core ( Graphics/ChalkBoard/Core.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Core.o )
-[ 6 of 23] Compiling Graphics.ChalkBoard.Expr ( Graphics/ChalkBoard/Expr.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Expr.o )
-[ 7 of 23] Compiling Graphics.ChalkBoard.O.Internals ( Graphics/ChalkBoard/O/Internals.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/O/Internals.o )
+[ 4 of 23] Compiling Graphics.ChalkBoard.Core ( Graphics/ChalkBoard/Core.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Core.o )
+[ 5 of 23] Compiling Graphics.ChalkBoard.Expr ( Graphics/ChalkBoard/Expr.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Expr.o )
+[ 6 of 23] Compiling Graphics.ChalkBoard.O.Internals ( Graphics/ChalkBoard/O/Internals.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/O/Internals.o )
 
 Graphics/ChalkBoard/O/Internals.hs:72:9:
     Warning: No explicit method nor default method for `+'
@@ -658,7 +657,7 @@ Graphics/ChalkBoard/O/Internals.hs:72:9:
 Graphics/ChalkBoard/O/Internals.hs:72:9:
     Warning: No explicit method nor default method for `signum'
     In the instance declaration for `Num (O UI)'
-[ 8 of 23] Compiling Graphics.ChalkBoard.O ( Graphics/ChalkBoard/O.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/O.o )
+[ 7 of 23] Compiling Graphics.ChalkBoard.O ( Graphics/ChalkBoard/O.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/O.o )
 
 Graphics/ChalkBoard/O.hs:27:3:
     Warning: `false' is exported by `Boolean(..)' and `false'
@@ -673,7 +672,7 @@ Graphics/ChalkBoard/O.hs:171:9:
 Graphics/ChalkBoard/O.hs:171:9:
     Warning: No explicit method nor default method for `||*'
     In the instance declaration for `Boolean (O Bool)'
-[ 9 of 23] Compiling Graphics.ChalkBoard.Internals ( Graphics/ChalkBoard/Internals.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Internals.o )
+[ 8 of 23] Compiling Graphics.ChalkBoard.Internals ( Graphics/ChalkBoard/Internals.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Internals.o )
 
 Graphics/ChalkBoard/Internals.hs:96:9:
     Warning: No explicit method nor default method for `buffer'
@@ -690,20 +689,21 @@ Graphics/ChalkBoard/Internals.hs:102:9:
 Graphics/ChalkBoard/Internals.hs:105:9:
     Warning: No explicit method nor default method for `buffer'
     In the instance declaration for `UniformBoard (Maybe RGB)'
-[10 of 23] Compiling Graphics.ChalkBoard.Shader ( Graphics/ChalkBoard/Shader.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Shader.o )
-[11 of 23] Compiling Graphics.ChalkBoard.CBIR ( Graphics/ChalkBoard/CBIR.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/CBIR.o )
-[12 of 23] Compiling Graphics.ChalkBoard.Options ( Graphics/ChalkBoard/Options.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Options.o )
+[ 9 of 23] Compiling Graphics.ChalkBoard.Shader ( Graphics/ChalkBoard/Shader.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Shader.o )
+[10 of 23] Compiling Graphics.ChalkBoard.CBIR ( Graphics/ChalkBoard/CBIR.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/CBIR.o )
+[11 of 23] Compiling Graphics.ChalkBoard.Options ( Graphics/ChalkBoard/Options.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Options.o )
 
 Graphics/ChalkBoard/Options.hs:33:11:
     Warning: Pattern match(es) are overlapped
              In a case alternative: 5 -> ...
-[13 of 23] Compiling Graphics.ChalkBoard.Buffer ( Graphics/ChalkBoard/Buffer.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Buffer.o )
-[14 of 23] Compiling Graphics.ChalkBoard.Video ( Graphics/ChalkBoard/Video.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Video.o )
-[15 of 23] Compiling Graphics.ChalkBoard.OpenGL.Env ( Graphics/ChalkBoard/OpenGL/Env.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/OpenGL/Env.o )
-[16 of 23] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/OpenGL/CBBE.o )
-[17 of 23] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Board.o )
-[18 of 23] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Shapes.o )
-[19 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Font.o )
+[12 of 23] Compiling Graphics.ChalkBoard.Buffer ( Graphics/ChalkBoard/Buffer.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Buffer.o )
+[13 of 23] Compiling Graphics.ChalkBoard.Video ( Graphics/ChalkBoard/Video.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Video.o )
+[14 of 23] Compiling Graphics.ChalkBoard.OpenGL.Env ( Graphics/ChalkBoard/OpenGL/Env.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/OpenGL/Env.o )
+[15 of 23] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/OpenGL/CBBE.o )
+[16 of 23] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Board.o )
+[17 of 23] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Shapes.o )
+[18 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Font.o )
+[19 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Active.o )
 [20 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
 
 Graphics/ChalkBoard/CBIR/Compiler.hs:177:0:
@@ -753,10 +753,9 @@ Graphics/ChalkBoard/IStorable.hs:125:9:
     In the instance declaration for `Binary ReadOnlyCByteArray'
 [ 2 of 23] Compiling Graphics.ChalkBoard.Types ( Graphics/ChalkBoard/Types.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Types.o )
 [ 3 of 23] Compiling Graphics.ChalkBoard.Utils ( Graphics/ChalkBoard/Utils.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Utils.o )
-[ 4 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Active.o )
-[ 5 of 23] Compiling Graphics.ChalkBoard.Core ( Graphics/ChalkBoard/Core.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Core.o )
-[ 6 of 23] Compiling Graphics.ChalkBoard.Expr ( Graphics/ChalkBoard/Expr.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Expr.o )
-[ 7 of 23] Compiling Graphics.ChalkBoard.O.Internals ( Graphics/ChalkBoard/O/Internals.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/O/Internals.o )
+[ 4 of 23] Compiling Graphics.ChalkBoard.Core ( Graphics/ChalkBoard/Core.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Core.o )
+[ 5 of 23] Compiling Graphics.ChalkBoard.Expr ( Graphics/ChalkBoard/Expr.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Expr.o )
+[ 6 of 23] Compiling Graphics.ChalkBoard.O.Internals ( Graphics/ChalkBoard/O/Internals.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/O/Internals.o )
 
 Graphics/ChalkBoard/O/Internals.hs:72:9:
     Warning: No explicit method nor default method for `+'
@@ -773,7 +772,7 @@ Graphics/ChalkBoard/O/Internals.hs:72:9:
 Graphics/ChalkBoard/O/Internals.hs:72:9:
     Warning: No explicit method nor default method for `signum'
     In the instance declaration for `Num (O UI)'
-[ 8 of 23] Compiling Graphics.ChalkBoard.O ( Graphics/ChalkBoard/O.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/O.o )
+[ 7 of 23] Compiling Graphics.ChalkBoard.O ( Graphics/ChalkBoard/O.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/O.o )
 
 Graphics/ChalkBoard/O.hs:27:3:
     Warning: `false' is exported by `Boolean(..)' and `false'
@@ -788,7 +787,7 @@ Graphics/ChalkBoard/O.hs:171:9:
 Graphics/ChalkBoard/O.hs:171:9:
     Warning: No explicit method nor default method for `||*'
     In the instance declaration for `Boolean (O Bool)'
-[ 9 of 23] Compiling Graphics.ChalkBoard.Internals ( Graphics/ChalkBoard/Internals.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Internals.o )
+[ 8 of 23] Compiling Graphics.ChalkBoard.Internals ( Graphics/ChalkBoard/Internals.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Internals.o )
 
 Graphics/ChalkBoard/Internals.hs:96:9:
     Warning: No explicit method nor default method for `buffer'
@@ -805,20 +804,21 @@ Graphics/ChalkBoard/Internals.hs:102:9:
 Graphics/ChalkBoard/Internals.hs:105:9:
     Warning: No explicit method nor default method for `buffer'
     In the instance declaration for `UniformBoard (Maybe RGB)'
-[10 of 23] Compiling Graphics.ChalkBoard.Shader ( Graphics/ChalkBoard/Shader.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Shader.o )
-[11 of 23] Compiling Graphics.ChalkBoard.CBIR ( Graphics/ChalkBoard/CBIR.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/CBIR.o )
-[12 of 23] Compiling Graphics.ChalkBoard.Options ( Graphics/ChalkBoard/Options.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Options.o )
+[ 9 of 23] Compiling Graphics.ChalkBoard.Shader ( Graphics/ChalkBoard/Shader.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Shader.o )
+[10 of 23] Compiling Graphics.ChalkBoard.CBIR ( Graphics/ChalkBoard/CBIR.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/CBIR.o )
+[11 of 23] Compiling Graphics.ChalkBoard.Options ( Graphics/ChalkBoard/Options.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Options.o )
 
 Graphics/ChalkBoard/Options.hs:33:11:
     Warning: Pattern match(es) are overlapped
              In a case alternative: 5 -> ...
-[13 of 23] Compiling Graphics.ChalkBoard.Buffer ( Graphics/ChalkBoard/Buffer.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Buffer.o )
-[14 of 23] Compiling Graphics.ChalkBoard.Video ( Graphics/ChalkBoard/Video.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Video.o )
-[15 of 23] Compiling Graphics.ChalkBoard.OpenGL.Env ( Graphics/ChalkBoard/OpenGL/Env.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/OpenGL/Env.o )
-[16 of 23] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/OpenGL/CBBE.o )
-[17 of 23] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Board.o )
-[18 of 23] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Shapes.o )
-[19 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Font.o )
+[12 of 23] Compiling Graphics.ChalkBoard.Buffer ( Graphics/ChalkBoard/Buffer.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Buffer.o )
+[13 of 23] Compiling Graphics.ChalkBoard.Video ( Graphics/ChalkBoard/Video.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Video.o )
+[14 of 23] Compiling Graphics.ChalkBoard.OpenGL.Env ( Graphics/ChalkBoard/OpenGL/Env.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/OpenGL/Env.o )
+[15 of 23] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/OpenGL/CBBE.o )
+[16 of 23] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Board.o )
+[17 of 23] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Shapes.o )
+[18 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Font.o )
+[19 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Active.o )
 [20 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
 
 Graphics/ChalkBoard/CBIR/Compiler.hs:177:0:
