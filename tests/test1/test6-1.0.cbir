@@ -1,0 +1,49 @@
+[Nested "BoardUnAlpha" 
+        [Allocate 1396 (100,100) RGBADepth (BackgroundRGBADepth $ RGBA 0.0 0.0 0.0 0.0)
+        ,Splat 0 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+        ,Splat 1396 Copy (SplatBuffer' 0)
+        ,Nested "over: Target_RGBA" 
+                [Nested "alloc BOOL_Ty" 
+                        [Allocate 1397 (100,100) RGB24Depth (BackgroundRGB24Depth $ RGB 0.0 0.0 0.0)
+                        ,Nested "over: Target_Bool (RGB 1.0 1.0 1.0)" 
+                                [Nested "precision factor = 35.999996" 
+                                        [Splat 1397 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [CirclePoints])]
+                                 ,Nested "`over`" []
+                                 ,Nested "precision factor = 40.999996" 
+                                        [Splat 1397 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [CirclePoints])]
+                                 ]
+                        ]
+                ,AllocFragmentShader 1398 "uniform sampler2D cb_sampler0;\nvec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\nvec3 cb_UnAlpha(vec4 x) { return vec3
+                                           (x.r,x.g,x.b) * x.a; }\nvec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }
+                                           \nvec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }\nvec4 cb_WithMaskUI(float c,bool x) { return mix(vec4
+                                           (0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 0.0); }\nfloat cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }\nvec4 
+                                           cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }\nvoid main(void) {\n  gl_FragColor.rgba = \nmix(cb_Alpha(0.0,vec3
+                                           (0.0,0.0,0.0)),cb_Alpha(1.0,vec3(1.0,0.0,0.0)),((texture2D(cb_sampler0,gl_TexCoord[0].st)).r > 0.5) ? 1.0 : 0.0)\n;\n}\n" []
+                ,Splat 1396 Blend (SplatFunction' 1398 [("cb_sampler0",1397)] [] [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+                ,Delete 1398
+                ,Delete 1397
+                ,Nested "`over`" []
+                ,Nested "alloc BOOL_Ty" 
+                        [Allocate 1399 (100,100) RGB24Depth (BackgroundRGB24Depth $ RGB 0.0 0.0 0.0)
+                        ,Nested "over: Target_Bool (RGB 1.0 1.0 1.0)" 
+                                [Nested "precision factor = 46.0" 
+                                        [Splat 1399 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [CirclePoints])]
+                                ,Nested "`over`" []
+                                ,Nested "precision factor = 51.0" 
+                                        [Splat 1399 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [CirclePoints])]
+                                ]
+                        ]
+                ,AllocFragmentShader 1400 "uniform sampler2D cb_sampler0;\nvec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\nvec3 cb_UnAlpha(vec4 x) { return vec3
+                                           (x.r,x.g,x.b) * x.a; }\nvec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }
+                                           \nvec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }\nvec4 cb_WithMaskUI(float c,bool x) { return mix(vec4
+                                           (0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 0.0); }\nfloat cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }\nvec4 
+                                           cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }\nvoid main(void) {\n  gl_FragColor.rgba = \nmix(cb_Alpha(0.0,vec3
+                                           (0.0,0.0,0.0)),cb_Alpha(1.0,vec3(0.0,1.0,0.0)),((texture2D(cb_sampler0,gl_TexCoord[0].st)).r > 0.5) ? 1.0 : 0.0)\n;\n}\n" []
+                ,Splat 1396 Blend (SplatFunction' 1400 [("cb_sampler0",1399)] [] [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+                ,Delete 1400
+                ,Delete 1399
+                ]
+        ,Splat 0 Copy (SplatBuffer' 1396)
+        ,Delete 1396
+        ]
+]

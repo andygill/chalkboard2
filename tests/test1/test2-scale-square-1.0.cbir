@@ -1,0 +1,15 @@
+[ Nested "alloc BOOL_Ty" 
+        [ Allocate 1004 (100,100) RGB24Depth (BackgroundRGB24Depth $ RGB 0.0 0.0 0.0)
+        , Nested "precision factor = 101.0" 
+                [ Splat 1004 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [(0.0,0.0),(0.0,1.0),(1.0,1.0),(1.0,0.0)])]
+        ]
+, AllocFragmentShader 1005 "uniform sampler2D cb_sampler0;\nvec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\nvec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * 
+                            x.a; }\nvec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }\nvec3 cb_WithDefaultRGB(vec3 
+                            c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }\nvec4 cb_WithMaskUI(float c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 
+                            0.0); }\nfloat cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }\nvec4 cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }\nvoid main
+                            (void) {\n  gl_FragColor.rgb = \nmix(vec3(1.0,1.0,1.0),vec3(1.0,0.0,0.0),((texture2D(cb_sampler0,gl_TexCoord[0].st)).r > 0.5) ? 1.0 : 0.0)\n;\n  
+                            gl_FragColor.a = 1.0;\n}\n" []
+, Splat 0 Copy (SplatFunction' 1005 [("cb_sampler0",1004)] [] [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+, Delete 1005
+, Delete 1004
+]

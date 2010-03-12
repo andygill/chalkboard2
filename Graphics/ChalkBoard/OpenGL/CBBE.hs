@@ -296,7 +296,7 @@ changeBoard' env next changes = do
 --    print "changeBoard"
     {-
     when (not (null changes)) $ do
-       print changes
+       appendFile "CBIRoutput" $ (show changes) ++ "\n\n\n"
     --}
     --Draw all new instructions (into the textures with ptrs stored in the map)
     --tm <- liftIO $ getCurrentTime

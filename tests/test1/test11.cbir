@@ -1,0 +1,63 @@
+[Nested "alloc RGBA_Ty" 
+        [Allocate 1732 (100,100) RGBADepth (BackgroundRGBADepth $ RGBA 0.0 0.0 0.0 0.0)
+        ,Nested "over: Target_Maybe_RGB" 
+                [Nested "over: Target_Maybe_RGB" 
+                        [Nested "alloc BOOL_Ty" 
+                                [Allocate 1733 (100,100) RGB24Depth (BackgroundRGB24Depth $ RGB 0.0 0.0 0.0)
+                                ,Nested "precision factor = 51.0" 
+                                        [Splat 1733 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [CirclePoints])]
+                                ]
+                        ,AllocFragmentShader 1734 "uniform sampler2D cb_sampler0;\nvec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\nvec3 cb_UnAlpha(vec4 x) 
+                                                   { return vec3(x.r,x.g,x.b) * x.a; }\nvec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4
+                                                   (c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }\nvec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }\nvec4 
+                                                   cb_WithMaskUI(float c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 0.0); }\nfloat 
+                                                   cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }\nvec4 cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }
+                                                   \nvoid main(void) {\n  gl_FragColor.rgba = cb_WithMaskRGB(vec3(0.0,1.0,0.0),(texture2D(cb_sampler0,gl_TexCoord[0].st)).r > 
+                                                   0.5);\n}\n" []
+                        ,Splat 1732 Copy (SplatFunction' 1734 [("cb_sampler0",1733)] [] [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+                        ,Delete 1734
+                        ,Delete 1733
+                        ,Nested "`over`" []
+                        ,Nested "alloc BOOL_Ty" 
+                                [Allocate 1735 (100,100) RGB24Depth (BackgroundRGB24Depth $ RGB 0.0 0.0 0.0)
+                                ,Nested "precision factor = 51.0" 
+                                        [Splat 1735 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [CirclePoints])]
+                                ]
+                        ,AllocFragmentShader 1736 "uniform sampler2D cb_sampler0;\nvec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\nvec3 cb_UnAlpha(vec4 x) 
+                                                   { return vec3(x.r,x.g,x.b) * x.a; }\nvec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4
+                                                   (c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }\nvec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }\nvec4 
+                                                   cb_WithMaskUI(float c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 0.0); }\nfloat 
+                                                   cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }\nvec4 cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }
+                                                   \nvoid main(void) {\n  gl_FragColor.rgba = cb_WithMaskRGB(vec3(0.0,0.0,1.0),(texture2D(cb_sampler0,gl_TexCoord[0].st)).r > 
+                                                   0.5);\n}\n" []
+                        ,Splat 1732 Blend (SplatFunction' 1736 [("cb_sampler0",1735)] [] [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+                        ,Delete 1736
+                        ,Delete 1735
+                        ]
+                ,Nested "`over`" []
+                ,Nested "alloc BOOL_Ty" 
+                        [Allocate 1737 (100,100) RGB24Depth (BackgroundRGB24Depth $ RGB 0.0 0.0 0.0)
+                        ,Nested "precision factor = 51.0" 
+                                [Splat 1737 Copy (SplatColor' (RGBA 1.0 1.0 1.0 1.0) [CirclePoints])]
+                        ]
+                ,AllocFragmentShader 1738 "uniform sampler2D cb_sampler0;\nvec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\nvec3 cb_UnAlpha(vec4 x) { return vec3
+                                           (x.r,x.g,x.b) * x.a; }\nvec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }
+                                           \nvec3 cb_WithDefaultRGB(vec3 c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }\nvec4 cb_WithMaskUI(float c,bool x) { return mix(vec4
+                                           (0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 0.0); }\nfloat cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }
+                                           \nvec4 cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }\nvoid main(void) {\n  gl_FragColor.rgba = cb_WithMaskRGB(vec3
+                                           (1.0,0.0,0.0),(texture2D(cb_sampler0,gl_TexCoord[0].st)).r > 0.5);\n}\n" []
+                ,Splat 1732 Blend (SplatFunction' 1738 [("cb_sampler0",1737)] [] [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+                ,Delete 1738
+                ,Delete 1737
+                ]
+        ]
+,AllocFragmentShader 1739 "uniform sampler2D cb_sampler0;\nvec4 cb_Alpha(float a,vec3 x) { return vec4(x.r,x.g,x.b,a); }\nvec3 cb_UnAlpha(vec4 x) { return vec3(x.r,x.g,x.b) * 
+                           x.a; }\nvec4 cb_WithMaskRGB(vec3 c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c.r,c.g,c.b,1.0),x ? 1.0 : 0.0); }\nvec3 cb_WithDefaultRGB(vec3 
+                           c1,vec4 c2) { return mix(c1,c2.rgb,c2.a); }\nvec4 cb_WithMaskUI(float c,bool x) { return mix(vec4(0.0,0.0,0.0,0.0),vec4(c,0.0,0.0,1.0),x ? 1.0 : 
+                           0.0); }\nfloat cb_WithDefaultUI(float c1,vec4 c2) { return mix(c1,c2.r,c2.a); }\nvec4 cb_Just_RGB(vec3 c) { return vec4(c.r,c.g,c.b,1.0); }\nvoid 
+                           main(void) {\n  gl_FragColor.rgb = cb_WithDefaultRGB(vec3(1.0,1.0,0.0),texture2D(cb_sampler0,gl_TexCoord[0].st));\n  gl_FragColor.a = 1.0;\n}
+                           \n" []
+,Splat 0 Copy (SplatFunction' 1739 [("cb_sampler0",1732)] [] [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+,Delete 1739
+,Delete 1732
+]
