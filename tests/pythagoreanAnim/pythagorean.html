@@ -1,7 +1,19 @@
-The More Public Write-Up:
-
 
 <html>
+
+<head>
+<title>Pythagorean Proof Animation Tutorial</title>
+</head>
+
+
+<div style="width:70%;background-color:#DDDDDD;text-align:left;">
+
+
+<h2>
+Pythagorean Proof Animation Tutorial:
+</h2>
+<br>
+
 
 <p>
 In testing the current features and usability of animation in
@@ -11,13 +23,18 @@ original and also how difficult it would be to do so. The
 animation that we chose for this experiment was an animated
 proof of the Pythagorean theorem that can be found on wikipedia
 <a href="http://en.wikipedia.org/wiki/File:Pythagoras-2a.gif" target="_blank">here</a>
+<br><br>
 
 <p>
 This example looked nice, served a useful purpose, and was exactly the
 type of animation we would like to be easily created with ChalkBoard.
 It also was complicated enough that we felt like it would be a good
 test of ChalkBoard's features, without being too complicated as to
-require an exorbitant amount of time to create and analyze.
+require an exorbitant amount of time to create and analyze. In order to
+see the construction of this example as I describe it, I would highly
+recommend following along with the relatively simple source code provided
+<a href="Main.hs" target="_blank">here</a>.
+<br><br>
 
 <p>
 In scripting up this and other examples, a general structure for
@@ -28,10 +45,7 @@ be used to show an individual piece of the final animation. This can be
 anything from an object moving across the screen, rotating,
 fading into view, changing colors, or a ton of other possibilities.
 The Active animation language really provides a lot of opportunities to be creative here.
-
-<p>
-For this particular example, I would recommend following along with the relatively
-simple source code provided <a href="Main.hs" target="_blank">here</a>.
+<br><br>
 
 <p>
 In the Pythagorean example, I began by creating the background. I decided that in order to match 
@@ -39,6 +53,7 @@ the background of the wikipedia entry, I wanted a faded yellow background. To do
 used the color yellow with an alpha value of 0.2. Because ChalkBoard assumes the default 
 background to be white, this blends the yellow with the default background of yellow to produce a 
 faded/light yellow similar to the example.
+<br><br>
 
 <p>
 Next, I built up a basic triangle in the middle of the screen. To do this, I first created a nice 
@@ -50,6 +65,17 @@ point is also listed last so that a line will be drawn back to the beginning to 
 our triangle. Lastly, the triangle is finally given it's color by choosing (alpha black) over a 
 transparent background for the line, and (alpha yellow) over a transparent background for the 
 triangle shape, with the line being placed over the triangle.
+<br><br>
+
+<div style="float:right;margin:0 10px 10px 10px;">
+<object width="320" height="265"><param name="movie" value="http://www.youtube-nocookie.com/v/
+o_KD4Qo7TDQ&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param><param 
+name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always">
+</param><embed src="http://www.youtube-nocookie.com/v/
+o_KD4Qo7TDQ&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999" type="application/x-shockwave-
+flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265"></embed>
+</object>
+</div>
 
 <p>
 While this finishes creating a simple triangle, this triangle itself is never actually displayed 
@@ -64,6 +90,17 @@ and 'activeScale' of 2/3 and an 'activeMove' up 0.2 units and right 0.15 units. 
 are basically the same as their original affine transformations, except that their effects are 
 now displayed over time. A video of just this portion of the animation can be seen to the right 
 (01largeTriangle).
+<br><br>
+
+<div style="float:right;margin:0 10px 10px 10px;">
+<object width="320" height="265"><param name="movie" value="http://www.youtube-nocookie.com/v/
+c2vP9SJuSk8&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param><param 
+name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always">
+</param><embed src="http://www.youtube-nocookie.com/v/
+c2vP9SJuSk8&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999" type="application/x-shockwave-
+flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265"></embed>
+</object>
+</div>
 
 <p>
 As a note, all of the font for this animation was actually added in last. In this tutorial, I 
@@ -80,6 +117,25 @@ remain visible after it has finished. The activeTempAppear function, on the othe
 the Active Board so that it will only be visible while the action is actually happening, not 
 before or after the fact. The video of the first portion of the animation with the fonts inserted 
 can be seen to the right (02largeTriangleWithABC).
+<br><br>
+
+<div style="float:right;margin:0 10px 10px 10px;">
+<object width="320" height="265"><param name="movie" value="http://www.youtube-nocookie.com/v/
+dRFq667tv6Y&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param><param 
+name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always">
+</param><embed src="http://www.youtube-nocookie.com/v/
+dRFq667tv6Y&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999" type="application/x-shockwave-
+flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265"></embed>
+</object>
+&nbsp;
+<object width="320" height="265"><param name="movie" value="http://www.youtube-nocookie.com/
+v/9otE6VbB_tQ&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param><param 
+name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always">
+</param><embed src="http://www.youtube-nocookie.com/
+v/9otE6VbB_tQ&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999" type="application/x-shockwave-
+flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265"></embed>
+</object>
+</div>
 
 <p>
 Moving on the with actual animation, the next step was to create the four identical but rotated 
@@ -92,14 +148,31 @@ new triangles. This function simply moves the action of the given Active Board b
 by the given value. Using the list comprehension in otherTrianglesActive, each new triangle is 
 made to appear a little bit later in time than the previous. Finally, this list of Active Boards, 
 each represented one new triangle, is compressed into one Active Board using the 'over' function.
-A video of this portion of the animation can be seen to the right (03actualOtherTriangles).
-
-<p>
-The next part of the animation is just adding a couple missing pieces to the screen so that the 
+A video of this portion of the animation can be seen to the right (03actualOtherTriangles). The 
+next part of the animation is just adding a couple missing pieces to the screen so that the 
 full square can be clearly seen. A yellow square is added to the middle so that the entire 
 larger square can be seen to be of size cxc, and therefore having an area of c², as indicated by 
 the accompanying text. This small portion of the animation can be seen to the right
 (04actualColorSquare).
+<br><br>
+
+<div style="float:right;margin:0 10px 10px 10px;">
+<object width="320" height="265"><param name="movie" value="http://www.youtube-nocookie.com/
+v/0OqUmypZBjo&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param><param 
+name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always">
+</param><embed src="http://www.youtube-nocookie.com/
+v/0OqUmypZBjo&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999" type="application/x-shockwave-
+flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265"></embed>
+</object>
+&nbsp;
+<object width="320" height="265"><param name="movie" value="http://www.youtube-nocookie.com/v/
+LAd2UGMT_y4&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param><param 
+name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always">
+</param><embed src="http://www.youtube-nocookie.com/v/
+LAd2UGMT_y4&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999" type="application/x-shockwave-
+flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265"></embed>
+</object>
+</div>
 
 <p>
 Next, we need to slide the top triangles down to match up with the lower triangles, as seen in 
@@ -118,6 +191,17 @@ it's final position on the right side. The effects of running just these individ
 parts can be seen in the animation to the right (06slideBoth), where you will notice the white 
 triangles where the originals used to be. Those are the triangles used to fade the existing 
 triangles, while the new ones simply move down to their new locations.
+<br><br>
+
+<div style="float:right;margin:0 10px 10px 10px;">
+<object width="320" height="265"><param name="movie" value="http://www.youtube-nocookie.com/v/
+e28LCnUaGu8&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param><param 
+name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always">
+</param><embed src="http://www.youtube-nocookie.com/v/
+e28LCnUaGu8&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999" type="application/x-shockwave-
+flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265"></embed>
+</object>
+</div>
 
 <p>
 The last part of the animation is simply switching the organization of these shapes. Now that 
@@ -135,6 +219,8 @@ Board consists of the shape fading in over time as the given color. The lines ar
 are then drawn over the top of these fading in squares using the same pointsToLine function as 
 I did when drawing the original 'mainTriangle' above. This final part of the animation can be 
 seen to the right (07actualFinalFade).
+<br><br>
+
 
 
 <p>
@@ -148,6 +234,7 @@ and moved around a lot in order to create all of the other triangles in the scen
 While longer animations can definitely be created using these functions and actMove, it seems
 to be much easier at the moment to keep these individual animations pretty basic and then string 
 them together using some combinator such as the 'flicker' function.
+<br><br>
 
 <p>
 Using the 'flicker' function in this way is the second major stage we use for creating 
@@ -160,6 +247,17 @@ time or compress other actions to take short periods of time. If some parts of t
 need to appear when they start, or disappear after they are completed, this has to be done using 
 the activeAppear and activeTempAppear functions as described earlier. We do hope to implement
 a slightly easier way to specify when certain boards should appear and/or disappear soon though.
+<br><br>
+
+<div style="float:right;margin:0 10px 10px 10px;">
+<object width="320" height="265"><param name="movie" value="http://www.youtube-nocookie.com/v/
+UDRGhTFu17w&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param><param 
+name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always">
+</param><embed src="http://www.youtube-nocookie.com/v/
+UDRGhTFu17w&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999" type="application/x-shockwave-
+flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265"></embed>
+</object>
+</div>
 
 <p>
 This use of 'flicker' basically is what manages the ordering and timing of the
@@ -178,6 +276,9 @@ This is usually placed into a simple loop that extracts and then displays or sav
 the returned frame. In the future, we will probably include predefined functions to 
 perform each of these most basic cases automatically, though obviously there are
 other actions that can also be taken with the returned Boards, if the user desires.
+<br><br>
+
+</div>
 
 </html>
 

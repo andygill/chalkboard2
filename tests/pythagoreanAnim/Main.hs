@@ -92,30 +92,10 @@ animMain cb font sz (w,h) = do
         exitChalkBoard cb
 
 
+
+
 overList (b:[]) = b
 overList (b:bs) = b `over` (overList bs)
-
-{-
-activeMove (x,y) ui = move (ui*x,ui*y)
-activeRotate radians ui = rotate (ui*radians)
-activeScale s ui = scale (ui*s + (1-ui))
-
-appear ui = if ui == 0
-                then scale 0
-                else scale 1
-
-tempAppear ui = if (ui == 0 || ui == 1)
-                        then scale 0
-                        else scale 1
-
-
-mergeActive :: (UI -> Board a -> Board a) -> Active (Board a) -> Active (Board a)
-mergeActive fn (Pure brd) = Active 0 1 (\ui -> fn (fromRational ui) brd)
-mergeActive fn (Active start stop f) = Active start stop (\ui -> (fn (fromRational ui) . f) ui)
-
-mkActive :: (UI -> Board a -> Board b) -> (Board a) -> Active (Board b)
-mkActive fn brd = fmap (\ ui -> (fn ui) $ brd) age
--}
 
 
 fadeIn :: UI -> O RGB -> Board Bool -> Active (Board (RGBA -> RGBA))
@@ -132,33 +112,5 @@ makelbl size lbl =  color black $ scale (0.7) $ scale (1/(size*25)) $ lbl
 
 color :: O RGB -> Board UI -> Board (RGBA -> RGBA)
 color rgb brd = (\ ui -> withAlpha ui rgb) <$> brd
-
-
-
-
-
-{-
-makelbl2 :: Float -> Board UI -> Active (Board (RGBA -> RGBA))
-makelbl2 size lbl =  color2 black $ pure $ scale (0.7) $ scale (1/(size*15)) $ lbl
-
-color2 :: O RGB -> Active (Board UI) -> Active (Board (RGBA -> RGBA))
-color2 rgb = (\b -> fmap ((\ ui2 -> withAlpha (ui2) rgb) .$) b)
-
-
-
-newActiveMove :: Point -> Board a -> Active (Board a)
-activeMove (x,y) brd = mkActive brd activeMv
-        where activeMv ui = move (ui*x,ui*y)
-
-newActiveRotate :: Radian -> Board a -> Active (Board a)
-activeRotate radians brd = mkActive brd activeRot
-        where activeRot ui = rotate (ui * radians)
-
-newActiveScale :: Float -> Board a -> Active (Board a)
-activeScale s brd = mkActive brd activeScl
-        where activeScl ui = scale (ui*s + (1-ui))
--}
-
-
 
 
