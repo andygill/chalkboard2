@@ -1,0 +1,91 @@
+The More Private Write-Up:
+
+One of the bigger issues I've noticed with the current version of the Active
+language is that everything starts to slow down as more animation elements get
+added. I think this is probably because even though each animation part may
+only be active for a short period of time, it still has to be checked/calculated and 
+potential drawn in every pass. Whatever the cause, I have definitely noticed a
+distinct slow-down in animation speed as more parts of the animation are
+added, and so that's probably something we should try to fix or look into. Also 
+helpful in this regard would be the reuse of boards, so that animations that are just 
+moving boards around and stuff can save a lot of processing time.
+
+Another couple issues that seemed pretty big were the lerp for RGBA->RGBA
+and the font support. At the moment, there is no instance for lerp with alpha
+(RGBA->RGBA) and that would obviously be a very useful addition in order to
+interpolate between RGBA colors or fade objects in or out of a scene based on
+a starting and ending RGBA (transparent to some RGBA color, normally).
+The font support issue is actually a ChalkBoard issue, but definitely has an
+effect on animation because fonts are often going to be used in animations. 
+Basically, the main issue with font is how difficult it is to use. Right now,
+a lot of our font functions seem to require some arguments that are determined in
+a rather arbitrary/guess-and-check way. The biggest of these cases comes into play
+when trying to size the text labels that are created. The textures start out with
+characters that are way to big to even fit on the ChalkBoard screen, and how much 
+they need to be scaled down isn't immediately clear. Perhaps some function could be 
+used to automatically scale these text labels down to appropriate ChalkBoard sizes 
+when they are created. Right now, in order to scale them down to a reasonable size, 
+we just have to guess and keep decreasing the scale value until it looks about right.
+Placement isn't terribly easy either, but at least a little bit more obvious once you 
+can see the text on the screen.
+
+There are also a few functions that I have used to script up some of these examples 
+that should probably be included in the Active language. The 'mkActive' that I have 
+used in the pythagoreanAnim example is really useful for creating an Active board. 
+You just need to give it a function that takes a UI argument and then acts over 
+boards (basically a function that is UI -> Board a -> Board a). The UI here is 
+obviously the Active time index, which is 0 until the animation begins, then 
+climbs to a value of 1 over a given amount of time, and then maintains this final 
+value of 1. This function could be especially useful in combination with other
+predefined Active functions. For instance, the implementations I have for activeMove, 
+activeRotate, and activeScale in the same pythagoreanAnim example would all be 
+incredibly useful for animating these standard affine transformations over time. All 
+a user would need to do is decide where they want to move, or how much they want to 
+rotate or scale by, and the rest of the plumbing for making that transformation 
+happen over time would already be done for them.
+
+In conjunction with 'mkActive', the mergeActive function defined in this same 
+pythagoreanAnim example would also be really useful. It allows for other types of 
+Active actions to be performed on a previously created Active board. For instance, if 
+you have created an Active board that scales some shape, you can merge in another 
+Active action, such as moving this shape. Then, the shape would scale and move at the 
+same time. This can be done repeatedly to apply a ton of different transformations or 
+other actions to the same board. One could also see the usefulness of creating a 
+similar function that instead of merging the two actions, would have the new action 
+be performed after the original. In this way, a shape could be made to scale, and 
+then move, instead of scale and move at the same time. This would allow for 
+greater flexibility and ease of use.
+
+In addition to the predefined transformations mentioned above that could be passed to 
+these Active creating/modifying functions, it would also probably be useful to have 
+'appear' and 'disappear' functions that can be passed in. These would, respectively, 
+make an animation element appear once its Active time index was >0 and would make it 
+disappear once that index reaches 1. A combination of both would also be good. A 
+primitive version of this is implemented in the pythagoreanAnim example.
+
+Also in regards to mkActive/mergeActive, I have now made it so that mergeActive can  
+effectively change Active boards that are Pure into Active boards that are Active. 
+Basically, all boards can now be lifted into the Active world using the 'pure' 
+function and then only the mergeActive function is needed because it will switch 
+Actives that are Pure to Actives that are Active. Because of this, all of the 
+predefined transformations, as well as 'appear' and 'disappear', and any functions 
+that would be commonly passed to mergeActive can now be made into standalone, 
+predefined functions so that mergeActive doesn't need to be called all the time. For 
+instance, activeMove could just act over Active boards and always add on the move 
+action to whatever was already there. If it was just a Pure, then this will create a 
+new Active. If there was already an Active function, then this new transformation is 
+just added on top of that function.
+
+In another vein, it also be quite useful to re-look at how the timing is done overall 
+so that animations can more easily be interlaced--appearing, starting, and 
+disappearing at a bunch of arbitrary times, independent of one another. This timing 
+would probably replace the current 'flicker'/'taking' paradigm and could perhaps use 
+some type of 'from' command to say that a given animation runs from some start time 
+to some end time. All animations would then be ran on a single timeline, starting up 
+at their specified start time and finishing at the given end time. This timeline 
+could still be scaled, however, to change actual run time. The individual animations 
+themselves would still need to keep their 0 to 1 time index though, so that the 
+Active functions can work based on that percentage. The change from 0 to 1 would just 
+be stretched out over the amount of time specified in the 'from' function.
+
+
