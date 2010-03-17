@@ -38,33 +38,35 @@ recommend following along with the relatively simple source code provided
 
 <p>
 In scripting up this and other examples, a general structure for
-ChalkBoard animations using the Active language has begun to appear. First, the individual
-actions of the animation are built up separately, for instance, in a 'let' clause.
-This stage consists of building up all of the Active boards that will
+ChalkBoard animations using the <tt>Active</tt> language has begun to appear. First, the 
+individual actions of the animation are built up separately, for instance, in a <tt>let</tt> 
+clause. This stage consists of building up all of the <tt>Active Board</tt>s that will
 be used to show an individual piece of the final animation. This can be
 anything from an object moving across the screen, rotating,
 fading into view, changing colors, or a ton of other possibilities.
-The Active animation language really provides a lot of opportunities to be creative here.
+The <tt>Active</tt> animation language really provides a lot of opportunities to be creative here.
 <br><br>
 
 <p>
 In the Pythagorean example, I began by creating the background. I decided that in order to match 
 the background of the wikipedia entry, I wanted a faded yellow background. To do this, I simply 
 used the color yellow with an alpha value of 0.2. Because ChalkBoard assumes the default 
-background to be white, this blends the yellow with the default background of yellow to produce a 
+background to be white, this blends the yellow with the default background of white to produce a 
 faded/light yellow similar to the example.
 <br><br>
 
 <p>
 Next, I built up a basic triangle in the middle of the screen. To do this, I first created a nice 
 3/4/5 triangle by giving the there points (-0.2,0.15) (-0.2,-0.15) and (0.2,-0.15) to the 
-triangle constructor. This created the shape of the triangle, but I also wanted a black outline 
-around it to match the original animation. To do this I used the pointsToLine function with takes 
-a list of points and draws a line between the adjacently listed points. Notice that the first 
-point is also listed last so that a line will be drawn back to the beginning to finish enclosing 
-our triangle. Lastly, the triangle is finally given it's color by choosing (alpha black) over a 
-transparent background for the line, and (alpha yellow) over a transparent background for the 
-triangle shape, with the line being placed over the triangle.
+<tt>triangle</tt> constructor. This created the shape of the triangle, but I also wanted a black 
+outline around it to match the original animation. To do this I used the <tt>pointsToLine</tt> 
+function with takes a list of points and draws a line between the adjacently listed points. 
+Notice that the first point is also listed last so that a line will be drawn back to the 
+beginning to finish enclosing our triangle. Lastly, both parts of the triangle are finally given 
+their colors by using <tt>choose (alpha black) transparent</tt> and <tt>choose (alpha yellow) 
+transparent</tt> for the lines and triangle shape, respectively. This makes the lines black over 
+a transparent background (so that we can see the triangle behind them) and the triangle yellow 
+with a transparent background (so that we can see the screen background color behind it).
 <br><br>
 
 <div style="float:right;margin:0 10px 10px 10px;">
@@ -81,15 +83,16 @@ flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265
 While this finishes creating a simple triangle, this triangle itself is never actually displayed 
 in the animation. Instead, this triangle is transformed in different ways to create the triangles 
 that are actually displayed. For instance, the initial triangle shown in the animation is 
-achieved by scaling this 'mainTriangle' by the value 1.5. The animation of this triangle 
-shrinking down into it's final position is achieved by adding some Active functions. First, the 
-triangle is lifted into the Active (applicative functor) world using pure. This changes the Board 
-(RGBA->RGBA) into an Active ( Board (RGBA->RGBA) ), even though it currently remains constant 
-over time. The next step is to start applying actions to the board. In this instance, we apply 
-and 'activeScale' of 2/3 and an 'activeMove' up 0.2 units and right 0.15 units. These functions 
-are basically the same as their original affine transformations, except that their effects are 
-now displayed over time. A video of just this portion of the animation can be seen to the right 
-(01largeTriangle).
+achieved by scaling this <tt>mainTriangle</tt> by the value 1.5. The animation of this triangle 
+shrinking down into its final position is achieved by adding some <tt>Active</tt> functions. 
+First, the triangle is lifted into the <tt>Active</tt> (applicative functor) world using 
+<tt>pure</tt>. This changes the <tt>Board(RGBA->RGBA)</tt> into an 
+<tt>Active(Board(RGBA->RGBA))</tt>, even though it currently remains constant over time. The next 
+step is to start applying actions to the board. In this instance, we apply an 
+<tt>activeScale</tt> of 2/3 and an <tt>activeMove</tt> up 0.2 units and right 0.15 units. These 
+functions are basically the same as their original affine transformations, except that their 
+effects are now displayed over time. A video of just this portion of the animation can be seen 
+here (01largeTriangle).
 <br><br>
 
 <div style="float:right;margin:0 10px 10px 10px;">
@@ -107,16 +110,17 @@ As a note, all of the font for this animation was actually added in last. In thi
 will only be covering the creation of the actual animation, and not the insertion of font. This 
 is predominantly because the only interesting parts that deal with the font are when to make the 
 font labels appear and disappear. In terms of the timing, this is mostly just done to 
-mirror the animation on wikipedia. Unfortunately, current Chalkboard animations using Active must 
-be explicitly told when parts of an animation should
+mirror the animation on wikipedia. Unfortunately, current ChalkBoard animations using 
+<tt>Active</tt> must be explicitly told when parts of an animation should
 appear and disappear from the screen. While this will hopefully be taken care of with a couple 
-new combinators in the near future, the functions that are currently used to tell Actives to only 
-appear when they are in use are activeAppear and activeTempAppear. The function 
-activeAppear makes it so that the Active Board will only appear when its action starts, but will 
-remain visible after it has finished. The activeTempAppear function, on the other hand, changes 
-the Active Board so that it will only be visible while the action is actually happening, not 
-before or after the fact. The video of the first portion of the animation with the fonts inserted 
-can be seen to the right (02largeTriangleWithABC).
+new combinators in the near future, the functions that are currently used to tell 
+<tt>Active</tt>s to only appear when they are in use are <tt>activeAppear</tt> and 
+<tt>activeTempAppear</tt>. The function <tt>activeAppear</tt> makes it so that the <tt>Active 
+Board</tt> will only appear when its action starts, but will remain visible after it has 
+finished. The <tt>activeTempAppear</tt> function, on the other hand, changes the <tt>Active 
+Board</tt> so that it will only be visible while the action is happening, and not before or after 
+the fact. A video of the first portion of the animation with the fonts now inserted can be seen 
+here (02largeTriangleWithABC).
 <br><br>
 
 <div style="float:right;margin:0 10px 10px 10px;">
@@ -140,19 +144,21 @@ flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265
 <p>
 Moving on the with actual animation, the next step was to create the four identical but rotated 
 triangles that are displayed in the wikipedia graphic. These were created using the list 
-comprehension for 'otherTriangles' that simply rotates the moved version of the original 
-'mainTriangle' that was created. These triangles are then made to appear using the activeAppear 
-function as described above. While they could have each been listed separately in the 'flicker' 
-portion of the program (described later), I instead chose to apply an 'actMove' to each of these 
-new triangles. This function simply moves the action of the given Active Board backwards in time 
-by the given value. Using the list comprehension in otherTrianglesActive, each new triangle is 
-made to appear a little bit later in time than the previous. Finally, this list of Active Boards, 
-each represented one new triangle, is compressed into one Active Board using the 'over' function.
-A video of this portion of the animation can be seen to the right (03actualOtherTriangles). The 
-next part of the animation is just adding a couple missing pieces to the screen so that the 
-full square can be clearly seen. A yellow square is added to the middle so that the entire 
-larger square can be seen to be of size cxc, and therefore having an area of c², as indicated by 
-the accompanying text. This small portion of the animation can be seen to the right
+comprehension in <tt>otherTriangles</tt> that simply rotates the moved version of the original 
+<tt>mainTriangle</tt>. These triangles are then made to appear using the <tt>activeAppear</tt> 
+function as described above. While they could have each been listed separately in the 
+<tt>flicker</tt> portion of the program (described later), I instead chose to apply the 
+<tt>actMove</tt> function to each of these new triangles. This function simply moves the action 
+of the given <tt>Active Board</tt> backwards in time by the given value. Using the list 
+comprehension in <tt>otherTrianglesActive</tt>, each new triangle is made to appear a little bit 
+later in time than the previous. Finally, this list of <tt>Active Board</tt>s, each representing 
+one new triangle, is compressed into a single <tt>Active Board</tt> using the <tt>overList</tt> 
+function. This function just calls <tt>over</tt> a bunch to overlay all the elements of the list. 
+A video of this portion of the animation can be seen here (03actualOtherTriangles). The next part 
+of the animation is just adding a couple missing pieces to the screen so that the full square can 
+be clearly seen. A yellow square is added to the middle so that the larger square can be seen to 
+have a size of c x c. This larger square therefore has an area of c squared, as indicated by the 
+accompanying text. This small portion of the animation can also be seen above
 (04actualColorSquare).
 <br><br>
 
@@ -178,19 +184,21 @@ flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265
 Next, we need to slide the top triangles down to match up with the lower triangles, as seen in 
 the animation to the right (05actualSlideBoth). We also want an outline of the old triangles to 
 remain behind so we can see where they originally came from (like in the original on wikipedia). 
-This is done in two parts. The first part is to fade the existing triangles while also creating 
-two new triangles, which will be the ones that actually slide down. The first part is done very 
-similarly to how we used rotate to create the 'otherTriangles'. In this instance, however, a 
-white triangle with an alpha value of 0.6 is simply placed where these two triangles used to be 
-so that these triangles will now look faded. For the second part, we create the first triangle by 
-moving the original 'mainTriangle' up to where it stopped to form the first of the four smaller 
-triangles, and then from there apply an activeMove that will move it down to it's final position 
-over time. We do the same thing with the second triangle, but we can just grab its original shape/
-position from the head of the 'otherTriangles' list, and then activeMove this triangle down to 
-it's final position on the right side. The effects of running just these individual animation 
-parts can be seen in the animation to the right (06slideBoth), where you will notice the white 
-triangles where the originals used to be. Those are the triangles used to fade the existing 
-triangles, while the new ones simply move down to their new locations.
+This is done in two parts. The first part is to fade the existing triangles to leave behind as 
+the outlines of where the old triangles used to be, and the second is to 
+create two new triangles, which will be the ones that actually move. This is done 
+similarly to how we used rotate to create <tt>otherTriangles</tt>. In this instance, however, a 
+white triangle with an alpha value of 0.6 is placed where these two triangles used to be 
+so that they will appear faded. For the second part, we create the first triangle by 
+moving the original <tt>mainTriangle</tt> up to the right position and then applying an 
+<tt>activeMove</tt> to move it down to its final position over time. We do pretty much the same 
+thing with the second triangle, but we can instead just grab its original shape/position from the 
+head of the <tt>otherTriangles</tt> list, and then <tt>activeMove</tt> it down to its final 
+position on the right side. The effects of running just these individual animation parts (without 
+all of the prior parts) can be seen in the animation above (06slideBoth). You may notice the 
+white triangles where the originals used to be. Those are the triangles used to fade the existing 
+triangles (which are left out in the version, so we can see how they would be faded), while the 
+new ones simply move down to their new locations.
 <br><br>
 
 <div style="float:right;margin:0 10px 10px 10px;">
