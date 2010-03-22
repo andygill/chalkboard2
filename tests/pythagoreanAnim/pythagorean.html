@@ -157,7 +157,7 @@ function. This function just calls <tt>over</tt> a bunch to overlay all the elem
 A video of this portion of the animation can be seen here (03actualOtherTriangles). The next part 
 of the animation is just adding a couple missing pieces to the screen so that the full square can 
 be clearly seen. A yellow square is added to the middle so that the larger square can be seen to 
-have a size of c x c. This larger square therefore has an area of c squared, as indicated by the 
+have a size of c x c. This larger square therefore has an area of c&sup2;, as indicated by the 
 accompanying text. This small portion of the animation can also be seen above
 (04actualColorSquare).
 <br><br>
@@ -213,20 +213,21 @@ flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265
 
 <p>
 The last part of the animation is simply switching the organization of these shapes. Now that 
-they are in their new positions, two new squares can be drawn covering this entire area that have 
-side lengths of a and b, and thus areas of a² and b². This in effect concludes the proof that a² 
-+ b² equals the original area of c². In order to animate this part, I used the same general 
-strategy as fading out the two original triangles in the last step. The two main differences are 
-that this time I used yellow squares with alpha values of 0.8 instead so that the new squares 
-would be a darker yellow instead of a lighter one, and that I also drew lines around the new 
-squares as well to make them more clear. The squares to be faded in where just created as shapes 
-in ChalkBoard and moved to the right locations. They were then faded in over time using the 
-'fadeIn' function, which takes an alpha and RGB value of what color the shape should end up, as 
-well as a Board Bool of the shape, and produces an Active (Board (RGBA->RGBA)). This Active 
-Board consists of the shape fading in over time as the given color. The lines around the squares 
-are then drawn over the top of these fading in squares using the same pointsToLine function as 
-I did when drawing the original 'mainTriangle' above. This final part of the animation can be 
-seen to the right (07actualFinalFade).
+the triangles are in their new positions, two new squares can be drawn that cover the entire 
+area. These squares have side lengths of a and b, and thus areas of a&sup2; and b&sup2;. This in 
+effect concludes the proof that a&sup2; + b&sup2; equals the original area of c&sup2;. In order 
+to animate this part, I used the same general strategy as fading out the two original triangles 
+in the last step. The two main differences are that this time I used yellow squares with alpha 
+values of 0.8 instead so that the new squares would be a darker yellow instead of a lighter one, 
+and that I also drew lines around the new squares as well to make them more clear. The squares to 
+be faded in where just created as shapes in ChalkBoard and moved to the right locations. They 
+were then faded in over time using the <tt>fadeIn</tt> function, which takes an alpha and RGB 
+value of what color the shape should end up, as well as a <tt>Board Bool</tt> of the shape, and 
+produces an <tt>Active(Board(RGBA->RGBA))</tt>. This <tt>Active Board</tt> consists of the shape 
+fading in over time as the given color. The lines around the squares are then drawn over the top 
+of these fading in squares using the same <tt>pointsToLine</tt> function as I did when drawing 
+the original <tt>mainTriangle</tt> above. This final part of the animation can be seen here 
+(07actualFinalFade).
 <br><br>
 
 
@@ -237,24 +238,26 @@ together to create the full animation. The reason we did it this way was simply 
 moment, most of the animations we have attempted have been easier to create this way (by
 making smaller animations that are then combined together). These smaller animation pieces often 
 use some of the same basic structures repeatedly and so can be pretty easy to create in this way. 
-For instance, the originally defined triangle, which isn't actually displayed itself, is rotated 
-and moved around a lot in order to create all of the other triangles in the scene.
-While longer animations can definitely be created using these functions and actMove, it seems
-to be much easier at the moment to keep these individual animations pretty basic and then string 
-them together using some combinator such as the 'flicker' function.
+For instance, the originally defined <tt>maintriangle</tt>, which isn't actually displayed 
+itself, is rotated and moved around a lot in order to create all of the other triangles in the 
+scene. While longer animations can definitely be created using the same functions we have used to 
+build these smaller animation and the <tt>actMove</tt> function, it seems to be much easier at 
+the moment to keep these individual animations pretty basic and then string them together using 
+some combinator such as the <tt>flicker</tt> function.
 <br><br>
 
 <p>
-Using the 'flicker' function in this way is the second major stage we use for creating 
-an animation at the moment. Using the 'flicker' function, animations can be strung 
+Using the <tt>flicker</tt> function in this way is the second major stage we use for creating 
+an animation at the moment. Using the <tt>flicker</tt> function, animations can be strung 
 together, one after the other, with the newer animations being stacked on top of the 
 older ones. The length of time each individual animation component takes to be 
-performed can be specified using the 'taking' function inside the list of 
-animations given to 'flicker'. This can stretch out certain actions to take longer amounts of 
-time or compress other actions to take short periods of time. If some parts of the animation
+performed can be specified using the <tt>taking</tt> function inside the list of 
+animations given to <tt>flicker</tt>. This can stretch out certain actions to take longer amounts 
+of time or compress other actions to take short periods of time. If some parts of the animation
 need to appear when they start, or disappear after they are completed, this has to be done using 
-the activeAppear and activeTempAppear functions as described earlier. We do hope to implement
-a slightly easier way to specify when certain boards should appear and/or disappear soon though.
+the <tt>activeAppear</tt> and <tt>activeTempAppear</tt> functions as described earlier. We do, 
+however, hope to implement a slightly easier way to specify when certain boards should appear and/
+or disappear soon.
 <br><br>
 
 <div style="float:right;margin:0 10px 10px 10px;">
@@ -268,22 +271,26 @@ flash" allowscriptaccess="always" allowfullscreen="true" width="320" height="265
 </div>
 
 <p>
-This use of 'flicker' basically is what manages the ordering and timing of the
+This use of <tt>flicker</tt> is basically what manages the ordering and timing of the
 individual parts of the animation that were created. It returns a single
-Active board that can then be used to display the whole animation (or used in turn
+<tt>Active Board</tt> that can then be used to display the whole animation (or used in turn
 to create an even bigger animation, hierarchically). In terms of displaying the
 animation, this will largely be done the same way for most animations. First, the
-Active board must be turned into a Player using the 'byFrame' or 'realTime'
-functions. The Player is then passed to the 'play' function to retrieve the next
-image of the animation (or Nothing, if the animation is finished). Finally, this 
-retrieved image can then be used in any way that ChalkBoard can use a Board. 
-Traditionally, the image will be displayed on the screen using 'drawChalkBoard' or 
-saved into a movie file with 'frameChalkBoard' (possibly both). After this, the 
-process of calling 'play' on the Player must be repeated to extract the next image. 
-This is usually placed into a simple loop that extracts and then displays or saves 
-the returned frame. In the future, we will probably include predefined functions to 
+<tt>Active Board</tt> must be turned into a <tt>Player</tt> using either the <tt>byFrame</tt> 
+function (which takes a desired frame rate), or the
+<tt>realTime</tt> function. The <tt>Player</tt> is then passed to the <tt>play</tt> function to 
+retrieve the next image of the animation (or <tt>Nothing</tt>, if the animation is finished). 
+Finally, this retrieved image can then be used in any way that ChalkBoard can use a 
+<tt>Board</tt>. Traditionally, the image will be displayed on the screen using 
+<tt>drawChalkBoard</tt> or saved into a movie file with <tt>frameChalkBoard</tt> (possibly both). 
+After this, the process of calling <tt>play</tt> on the <tt>Player</tt> must be repeated to 
+extract the next image. This is usually placed into a simple loop that extracts and then displays 
+or saves the returned frame. In the future, we will probably include predefined functions to 
 perform each of these most basic cases automatically, though obviously there are
-other actions that can also be taken with the returned Boards, if the user desires.
+other actions that can be taken with the returned <tt>Board</tt>, if the user desires. The full 
+animation can finally be seen here (Pythagorean Proof Animation). It was produced as a video by 
+simply saving each of the returned boards to a video file using the <tt>frameChalkBoard</tt> 
+function after opening a default ChalkBoard write stream.
 <br><br>
 
 </div>
