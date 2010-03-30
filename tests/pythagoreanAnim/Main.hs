@@ -93,7 +93,6 @@ animMain cb font sz (w,h) = do
 
 
 
-
 overList (b:[]) = b
 overList (b:bs) = b `over` (overList bs)
 
