@@ -228,7 +228,8 @@ accompanying text. This small portion of the animation can also be seen above
 
 <pre>
 let otherTriangles      = [ rotate (-i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [1..3] ]
-    addInOtherTriangles = overList [ actMove i $ activeAppear $ pure $ t | (t,i) <- Prelude.zip otherTriangles [1..] ]
+    addInOtherTriangles = overList [ actMove i $ activeAppear $ pure $ t
+                                   | (t,i) <- Prelude.zip otherTriangles [1..] ]
 
 ...
 
@@ -267,10 +268,10 @@ Next, we need to slide the top triangles down to match up with the lower triangl
 the animation to the right (05actualSlide). We also want an outline of the old triangles to 
 remain behind so we can see where they originally came from (like in the original on wikipedia). 
 This is done in two parts. The first part is to fade the existing triangles to leave behind as 
-the outlines of where the old triangles used to be, and the second is to 
-create two new triangles, which will be the ones that actually move. This is done 
-similarly to how we used rotate to create <tt>otherTriangles</tt>. In this instance, however, a 
-white triangle with an alpha value of 0.6 is placed where these two triangles used to be 
+outlines of where they used to be, and the second is to 
+create two new triangles, which will be the ones that actually move. The first part is done 
+similarly to how we used <tt>rotate</tt> to create <tt>otherTriangles</tt> from <tt>mainTriangle</tt>. In this instance, however, a 
+white triangle with an alpha value of 0.6 is placed where these two triangles are 
 so that they will appear faded. For the second part, we create the first triangle by 
 moving the original <tt>mainTriangle</tt> up to the right position and then applying an 
 <tt>activeMove</tt> to move it down to its final position over time. We do pretty much the same 
@@ -279,10 +280,22 @@ head of the <tt>otherTriangles</tt> list, and then <tt>activeMove</tt> it down t
 position on the right side. The effects of running just these individual animation parts (without 
 all of the prior parts) can be seen in the animation above (06slideBoth). You may notice the 
 white triangles where the originals used to be. Those are the triangles used to fade the existing 
-triangles (which are left out in this version, so we can see only what is added in this step), while the 
+triangles (which are left out in this video, so we can see only what's added for this step), while the 
 new ones simply move down to their new locations.
 <br><br>
 
+<pre>
+fadedTris = [rotate (-i*pi/2) $ move (0.15,0.2) $ choose (withAlpha 0.6 white) transparent <$> triangle345 
+            | i<-[0,1]]
+slideLeft = activeAppear $ (activeMove (-0.3,-0.4) $ pure $ move (0.15,0.2) $ mainTriangle)
+                           `over`
+                           (pure (head fadedTris))
+slideRight = activeAppear $ (activeMove (0.4,-0.3) $ pure $ (head otherTriangles)) 
+                            `over` 
+                            (pure (last fadedTris))
+            
+            
+</pre>
 
 
 <div style="float:right;margin:5px 10px;">
@@ -298,7 +311,7 @@ new ones simply move down to their new locations.
 </div>
 
 <p>
-The last part of the animation is simply switching the organization of these shapes. Now that 
+The last part of the animation is simply switching the organization of these resulting shapes. Now that 
 the triangles are in their new positions, two new squares can be drawn that cover the entire 
 area. These squares have side lengths of a and b, and thus areas of a&sup2; and b&sup2;. This in 
 effect concludes the proof that a&sup2; + b&sup2; equals the original area of c&sup2;. In order 
@@ -311,11 +324,19 @@ were then faded in over time using the <tt>fadeIn</tt> function, which takes an 
 value of what color the shape should end up, as well as a <tt>Board Bool</tt> of the shape, and 
 produces an <tt>Active(Board(RGBA->RGBA))</tt>. This <tt>Active Board</tt> consists of the shape 
 fading in over time as the given color. The lines around the squares are then drawn over the top 
-of these fading in squares using the same <tt>pointsToLine</tt> function as we did when drawing 
-the original <tt>mainTriangle</tt> above. This final part of the animation can be seen here 
-(07finalFade).
+of these fading in squares using the same <tt>pointsToLine</tt> function as we used when drawing 
+the original <tt>mainTriangle</tt> above. This final part of the animation is shown in the video.
 <br><br>
 
+<pre>
+newSquares = (move (0.15, -0.15) $ scale 0.4 $ square) `over` (move (-0.2, -0.2) $ scale 0.3 $ square)
+newLines = pointsToLine [(-0.05,-0.35), (0.35,-0.35), (0.35,0.05), (-0.05,0.05),
+                         (-0.05,-0.35), (-0.35,-0.35), (-0.35,-0.05), (-0.05,-0.05)
+                        ] 0.004
+fadeInSquares = (fadeIn 1 black newLines) `over` (fadeIn 0.8 yellow newSquares)
+
+
+</pre>
 
 
 <p>
@@ -327,7 +348,7 @@ use some of the same basic structures repeatedly and so can be pretty easy to cr
 For instance, the originally defined <tt>maintriangle</tt>, which isn't actually displayed 
 itself, is rotated and moved around a lot in order to create all of the other triangles in the 
 scene. While longer animations can definitely be created using the same functions we have used to 
-build these smaller animation and the <tt>actMove</tt> function, it seems to be much easier at 
+build these smaller animations and the <tt>actMove</tt> function, it seems to be much easier at 
 the moment to keep these individual animations pretty basic and then string them together using 
 some combinator such as the <tt>flicker</tt> function.
 <br><br>
@@ -346,6 +367,23 @@ however, hope to implement a slightly easier way to specify when certain boards 
 or disappear soon.
 <br><br>
 
+<pre>
+let anim = flicker [ taking 0.5 $ background
+                   , taking 1 $ firstABC
+                   , taking 1 $ movingTriangle
+                   , wait 0.5
+                   , taking 2 $ addInOtherTriangles
+                   , taking 1.5 $ fillInSquare `over` secondABC `over` areaEq
+                   , taking 1 $ slideLeft
+                   , wait 0.5
+                   , taking 1 $ slideRight
+                   , taking 1 $ thirdABC
+                   , taking 1 $ fadeInSquares `over` thirdABC
+                   , taking 3 $ finalABC `over` formula
+                   ]
+
+
+</pre>
 
 
 <div style="float:right;margin:5px 10px;">
@@ -375,14 +413,29 @@ Finally, this retrieved image can then be used in any way that ChalkBoard can us
 <tt>drawChalkBoard</tt> or saved into a movie file with <tt>frameChalkBoard</tt> (possibly both). 
 After this, the process of calling <tt>play</tt> on the <tt>Player</tt> must be repeated to 
 extract the next image. This is usually placed into a simple loop that extracts and then displays 
-or saves the returned frame. In the future, we will probably include predefined functions to 
-perform each of these most basic cases automatically, though obviously there are
+or saves the returned frame. An example of this can be seen in the code below. In the future, we will
+probably include predefined functions to perform each of these most basic cases automatically, though obviously there are
 other actions that can be taken with the returned <tt>Board</tt>, if the user desires. The full 
-animation can finally be seen here (Pythagorean Proof Animation). It was produced as a video by 
+animation can finally be seen all together, in the video above. It was produced as a video by 
 simply saving each of the returned boards to a video file using the <tt>frameChalkBoard</tt> 
 function after opening a default ChalkBoard write stream.
 <br><br>
 
+<pre>
+playObj <- byFrame 29.97 anim
+        
+let loop = do
+        mbScene <- play playObj
+        case mbScene of
+                Just scene -> do
+                        drawChalkBoard cb $ unAlphaBoard (boardOf white) scene
+                        loop
+                Nothing  -> return ()
+
+loop
+
+
+</pre>
 
 
 </div>
