@@ -18,6 +18,7 @@ animMain cb font sz (w,h) = do
         (areaLabel,areaSP) <- label font sz ("area = c²")
         (formulaLabel,formulaSP) <- label font sz ("c² = a² + b²")
         
+        
         --Set up the different parts of the animation
         let background = pure $ boardOf $ withAlpha 0.2 yellow :: Active (Board (RGBA->RGBA))
             
@@ -40,6 +41,7 @@ animMain cb font sz (w,h) = do
             fadeInSquares = (fadeIn 1 black newLines) `over` (fadeIn 0.8 yellow newSquares)
         
         
+        --The font parts of the animation
         let a = move (-0.25,-0.03) $ makelbl aSP aLabel
             b = move (-0.04,-0.195) $ makelbl bSP bLabel
             c = move (0.005,0.005) $ makelbl cSP cLabel
@@ -82,27 +84,31 @@ animMain cb font sz (w,h) = do
                 mbScene <- play playObj
                 case mbScene of
                         Just scene -> do
-                                drawChalkBoard cb $ unAlphaBoard (boardOf white) scene
-                                frameChalkBoard cb sid
+                                drawChalkBoard cb $ unAlphaBoard (boardOf white) scene -- to screen
+                                frameChalkBoard cb sid -- to file
                                 loop
                         Nothing  -> return ()
         
         loop
         
-        endWriteStream cb sid
+        --Close the video write stream and exit
+        endWriteStream cb sid 
         exitChalkBoard cb
 
 
 
+
+--Overlay a list of boards
 overList (b:[]) = b
 overList (b:bs) = b `over` (overList bs)
 
-
+--Fade in a boolean board over time to a certain color/alpha
 fadeIn :: UI -> O RGB -> Board Bool -> Active (Board (RGBA -> RGBA))
 fadeIn maxAlpha rgb brd = fmap (\ ui -> choose (withAlpha (o (ui*maxAlpha)) rgb) transparent <$> brd) age
 
 
 
+--Create a font board at the right size
 makelbl :: Float -> Board UI -> Board (RGBA -> RGBA)
 makelbl size lbl =  color black $ scale (0.7) $ scale (1/(size*25)) $ lbl
 
