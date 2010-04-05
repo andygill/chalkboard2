@@ -27,7 +27,7 @@ animMain cb font sz (w,h) = do
             movingTriangle = activeMove (0.15,0.2) $ activeScale (2/3) $ pure $ scale 1.5 $ mainTriangle
             
             otherTriangles = [ rotate (-i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [1..3] ]
-            addInOtherTriangles = overList [actMove i $ activeAppear $ pure $ tri | (tri,i) <- Prelude.zip otherTriangles [1..] ]
+            addInOtherTriangles = overList [ actMove i $ activeAppear $ pure $ t | (t,i) <- Prelude.zip otherTriangles [1..] ]
             
             fillInSquare = activeAppear $ pure $ scale 0.095 $ choose (alpha yellow) transparent <$> square
             

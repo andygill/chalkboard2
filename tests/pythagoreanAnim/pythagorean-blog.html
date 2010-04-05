@@ -41,7 +41,7 @@ type of animation we would like to be easily created with ChalkBoard.
 It also was complicated enough that we felt like it would be a good
 test of ChalkBoard's features, without being too complicated as to
 require an exorbitant amount of time to create and analyze. In order to
-see the construction of this example as I describe it, I would highly
+see the construction of this example as we describe it, we would highly
 recommend following along with the relatively simple source code provided
 <a href="Main.hs" target="_blank">here</a>.
 <br><br>
@@ -80,27 +80,28 @@ let wholeAnim = flicker [ animStep1, animStep2, animStep3, animStep4 ]
 
 
 <p>
-In beginning the Pythagorean example, I started creating all of the different parts that would be
-used in the animation. The first of these was the animation's background. I decided that in order to match 
-the background of the wikipedia animation, I wanted a faded yellow background. To do this, I simply 
+In beginning the Pythagorean example, we started creating all of the different parts that would be
+used in the animation. The first of these was the animation's background. we decided that in order to match 
+the background of the wikipedia animation, we wanted a faded yellow background. To do this, we simply 
 used the color <tt>yellow</tt> with an alpha value of 0.2. Because ChalkBoard assumes the default 
 background to be white, this blends the yellow with the default background of white to produce a 
 faded/light yellow similar to the example. If you're following along in the source code, you may notice
 that the function <tt>pure</tt> is applied to this board. This is simply done to lift the board into
-the <tt>Active(Board a)</tt> space so that it can be passed to <tt>flicker</tt>
+the <tt>Active(Board a)</tt> space so that it can be composed with the other <tt>Active Board</tt> objects
+we create for the animation. More on this later.
 <br><br>
 
 <p>
-Next, I built up a basic triangle in the middle of the screen. To do this, I first created a nice 
+Next, we built up a basic triangle in the middle of the screen. To do this, we first created a nice 
 3-4-5 triangle by giving the points (-0.2,0.15) (-0.2,-0.15) and (0.2,-0.15) to the 
-<tt>triangle</tt> constructor. This created the shape of the triangle, but I also wanted a black 
-outline around it to match the original animation. To do this I used the <tt>pointsToLine</tt> 
+<tt>triangle</tt> constructor. This created the shape of the triangle, but we also wanted a black 
+outline around it to match the original animation. To do this, we used the <tt>pointsToLine</tt> 
 function, which takes a list of points and a line width and draws a line between the adjacently listed points.
 Both parts are then given 
 their colors by using <tt>choose (alpha black) transparent</tt> and <tt>choose (alpha yellow) 
 transparent</tt> for the lines and triangle shape, respectively. This makes the lines black over 
 a transparent background (so that we can see the triangle behind them) and the triangle yellow 
-with a transparent background (so that we can see the screen background color behind it).
+with a transparent background (so that we can see the background color behind it).
 <br><br>
 
 <pre>
@@ -115,7 +116,7 @@ let triangle345  = triangle (-0.2,0.15) (-0.2,-0.15) (0.2,-0.15)
 
 
 
-<div style="float:right;margin:0 10px 5px 10px;">
+<div style="float:right;margin:5px 10px;">
 
 <object width="320" height="265">
 <param name="movie" value="http://www.youtube.com/v/o_KD4Qo7TDQ&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param>
@@ -134,18 +135,23 @@ that are actually displayed. For instance, the initial triangle shown in the ani
 achieved by scaling this <tt>mainTriangle</tt> by the value 1.5. The animation of this triangle 
 shrinking down into its final position is achieved by adding some <tt>Active</tt> functions. 
 First, the triangle is lifted into the <tt>Active</tt> (applicative functor) world using 
-<tt>pure</tt>. This changes the <tt>Board(RGBA->RGBA)</tt> into an 
-<tt>Active(Board(RGBA->RGBA))</tt>, even though it currently remains constant over time. The next 
+<tt>pure</tt>. This changes a <tt>Board a</tt> into an 
+<tt>Active(Board a)</tt>, even though it currently remains constant over time. The next 
 step is to start applying actions to the board. In this instance, we apply an 
 <tt>activeScale</tt> of 2/3 and an <tt>activeMove</tt> of (0.15, 0.2). These 
 functions are basically the same as their original affine transformations, except that their 
 effects are now displayed over time. A video of just this portion of the animation can be seen 
-here (01largeTriangle).
+to the right.
 <br><br>
 
+<pre>
+let movingTriangle = activeMove (0.15,0.2) $ activeScale (2/3) $ pure $ scale 1.5 $ mainTriangle
 
 
-<div style="float:right;margin:0 10px 5px 10px;">
+</pre>
+
+
+<div style="float:right;margin:5px 10px;">
 
 <object width="320" height="265">
 <param name="movie" value="http://www.youtube.com/v/c2vP9SJuSk8&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param>
@@ -158,7 +164,8 @@ here (01largeTriangle).
 </div>
 
 <p>
-As a note, all of the font for this animation was actually added in last. In this tutorial, I 
+As a note, all of the font for this animation was actually added in last and is contained within
+the second <tt>let</tt> clause of the source code. In this tutorial, we 
 will only be covering the creation of the actual animation, and not the insertion of font. This 
 is predominantly because the only interesting parts that deal with the font are when to make the 
 font labels appear and disappear. In terms of the timing, this is mostly just done to 
@@ -166,18 +173,17 @@ mirror the animation on wikipedia. Unfortunately, current ChalkBoard animations 
 <tt>Active</tt> must be explicitly told when parts of an animation should
 appear and disappear from the screen. While this will hopefully be taken care of with a couple 
 new combinators in the near future, the functions that are currently used to tell 
-<tt>Active</tt>s to only appear when they are in use are <tt>activeAppear</tt> and 
-<tt>activeTempAppear</tt>. The function <tt>activeAppear</tt> makes it so that the <tt>Active 
-Board</tt> will only appear when its action starts, but will remain visible after it has 
+<tt>Active</tt> objects when to be visible are <tt>activeAppear</tt> and 
+<tt>activeTempAppear</tt>. The function <tt>activeAppear</tt> makes the <tt>Active 
+Board</tt> only appear when its action begins, but will keep the board visible after it has 
 finished. The <tt>activeTempAppear</tt> function, on the other hand, changes the <tt>Active 
-Board</tt> so that it will only be visible while the action is happening, and not before or after 
-the fact. A video of the first portion of the animation with the fonts now inserted can be seen 
-here (02largeTriangleWithABC).
+Board</tt> so that it will only be visible while its action is happening, and not before <i>or</i> after 
+the fact. A video of the first portion of the animation with the fonts now inserted can be seen above.
 <br><br>
 
 
 
-<div style="float:right;margin:0 10px 5px 10px;">
+<div style="float:right;margin:5px 10px;">
 
 <object width="290" height="240">
 <param name="movie" value="http://www.youtube.com/v/dRFq667tv6Y&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param>
@@ -205,24 +211,36 @@ triangles that are displayed in the wikipedia graphic. These were created using 
 comprehension in <tt>otherTriangles</tt> that simply rotates the moved version of the original 
 <tt>mainTriangle</tt>. These triangles are then made to appear using the <tt>activeAppear</tt> 
 function as described above. While they could have each been listed separately in the 
-<tt>flicker</tt> portion of the program (described later), I instead chose to apply the 
+<tt>flicker</tt> portion of the program (described later), we instead chose to apply the 
 <tt>actMove</tt> function to each of these new triangles. This function simply moves the action 
 of the given <tt>Active Board</tt> backwards in time by the given value. Using the list 
-comprehension in <tt>otherTrianglesActive</tt>, each new triangle is made to appear a little bit 
-later in time than the previous. Finally, this list of <tt>Active Board</tt>s, each representing 
+comprehension in <tt>addInOtherTriangles</tt>, each new triangle is made to appear a little bit 
+later in time than the previous. Finally, this list of <tt>Active Board</tt> objects, each element representing 
 one new triangle, is compressed into a single <tt>Active Board</tt> using the <tt>overList</tt> 
-function. This function just calls <tt>over</tt> a bunch to overlay all the elements of the list. 
-A video of this portion of the animation can be seen here (03otherTriangles). The next part 
-of the animation is just adding a couple missing pieces to the screen so that the full square can 
+function. This function, defined below, just calls <tt>over</tt> repeatedly to overlay all the elements of the list. 
+The video to the left shows this portion of the animation (03otherTriangles). The next part 
+of the animation is just adding in a couple missing pieces to the image so that the full square can 
 be clearly seen. A yellow square is added to the middle so that the larger square can be seen to 
 have a size of c x c. This larger square therefore has an area of c&sup2;, as indicated by the 
 accompanying text. This small portion of the animation can also be seen above
 (04fillSquare).
 <br><br>
 
+<pre>
+let otherTriangles      = [ rotate (-i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [1..3] ]
+    addInOtherTriangles = overList [ actMove i $ activeAppear $ pure $ t | (t,i) <- Prelude.zip otherTriangles [1..] ]
+
+...
+
+overList (b:[]) = b
+overList (b:bs) = b `over` (overList bs)
 
 
-<div style="float:right;margin:0 10px 5px 10px;">
+</pre>
+
+
+
+<div style="float:right;margin:5px 10px;">
 
 <object width="290" height="240">
 <param name="movie" value="http://www.youtube.com/v/0OqUmypZBjo&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param>
@@ -267,7 +285,7 @@ new ones simply move down to their new locations.
 
 
 
-<div style="float:right;margin:0 10px 5px 10px;">
+<div style="float:right;margin:5px 10px;">
 
 <object width="320" height="265">
 <param name="movie" value="http://www.youtube.com/v/e28LCnUaGu8&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param>
@@ -284,16 +302,16 @@ The last part of the animation is simply switching the organization of these sha
 the triangles are in their new positions, two new squares can be drawn that cover the entire 
 area. These squares have side lengths of a and b, and thus areas of a&sup2; and b&sup2;. This in 
 effect concludes the proof that a&sup2; + b&sup2; equals the original area of c&sup2;. In order 
-to animate this part, I used the same general strategy as fading out the two original triangles 
-in the last step. The two main differences are that this time I used yellow squares with alpha 
+to animate this part, we used the same general strategy as fading out the two original triangles 
+in the last step. The two main differences are that this time we used yellow squares with alpha 
 values of 0.8 instead so that the new squares would be a darker yellow instead of a lighter one, 
-and that I also drew lines around the new squares as well to make them more clear. The squares to 
+and that we also drew lines around the new squares as well to make them more clear. The squares to 
 be faded in where just created as shapes in ChalkBoard and moved to the right locations. They 
 were then faded in over time using the <tt>fadeIn</tt> function, which takes an alpha and RGB 
 value of what color the shape should end up, as well as a <tt>Board Bool</tt> of the shape, and 
 produces an <tt>Active(Board(RGBA->RGBA))</tt>. This <tt>Active Board</tt> consists of the shape 
 fading in over time as the given color. The lines around the squares are then drawn over the top 
-of these fading in squares using the same <tt>pointsToLine</tt> function as I did when drawing 
+of these fading in squares using the same <tt>pointsToLine</tt> function as we did when drawing 
 the original <tt>mainTriangle</tt> above. This final part of the animation can be seen here 
 (07finalFade).
 <br><br>
@@ -330,7 +348,7 @@ or disappear soon.
 
 
 
-<div style="float:right;margin:0 10px 5px 10px;">
+<div style="float:right;margin:5px 10px;">
 
 <object width="320" height="265">
 <param name="movie" value="http://www.youtube.com/v/UDRGhTFu17w&hl=en_US&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999"></param>
