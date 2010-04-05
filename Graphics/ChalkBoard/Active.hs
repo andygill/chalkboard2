@@ -4,6 +4,8 @@ import Control.Applicative
 import Graphics.ChalkBoard.Types 
 import Graphics.ChalkBoard.Utils
 import Graphics.ChalkBoard.Board
+import Graphics.ChalkBoard.O
+
 import Data.Ratio
 import Data.Time.Clock
 import Control.Concurrent.MVar
@@ -232,13 +234,14 @@ snapAt r act@(Active start end f)
 ----- 3/8/10 Additions by Kevin Matlage -----
 ---------------------------------------------
 
-
-addActive :: (UI -> Board a -> Board a) -> Active (Board a) -> Active (Board a)
+-- Function to add an action (Active function) to an Active Board
+addActive :: (UI -> Board a -> Board b) -> Active (Board a) -> Active (Board b)
 addActive fn (Pure brd) = Active 0 1 (\ui -> fn (fromRational ui) brd)
 addActive fn (Active start stop f) = Active start stop (\ui -> (fn (fromRational ui) . f) ui)
 
 
 
+-- Changing the basic affine transformations into actions that can be added to an Active
 activeMove :: (R,R) -> Active (Board a) -> Active (Board a)
 activeMove (x,y) = addActive $ \ui -> move (ui*x,ui*y)
 
@@ -250,6 +253,7 @@ activeRotate radians = addActive $ \ui -> rotate (ui*radians)
 
 
 
+-- Adding to an active the ability to appear or disappear or both
 activeAppear :: Active (Board a) -> Active (Board a)
 activeAppear = addActive $ \ui -> if ui == 0
                                         then scale 0
@@ -264,6 +268,12 @@ activeDisappear :: Active (Board a) -> Active (Board a)
 activeDisappear = addActive $ \ui -> if ui == 1
                                         then scale 0
                                         else scale 1
+
+
+
+-- For use with flicker, in conjunction with the 'taking' function
+wait :: R -> Active (Board (RGBA -> RGBA))
+wait n = taking n (pure (boardOf transparent))
 
 
 

@@ -24,12 +24,12 @@ animMain cb font sz (w,h) = do
             triangle345 = triangle (-0.2,0.15) (-0.2,-0.15) (0.2,-0.15)
             triLines = pointsToLine [(-0.2,0.15), (-0.2,-0.15), (0.2,-0.15), (-0.2,0.15)] 0.004
             mainTriangle = (choose (alpha black) transparent <$> triLines) `over` (choose (alpha yellow) transparent <$> triangle345)
-            largeTriangle = activeMove (0.15,0.2) $ activeScale (2/3) $ pure $ scale 1.5 $ mainTriangle
+            movingTriangle = activeMove (0.15,0.2) $ activeScale (2/3) $ pure $ scale 1.5 $ mainTriangle
             
             a = move (-0.25,-0.03) $ makelbl aSP aLabel
             b = move (-0.04,-0.195) $ makelbl bSP bLabel
             c = move (0.005,0.005) $ makelbl cSP cLabel
-            firstABC = activeTempAppear $ pure $ (move (-0.1,0) a) `over` (move (-0.03,-0.08) b) `over` (move (0.005,0.005) c)
+            firstABC = pure $ (move (-0.1,0) a) `over` (move (-0.03,-0.08) b) `over` (move (0.005,0.005) c)
             
             otherTriangles = [ rotate (-i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [1..3] ]
             otherTrianglesActive = overList [actMove i $ activeAppear $ pure $ {-activeMove (1,0) $ move (-1,0) $-} tri | (tri,i) <- Prelude.zip otherTriangles [1..] ]
@@ -55,8 +55,8 @@ animMain cb font sz (w,h) = do
         
         --Set up the animation ordering/timing
         let anim = flicker [ taking 0.5 $ background
-                           , taking 1 $ firstABC
-                           , taking 1 $ largeTriangle
+                           , taking 1 $ activeTempAppear $ firstABC
+                           , taking 1 $ movingTriangle
                            , wait 0.5
                            , taking 2 $ otherTrianglesActive
                            , taking 1.5 $ colorSquare `over` secondABC `over` area
@@ -73,22 +73,21 @@ animMain cb font sz (w,h) = do
 	playObj <- byFrame 29.97 anim
         
         --Start the video write stream
-        sid <- startDefaultWriteStream cb "pythagorean.avi"
+        --sid <- startDefaultWriteStream cb "pythagorean.avi"
         
         --Run the animation
         let loop = do
                 mbScene <- play playObj
                 case mbScene of
                         Just scene -> do
-                                let scaledScene = scene
-                                drawChalkBoard cb $ unAlphaBoard (boardOf white) scaledScene
-                                frameChalkBoard cb sid
+                                drawChalkBoard cb $ unAlphaBoard (boardOf white) scene
+                                --frameChalkBoard cb sid
                                 loop
                         Nothing  -> return ()
         
         loop
         
-        endWriteStream cb sid
+        --endWriteStream cb sid
         exitChalkBoard cb
 
 
@@ -99,10 +98,6 @@ overList (b:bs) = b `over` (overList bs)
 
 fadeIn :: UI -> O RGB -> Board Bool -> Active (Board (RGBA -> RGBA))
 fadeIn maxAlpha rgb brd = fmap (\ ui -> choose (withAlpha (o (ui*maxAlpha)) rgb) transparent <$> brd) age
-
-
-wait :: R -> Active (Board (RGBA -> RGBA))
-wait n = taking n (pure (boardOf transparent))
 
 
 
