@@ -410,55 +410,55 @@ Graphics/ChalkBoard/Shapes.hs:126:9:
 [18 of 22] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/Graphics/ChalkBoard/Font.o )
 [19 of 22] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/Graphics/ChalkBoard/Active.o )
 
-Graphics/ChalkBoard/Active.hs:59:0:
+Graphics/ChalkBoard/Active.hs:61:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `boundBy': Patterns not matched: (Pure _) _
 
-Graphics/ChalkBoard/Active.hs:66:0:
+Graphics/ChalkBoard/Active.hs:68:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `toTime': Patterns not matched: (Pure _) _
 
-Graphics/ChalkBoard/Active.hs:70:0:
+Graphics/ChalkBoard/Active.hs:72:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `fromTime': Patterns not matched: (Pure _) _
 
-Graphics/ChalkBoard/Active.hs:115:0:
+Graphics/ChalkBoard/Active.hs:117:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `after':
                  Patterns not matched:
                      (Pure _) _
                      (Active _ _ _) (Pure _)
 
-Graphics/ChalkBoard/Active.hs:119:0:
+Graphics/ChalkBoard/Active.hs:121:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `before':
                  Patterns not matched:
                      (Pure _) _
                      (Active _ _ _) (Pure _)
 
-Graphics/ChalkBoard/Active.hs:128:0:
+Graphics/ChalkBoard/Active.hs:130:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `streach':
                  Patterns not matched:
                      (Active _ _ _) (Pure _)
                      (Pure _) (Pure _)
 
-Graphics/ChalkBoard/Active.hs:134:0:
+Graphics/ChalkBoard/Active.hs:136:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `reverse': Patterns not matched: Pure _
 
-Graphics/ChalkBoard/Active.hs:138:0:
+Graphics/ChalkBoard/Active.hs:140:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `page':
                  Patterns not matched:
                      (Pure _) _
                      (Active _ _ _) (Pure _)
 
-Graphics/ChalkBoard/Active.hs:151:0:
+Graphics/ChalkBoard/Active.hs:153:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `turnPages': Patterns not matched: _ []
 
-Graphics/ChalkBoard/Active.hs:225:0:
+Graphics/ChalkBoard/Active.hs:227:0:
     Warning: Pattern match(es) are non-exhaustive
              In the definition of `snapAt': Patterns not matched: _ (Pure _)
 [20 of 22] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/Graphics/ChalkBoard/CBIR/Compiler.o )
