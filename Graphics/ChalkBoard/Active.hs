@@ -236,7 +236,7 @@ snapAt r act@(Active start end f)
 
 -- Function to add an action (Active function) to an Active Board
 addActive :: (UI -> Board a -> Board b) -> Active (Board a) -> Active (Board b)
-addActive fn (Pure brd) = Active 0 1 (\ui -> fn (fromRational ui) brd)
+addActive fn (Pure brd) = fmap (\ui -> fn ui brd) age
 addActive fn (Active start stop f) = Active start stop (\ui -> (fn (fromRational ui) . f) ui)
 
 
