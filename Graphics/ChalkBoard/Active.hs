@@ -230,15 +230,18 @@ snapAt r act@(Active start end f)
 
 
 
+
 ---------------------------------------------
 ----- 3/8/10 Additions by Kevin Matlage -----
 ---------------------------------------------
 
--- Function to add an action (Active function) to an Active Board
-addActive :: (UI -> Board a -> Board b) -> Active (Board a) -> Active (Board b)
-addActive fn (Pure brd) = fmap (\ui -> fn ui brd) age
-addActive fn (Active start stop f) = Active start stop (\ui -> (fn (fromRational ui) . f) ui)
 
+-- Function to add an action (Active function) to an Active (particularly an Active Board)
+addActive :: (UI -> a -> b) -> Active a -> Active b
+addActive fn act = (fmap fn age) <*> act
+
+infixr 2 .<-.
+(.<-.) = addActive
 
 
 -- Changing the basic affine transformations into actions that can be added to an Active
