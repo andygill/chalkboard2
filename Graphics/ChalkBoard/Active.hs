@@ -241,6 +241,7 @@ addActive :: (UI -> a -> b) -> Active a -> Active b
 addActive fn act = (fmap fn age) <*> act
 
 infixr 2 .<-.
+(.<-.) :: (UI -> a -> b) -> Active a -> Active b
 (.<-.) = addActive
 
 
