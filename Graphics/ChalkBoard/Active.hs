@@ -47,10 +47,10 @@ instance Scale (Active a) where
   scale _ (Pure a) 		= Pure a
 
 
-actMove :: Float -> Active a -> Active a
-actMove d (Active start stop f) = Active (toRational d + start) (toRational d + stop) 
+mvActive :: Float -> Active a -> Active a
+mvActive d (Active start stop f) = Active (toRational d + start) (toRational d + stop) 
 				$ \ tm -> f (tm - toRational d)
-actMove _ (Pure a) = Pure a
+mvActive _ (Pure a) = Pure a
 
 instance Functor Active where
   fmap f (Active start stop g) = Active start stop (f . g)
@@ -114,11 +114,11 @@ flicker = foldr1 lay
 
 -- Do *right* after second argument.
 after :: Active a -> Active b -> Active a
-after act@(Active low' _ _) (Active _ high _)  = actMove (fromRational (high - low')) act
+after act@(Active low' _ _) (Active _ high _)  = mvActive (fromRational (high - low')) act
 
 -- Do *right* before the second argument
 before :: Active a -> Active b -> Active a
-before act@(Active _ high' _) (Active low _ _)  = actMove (fromRational (low - high')) act
+before act@(Active _ high' _) (Active low _ _)  = mvActive (fromRational (low - high')) act
 
 -- add duration.
 duration :: Active a -> Active b -> Active ()
@@ -278,6 +278,30 @@ activeDisappear = addActive $ \ui -> if ui == 1
 -- For use with flicker, in conjunction with the 'taking' function
 wait :: R -> Active (Board (RGBA -> RGBA))
 wait n = taking n (pure (boardOf transparent))
+
+
+
+
+----------------------------------------------
+----- 4/28/10 Additions by Kevin Matlage -----
+----------------------------------------------
+
+
+-- Function for ordering based on global time scale
+order :: Over a => [(R, Active a)] -> Active a
+order ((t, act):[])   = (mvActive t act)
+order ((t, act):acts) = (order acts) `over` (mvActive t act)
+order []              = error "empty list given to order function"
+
+
+-- Function for ordering based on time since previous animation started
+orderRel :: Over a => [(R, Active a)] -> Active a
+orderRel = orderRel' 0
+
+orderRel' :: Over a => R -> [(R, Active a)] -> Active a
+orderRel' a ((t, act):[])   = (mvActive (a+t) act)
+orderRel' a ((t, act):acts) = (orderRel' (a+t) acts) `over` (mvActive (a+t) act)
+orderRel' _ []              = error "empty list given to order function"
 
 
 

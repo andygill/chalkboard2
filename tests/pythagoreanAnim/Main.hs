@@ -1,5 +1,6 @@
 module Main where
 
+import Prelude as P
 import Graphics.ChalkBoard as CB
 import Control.Applicative (pure)
 
@@ -28,7 +29,8 @@ animMain cb font sz (w,h) = do
             movingTriangle = activeMove (0.15,0.2) $ activeScale (2/3) $ pure $ scale 1.5 $ mainTriangle
             
             otherTriangles = [ rotate (-i*pi/2) $ move (0.15,0.2) $ mainTriangle | i <- [0..2] ]
-            addOtherTriangles = overList [ actMove i $ activeAppear $ activeRotate (-pi/2) $ pure $ t | (t,i) <- Prelude.zip otherTriangles [1..] ]
+            addOtherTriangles = [ activeAppear $ activeRotate (-pi/2) $ pure $ t | t <- otherTriangles ]
+            --addOtherTriangles = overList [ mvActive i $ activeAppear $ activeRotate (-pi/2) $ pure $ t | (t,i) <- P.zip otherTriangles [1..] ]
             
             fillSquare = activeAppear $ pure $ scale 0.095 $ choose (alpha yellow) transparent <$> square
             
@@ -54,9 +56,9 @@ animMain cb font sz (w,h) = do
             
             finalABC = activeAppear $ pure $ (move (-0.15, -0.2) a) `over` (move (0.03,-0.36) a) `over` (move (0.18,-0.2) b) `over` (move (0.4,0) b)
             formula = activeAppear $ pure $ move (0.15,0.35) $ makelbl aSP formulaLabel
-            
-            
         
+         
+        {-
         --Set up the animation ordering/timing
         let anim = flicker [ taking 0.5 $ background
                            , taking 1 $ firstABC
@@ -71,13 +73,47 @@ animMain cb font sz (w,h) = do
                            , taking 1 $ fadeInSquares `over` thirdABC
                            , taking 3 $ finalABC `over` formula
                            ]
+        --}
+        {-
+        --Set up the animation ordering/timing
+        let anim = order [ (0,   taking 0 $ background) --fix this so that `over` can handle Pure actives
+                         , (0.5, taking 1 $ firstABC)
+                         , (1.5, taking 1 $ movingTriangle)
+                         , (3,   taking 0.75 $ addOtherTriangles !! 0)
+                         , (4,   taking 0.75 $ addOtherTriangles !! 1)
+                         , (5,   taking 0.75 $ addOtherTriangles !! 2)
+                         , (6,   fillSquare `over` areaEq)
+                         , (6,   taking 1.5 $ secondABC)
+                         , (7.5, taking 1 $ slideLeft)
+                         , (9,   taking 1 $ slideRight)
+                         , (10,  taking 2 $ thirdABC)
+                         , (11,  taking 1 $ fadeInSquares)
+                         , (12,  taking 3 $ finalABC `over` formula)
+                         ]
+        --}
         
+        --Set up the animation ordering/timing
+        let anim = orderRel [ (0,    taking 0 $ background) --fix this so that `over` can handle Pure actives
+                            , (0.5,  taking 1 $ firstABC)
+                            , (1,    taking 1 $ movingTriangle)
+                            , (1.5,  taking 0.75 $ addOtherTriangles !! 0)
+                            , (1,    taking 0.75 $ addOtherTriangles !! 1)
+                            , (1,    taking 0.75 $ addOtherTriangles !! 2)
+                            , (1,    fillSquare `over` areaEq)
+                            , (0,    taking 1.5 $ secondABC)
+                            , (1.5,  taking 1 $ slideLeft)
+                            , (1.5,  taking 1 $ slideRight)
+                            , (1,    taking 2 $ thirdABC)
+                            , (1,    taking 1 $ fadeInSquares)
+                            , (1,    taking 3 $ finalABC `over` formula)
+                            ]
+        --}
         
         --Pick the animation you would like to see and turn it into a play object
 	playObj <- byFrame 29.97 anim
         
         --Start the video write stream
-        sid <- startDefaultWriteStream cb "pythagorean2.avi"
+        sid <- startDefaultWriteStream cb "pythagorean3.avi"
         
         --Run the animation
         let loop i n = do
@@ -102,8 +138,9 @@ animMain cb font sz (w,h) = do
 
 
 --Overlay a list of boards
-overList (b:[]) = b
-overList (b:bs) = b `over` (overList bs)
+--overList (b:[]) = b
+--overList (b:bs) = b `over` (overList bs)
+
 
 --Fade in a boolean board over time to a certain color/alpha
 fadeIn :: O RGB -> UI -> Board Bool -> Active (Board (RGBA -> RGBA))
