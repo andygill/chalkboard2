@@ -587,8 +587,7 @@ Graphics/ChalkBoard/Options.hs:33:11:
 [15 of 23] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/OpenGL/CBBE.o )
 [16 of 23] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/Board.o )
 [17 of 23] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/Shapes.o )
-[18 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/Font.o )
-[19 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
+[18 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
 
 Graphics/ChalkBoard/CBIR/Compiler.hs:177:0:
     Warning: Pattern match(es) are overlapped
@@ -598,7 +597,8 @@ Graphics/ChalkBoard/CBIR/Compiler.hs:362:0:
     Warning: Pattern match(es) are overlapped
              In the definition of `compileBoardFmap':
                  compileBoardFmap bc t _ other argTy resTy = ...
-[20 of 23] Compiling Graphics.ChalkBoard.Main ( Graphics/ChalkBoard/Main.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/Main.o )
+[19 of 23] Compiling Graphics.ChalkBoard.Main ( Graphics/ChalkBoard/Main.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/Main.o )
+[20 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/Font.o )
 [21 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard/Active.o )
 [22 of 23] Compiling Graphics.ChalkBoard ( Graphics/ChalkBoard.hs, dist/build/chalkboard-tests-test1/chalkboard-tests-test1-tmp/Graphics/ChalkBoard.o )
 
@@ -702,9 +702,8 @@ Graphics/ChalkBoard/Options.hs:33:11:
 [15 of 23] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/OpenGL/CBBE.o )
 [16 of 23] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Board.o )
 [17 of 23] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Shapes.o )
-[18 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Font.o )
-[19 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Active.o )
-[20 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
+[18 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Active.o )
+[19 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
 
 Graphics/ChalkBoard/CBIR/Compiler.hs:177:0:
     Warning: Pattern match(es) are overlapped
@@ -714,7 +713,8 @@ Graphics/ChalkBoard/CBIR/Compiler.hs:362:0:
     Warning: Pattern match(es) are overlapped
              In the definition of `compileBoardFmap':
                  compileBoardFmap bc t _ other argTy resTy = ...
-[21 of 23] Compiling Graphics.ChalkBoard.Main ( Graphics/ChalkBoard/Main.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Main.o )
+[20 of 23] Compiling Graphics.ChalkBoard.Main ( Graphics/ChalkBoard/Main.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Main.o )
+[21 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard/Font.o )
 [22 of 23] Compiling Graphics.ChalkBoard ( Graphics/ChalkBoard.hs, dist/build/chalkboard-tests-video1/chalkboard-tests-video1-tmp/Graphics/ChalkBoard.o )
 
 Graphics/ChalkBoard.hs:15:3:
@@ -817,9 +817,8 @@ Graphics/ChalkBoard/Options.hs:33:11:
 [15 of 23] Compiling Graphics.ChalkBoard.OpenGL.CBBE ( Graphics/ChalkBoard/OpenGL/CBBE.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/OpenGL/CBBE.o )
 [16 of 23] Compiling Graphics.ChalkBoard.Board ( Graphics/ChalkBoard/Board.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Board.o )
 [17 of 23] Compiling Graphics.ChalkBoard.Shapes ( Graphics/ChalkBoard/Shapes.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Shapes.o )
-[18 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Font.o )
-[19 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Active.o )
-[20 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
+[18 of 23] Compiling Graphics.ChalkBoard.Active ( Graphics/ChalkBoard/Active.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Active.o )
+[19 of 23] Compiling Graphics.ChalkBoard.CBIR.Compiler ( Graphics/ChalkBoard/CBIR/Compiler.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/CBIR/Compiler.o )
 
 Graphics/ChalkBoard/CBIR/Compiler.hs:177:0:
     Warning: Pattern match(es) are overlapped
@@ -829,7 +828,8 @@ Graphics/ChalkBoard/CBIR/Compiler.hs:362:0:
     Warning: Pattern match(es) are overlapped
              In the definition of `compileBoardFmap':
                  compileBoardFmap bc t _ other argTy resTy = ...
-[21 of 23] Compiling Graphics.ChalkBoard.Main ( Graphics/ChalkBoard/Main.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Main.o )
+[20 of 23] Compiling Graphics.ChalkBoard.Main ( Graphics/ChalkBoard/Main.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Main.o )
+[21 of 23] Compiling Graphics.ChalkBoard.Font ( Graphics/ChalkBoard/Font.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard/Font.o )
 [22 of 23] Compiling Graphics.ChalkBoard ( Graphics/ChalkBoard.hs, dist/build/chalkboard-tests-font1/chalkboard-tests-font1-tmp/Graphics/ChalkBoard.o )
 
 Graphics/ChalkBoard.hs:15:3:

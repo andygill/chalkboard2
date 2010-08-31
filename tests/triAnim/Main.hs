@@ -35,8 +35,8 @@ animMain cb = do
 	    
 	    combineSome = for 6 $ (flicker [(overList (take 2 (drop i moveSq4s))) | i <- [0,2..14] ]) `over` (flicker moveSq3s) `over` triangle345
 	    
-	    moveSq4sSep = [ actMove (0.15*i) moveSq4 | (moveSq4,i) <- Prelude.zip moveSq4s [0..] ]
-	    moveSq3sSep = [ actMove (0.25*i) moveSq3 | (moveSq3,i) <- Prelude.zip moveSq3s [0..] ]
+	    moveSq4sSep = [ mvActive (0.15*i) moveSq4 | (moveSq4,i) <- Prelude.zip moveSq4s [0..] ]
+	    moveSq3sSep = [ mvActive (0.25*i) moveSq3 | (moveSq3,i) <- Prelude.zip moveSq3s [0..] ]
 	    allWithDelays = for 4 $ (overList moveSq4sSep) `over` (overList moveSq3sSep) `over` triangle345
 	
 	

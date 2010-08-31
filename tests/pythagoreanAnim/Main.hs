@@ -113,7 +113,7 @@ animMain cb font sz (w,h) = do
 	playObj <- byFrame 29.97 anim
         
         --Start the video write stream
-        sid <- startDefaultWriteStream cb "pythagorean3.avi"
+        sid <- startDefaultWriteStream cb "pythagorean-test.avi"
         
         --Run the animation
         let loop i n = do
@@ -147,6 +147,15 @@ fadeIn :: O RGB -> UI -> Board Bool -> Active (Board (RGBA -> RGBA))
 fadeIn rgb a brd = fmap fn age
         where fn ui = choose (withAlpha (o (ui*a)) rgb) transparent <$> brd
 
+{-
+fadeIn2 :: Board RGB -> Active (Board (RGBA -> RGBA))
+fadeIn2 brd = fmap fn age
+        where fn ui = (\color -> (withAlpha (o ui) color)) <$> brd
+
+fadeIn3 :: Active (Board (RGBA->RGBA)) -> Active (Board (RGBA -> RGBA))
+fadeIn3 brd = addActive fn brd
+        where fn ui b = (\color -> (withAlpha (o ui*alpha) color)) <$> b
+--}
 
 
 --Create a font board at the right size
