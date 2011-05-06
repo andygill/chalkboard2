@@ -33,7 +33,7 @@ data Buffer a = Buffer ExprType (Int,Int) (Int,Int) (InsideBuffer a)
 data InsideBuffer a where
 	BoardInBuffer	:: Board a -> InsideBuffer a
 			-- ExprType is the type of the inner inside Buffer
-	FmapBuffer	:: forall b . (O b -> O a) -> InsideBuffer b -> ExprType -> InsideBuffer a
+	FmapBuffer	:: forall a b . (O b -> O a) -> InsideBuffer b -> ExprType -> InsideBuffer a
 		-- we represent image as mutable arrays simply because
 		-- we need a quick way to get to a pointer to the array
 		-- They are really actually constant.
@@ -50,7 +50,7 @@ data InsideBoard a where
 	PrimConst 	:: (O a)					-> InsideBoard a
 	Trans 		:: Trans -> Board a				-> InsideBoard a
 	Crop 		:: ((R,R),(R,R)) -> Board a			-> InsideBoard (Maybe a)
-	Fmap :: forall b . (O b -> O a) -> Board b			-> InsideBoard a
+	Fmap :: forall a b . (O b -> O a) -> Board b			-> InsideBoard a
 	Zip		:: Board b -> Board c 				-> InsideBoard (b,c)
 	Polygon 	:: (Float -> [(R,R)]) 				-> InsideBoard Bool	-- later, have two types of Polygon
 	-- only used in code generator, when types do not matter.

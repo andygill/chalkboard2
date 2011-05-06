@@ -20,7 +20,8 @@ import qualified Graphics.UI.GLUT as GLUT
 import Graphics.Rendering.OpenGL.Raw.Core31 as GL
 import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility (gl_LUMINANCE)
 import qualified Graphics.ChalkBoard.Internals as CBI
--- import Graphics.Rendering.OpenGL.GL.Shaders
+import Graphics.Rendering.OpenGL.GL.Shaders
+import Graphics.Rendering.OpenGL.GL.VertexSpec
 import Codec.Image.DevIL
 
 -- Base Packages
@@ -914,7 +915,7 @@ splatColor env (T.RGBA r g b a) bD ps = do
             -- glFramebufferTexture2D gl_FRAMEBUFFER gl_COLOR_ATTACHMENT0 gl_TEXTURE_2D texIdD 0
     
     -- Switch the color to the one we are trying to splat
-    color (Color4 (floatToGLclampf r) (floatToGLclampf g) (floatToGLclampf b) ((floatToGLclampf a)::GLclampf))
+    color (Color4 (floatToGLclampf r) (floatToGLclampf g) (floatToGLclampf b) ((floatToGLclampf a)::GL.GLclampf))
     -- Uses relative positions (percentages) of source and destination boards
     -- most of the time is attributed to *renderPrimitive* (glBegin?)
     renderPrimitive Polygon $ do

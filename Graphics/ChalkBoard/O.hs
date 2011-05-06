@@ -172,8 +172,8 @@ instance Boolean (O Bool) where
 	true = o True
 	false = o False
 	notB (O a ea) = O (not a) $ E BOOL_Ty $ NOT ea
-	-- (&&*) :: b -> b -> b
-	-- (||*) :: b -> b -> b
+	(&&*) a b = choose a false b
+	(||*) a b = choose a true b
 	
 
 instance IfB (O Bool) (O a) where

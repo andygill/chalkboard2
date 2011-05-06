@@ -31,7 +31,7 @@ Flag all
   Default:     False
 	
 Library
-  Build-Depends:        base >= 4 && < 5, array, data-reify, containers >= 0.2, GLUT>=2.1.2.1, OpenGL, OpenGLRaw>=1.0.1.0, Codec-Image-DevIL, time, directory, binary, bytestring, process, stb-truetype, Boolean
+  Build-Depends:        base >= 4 && < 5, array, data-reify, containers >= 0.2, GLUT>=2.2.2.0, OpenGL >= 2.4.0.1, OpenGLRaw>=1.1.0.1, Codec-Image-DevIL, time, directory, binary, bytestring, process, stb-truetype, Boolean
   Exposed-modules:
        Graphics.ChalkBoard,
        Graphics.ChalkBoard.Board,
