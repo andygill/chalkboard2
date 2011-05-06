@@ -336,7 +336,7 @@ assignFrag RGBA_Ty expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	-- TODO: ass
 assignFrag (Maybe_Ty RGB_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"	
 assignFrag (Maybe_Ty UI_Ty) expr = "  gl_FragColor.rgba = " ++ expr ++ ";\n"
 assignFrag RGB_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
-assignFrag BOOL_Ty expr = "  gl_FragColor.rgb = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
+assignFrag BOOL_Ty expr = "  gl_FragColor.r = " ++ "(" ++ expr ++ ") ? 1.0 : 0.0;\n  gl_FragColor.a = 1.0;\n"
 assignFrag UI_Ty expr = "  gl_FragColor.r = " ++ expr ++ ";\n  gl_FragColor.a = 1.0;\n"
 assignFrag other expr = error $ show ("assignFrag",other,expr)
 --
@@ -550,6 +550,10 @@ allocAndCompileBoard bc ty brd = error $ show ("allocAndCompileBoard",bc,ty,brd)
 
 -- what a hack! Compiles our Expr language into GLSL.
 compileFmapFun :: Map [Path] String -> Expr E -> ExprType -> String
+compileFmapFun env (Choose e1 e2 e3) ty@BOOL_Ty =
+              "\n((" ++ compileFmapFunE env e3 BOOL_Ty ++ ") ? " ++
+              "(" ++ compileFmapFunE env e1 ty  ++ ") :" ++
+              "(" ++ compileFmapFunE env e2 ty  ++ "))\n"
 compileFmapFun env (Choose e1 e2 e3) ty =
 	      "\nmix(" ++ compileFmapFunE env e2 ty ++ "," ++
 			compileFmapFunE env e1 ty ++ "," ++
